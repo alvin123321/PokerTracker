@@ -38,6 +38,22 @@ import {
   template: `
     @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
+      @if (toastMessage(); as message) {
+        <div class="pokertrack-toast pointer-events-none fixed left-1/2 top-24 z-50 w-[min(90vw,22rem)] -translate-x-1/2">
+          <div
+            class="rounded-xl border px-4 py-3 text-center text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
+            [class.border-red-400/30]="toastTone() === 'error'"
+            [class.bg-red-400/15]="toastTone() === 'error'"
+            [class.text-red-50]="toastTone() === 'error'"
+            [class.border-emerald-300/25]="toastTone() === 'saving'"
+            [class.bg-neutral-900/90]="toastTone() === 'saving'"
+            [class.text-emerald-50]="toastTone() === 'saving'"
+          >
+            {{ message }}
+          </div>
+        </div>
+      }
+
       <section class="space-y-4 sm:space-y-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -72,18 +88,6 @@ import {
             </button>
           </div>
         </div>
-
-        @if (actionError() || store.error()) {
-          <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
-            {{ actionError() ?? store.error() }}
-          </div>
-        }
-
-        @if (pendingAction()) {
-          <div class="rounded-lg border border-emerald-300/20 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-50">
-            Saving changes...
-          </div>
-        }
 
         <div class="hidden gap-3 md:grid md:grid-cols-4 md:gap-4">
           <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 md:p-4">
@@ -397,7 +401,26 @@ import {
         </a>
       </section>
     }
-  `
+  `,
+  styles: [
+    `
+      .pokertrack-toast {
+        animation: pokertrack-toast-in 180ms ease-out both;
+      }
+
+      @keyframes pokertrack-toast-in {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -0.5rem) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1);
+        }
+      }
+    `
+  ]
 })
 export class ActiveSessionPage {
   protected readonly store = inject(MockPokerStoreService);
@@ -412,6 +435,20 @@ export class ActiveSessionPage {
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly sortedPlayers = computed(() =>
     this.store.sortedPlayersForActiveSession(this.session())
+  );
+  protected readonly toastMessage = computed(() => {
+    if (this.actionError() || this.store.error()) {
+      return this.actionError() ?? this.store.error();
+    }
+
+    if (this.pendingAction()) {
+      return 'Saving changes...';
+    }
+
+    return null;
+  });
+  protected readonly toastTone = computed<'saving' | 'error'>(() =>
+    this.actionError() || this.store.error() ? 'error' : 'saving'
   );
 
   protected async openAddPlayerDialog(): Promise<void> {
