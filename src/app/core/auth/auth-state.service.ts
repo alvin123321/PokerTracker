@@ -82,12 +82,12 @@ export class AuthStateService {
     return this.initPromise;
   }
 
-  async signIn(email: string, password: string): Promise<UserProfile> {
+  async signIn(loginName: string, password: string): Promise<UserProfile> {
     this.loadingSignal.set(true);
     this.errorSignal.set(null);
 
     try {
-      const mockProfile = this.tryMockSignIn(email, password);
+      const mockProfile = this.tryMockSignIn(loginName, password);
 
       if (mockProfile) {
         return mockProfile;
@@ -99,6 +99,7 @@ export class AuthStateService {
 
       this.assertConfigured();
 
+      const email = this.toSupabaseEmail(loginName);
       const { data, error } = await this.authService.signInWithPassword({ email, password });
 
       if (error) {
@@ -110,6 +111,7 @@ export class AuthStateService {
       }
 
       await this.applySession(data.session);
+      localStorage.removeItem(mockSessionStorageKey);
 
       const profile = this.profileSignal();
 
@@ -145,23 +147,25 @@ export class AuthStateService {
     this.errorSignal.set(null);
 
     try {
+      if (this.isConfigured) {
+        this.registerAuthListener();
+
+        const { data, error } = await this.authService.getSession();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data.session) {
+          localStorage.removeItem(mockSessionStorageKey);
+          await this.applySession(data.session);
+          return;
+        }
+      }
+
       if (this.restoreMockSession()) {
         return;
       }
-
-      if (!this.isConfigured) {
-        return;
-      }
-
-      this.registerAuthListener();
-
-      const { data, error } = await this.authService.getSession();
-
-      if (error) {
-        throw error;
-      }
-
-      await this.applySession(data.session);
     } catch (error) {
       this.errorSignal.set(this.toMessage(error));
       this.userSignal.set(null);
@@ -251,6 +255,16 @@ export class AuthStateService {
     localStorage.setItem(mockSessionStorageKey, JSON.stringify({ user, profile }));
 
     return profile;
+  }
+
+  private toSupabaseEmail(loginName: string): string {
+    const normalizedLoginName = loginName.trim().toLowerCase();
+
+    if (normalizedLoginName.includes('@')) {
+      return normalizedLoginName;
+    }
+
+    return `${normalizedLoginName}@pokertrack.local`;
   }
 
   private restoreMockSession(): boolean {

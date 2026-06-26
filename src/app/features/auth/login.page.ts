@@ -30,12 +30,13 @@ import { UserProfile } from '../../core/models/user.model';
         >
           <div class="space-y-1">
             <h2 class="text-xl font-semibold text-white">Sign in</h2>
-            <p class="text-sm text-neutral-400">Use a development credential to preview the app.</p>
+            <p class="text-sm text-neutral-400">Use your PokerTrack login name to continue.</p>
           </div>
 
           @if (authState.isMockAuthEnabled) {
             <div class="mt-5 rounded-lg border border-emerald-300/30 bg-emerald-300/10 p-4 text-sm text-emerald-50">
-              Development login: admin/admin for host, player/player for player.
+              Supabase login: admin1223/admin1223 for host, player123/player123 for player.
+              Mock fallback: admin/admin or player/player.
             </div>
           }
 
@@ -52,7 +53,7 @@ import { UserProfile } from '../../core/models/user.model';
             autocomplete="username"
             formControlName="username"
             class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-300"
-            placeholder="admin"
+            placeholder="admin1223"
           />
 
           <label class="mt-4 block text-sm font-medium text-neutral-200" for="password">Password</label>
