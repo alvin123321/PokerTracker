@@ -72,7 +72,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
 
         @if (totals.activePlayers > 0) {
           <div class="rounded-lg border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-50">
-            {{ totals.activePlayers }} player(s) still have pending cash out values in this mock session.
+            {{ totals.activePlayers }} player(s) still have pending cash out values in this session.
           </div>
         }
 

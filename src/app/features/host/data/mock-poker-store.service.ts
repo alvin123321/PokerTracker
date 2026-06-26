@@ -1,4 +1,7 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
+
+import { AuthStateService } from '../../../core/auth/auth-state.service';
+import { SupabaseService } from '../../../core/supabase/supabase.service';
 
 export type MockSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type MockPlayerStatus = 'ACTIVE' | 'COMPLETED';
@@ -45,15 +48,65 @@ export interface SessionTotals {
   totalNet: number;
 }
 
+interface SessionRow {
+  id: string;
+  host_id: string;
+  name: string;
+  session_date: string;
+  status: MockSessionStatus;
+  created_at: string;
+  closed_at: string | null;
+}
+
+interface PlayerRow {
+  id: string;
+  user_id: string | null;
+  host_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SessionPlayerRow {
+  id: string;
+  session_id: string;
+  player_id: string;
+  status: MockPlayerStatus;
+  total_buy_in: number | string;
+  cash_out: number | string;
+  net: number | string;
+  joined_at: string;
+  completed_at: string | null;
+}
+
+interface TransactionRow {
+  id: string;
+  session_id: string;
+  player_id: string;
+  session_player_id: string;
+  type: MockTransactionType;
+  amount: number | string;
+  created_at: string;
+  comment: string | null;
+  deleted_at: string | null;
+}
+
 const storageKey = 'pokertrack.mockPokerStore';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MockPokerStoreService {
+  private readonly authState = inject(AuthStateService);
+  private readonly supabaseService = inject(SupabaseService);
   private readonly sessionsSignal = signal<MockPokerSession[]>(this.loadSessions());
+  private readonly loadingSignal = signal(false);
+  private readonly errorSignal = signal<string | null>(null);
+  private loadedSupabaseUserId: string | null = null;
 
   readonly sessions = this.sessionsSignal.asReadonly();
+  readonly loading = this.loadingSignal.asReadonly();
+  readonly error = this.errorSignal.asReadonly();
   readonly activeSessions = computed(() =>
     this.sessionsSignal().filter((session) => session.status === 'ACTIVE')
   );
@@ -61,7 +114,111 @@ export class MockPokerStoreService {
     this.sessionsSignal().filter((session) => session.status === 'COMPLETED')
   );
 
-  createSession(name: string, sessionDate: string): MockPokerSession {
+  constructor() {
+    effect(() => {
+      const initialized = this.authState.initialized();
+      const user = this.authState.user();
+
+      if (!initialized || !this.shouldUseSupabaseForUser(user?.id ?? null)) {
+        return;
+      }
+
+      if (this.loadedSupabaseUserId === user?.id) {
+        return;
+      }
+
+      this.loadedSupabaseUserId = user?.id ?? null;
+      void this.refreshHostSessions();
+    });
+  }
+
+  async refreshHostSessions(): Promise<void> {
+    if (!this.shouldUseSupabase()) {
+      return;
+    }
+
+    this.setLoading(true);
+    this.setError(null);
+
+    try {
+      const client = this.supabaseService.requireClient();
+      const { data: sessionRows, error: sessionsError } = await client
+        .from('sessions')
+        .select('id,host_id,name,session_date,status,created_at,closed_at')
+        .order('created_at', { ascending: false });
+
+      if (sessionsError) {
+        throw sessionsError;
+      }
+
+      const sessions = (sessionRows ?? []) as SessionRow[];
+      const sessionIds = sessions.map((session) => session.id);
+
+      if (sessionIds.length === 0) {
+        this.sessionsSignal.set([]);
+        return;
+      }
+
+      const [sessionPlayersResult, transactionsResult] = await Promise.all([
+        client
+          .from('session_players')
+          .select(
+            'id,session_id,player_id,status,total_buy_in,cash_out,net,joined_at,completed_at'
+          )
+          .in('session_id', sessionIds)
+          .order('joined_at', { ascending: true }),
+        client
+          .from('transactions')
+          .select('id,session_id,player_id,session_player_id,type,amount,created_at,comment,deleted_at')
+          .in('session_id', sessionIds)
+          .order('created_at', { ascending: true })
+      ]);
+
+      if (sessionPlayersResult.error) {
+        throw sessionPlayersResult.error;
+      }
+
+      if (transactionsResult.error) {
+        throw transactionsResult.error;
+      }
+
+      const sessionPlayers = (sessionPlayersResult.data ?? []) as SessionPlayerRow[];
+      const playerIds = [...new Set(sessionPlayers.map((player) => player.player_id))];
+      const playersById = await this.loadPlayersById(playerIds);
+      const transactions = (transactionsResult.data ?? []) as TransactionRow[];
+
+      this.sessionsSignal.set(
+        sessions.map((session) =>
+          this.mapSession(session, sessionPlayers, playersById, transactions)
+        )
+      );
+    } catch (error) {
+      this.setError(this.toMessage(error));
+      throw error;
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async createSession(name: string, sessionDate: string): Promise<MockPokerSession> {
+    if (this.shouldUseSupabase()) {
+      const { data, error } = await this.supabaseService
+        .requireClient()
+        .rpc('create_session', {
+          p_name: name.trim(),
+          p_session_date: sessionDate
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      const createdSession = this.mapSession(data as SessionRow, [], new Map(), []);
+      await this.refreshHostSessions();
+
+      return this.getSession(createdSession.id) ?? createdSession;
+    }
+
     const session: MockPokerSession = {
       id: this.createId('session'),
       name: name.trim(),
@@ -82,7 +239,27 @@ export class MockPokerStoreService {
     return this.sessionsSignal().find((session) => session.id === sessionId);
   }
 
-  addPlayer(sessionId: string, name: string, buyIn: number, comment = ''): void {
+  async addPlayer(sessionId: string, name: string, buyIn: number, comment = ''): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .rpc('add_player_to_session', {
+          p_session_id: sessionId,
+          p_player_name: name.trim(),
+          p_buy_in: this.normalizeAmount(buyIn),
+          p_existing_player_id: null,
+          p_player_user_id: null,
+          p_comment: comment.trim() || null
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
     const joinedAt = new Date().toISOString();
     const playerId = this.createId('player');
     const cleanBuyIn = this.normalizeAmount(buyIn);
@@ -107,14 +284,36 @@ export class MockPokerStoreService {
     }));
   }
 
-  recordRebuy(sessionId: string, playerId: string, amount: number, comment = ''): void {
+  async recordRebuy(
+    sessionId: string,
+    sessionPlayerId: string,
+    amount: number,
+    comment = ''
+  ): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .rpc('record_rebuy', {
+          p_session_player_id: sessionPlayerId,
+          p_amount: this.normalizeAmount(amount),
+          p_comment: comment.trim() || null
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
     const createdAt = new Date().toISOString();
     const rebuyAmount = this.normalizeAmount(amount);
 
     this.updateSession(sessionId, (session) => ({
       ...session,
       players: session.players.map((player) => {
-        if (player.id !== playerId || player.status === 'COMPLETED') {
+        if (player.id !== sessionPlayerId || player.status === 'COMPLETED') {
           return player;
         }
 
@@ -128,19 +327,35 @@ export class MockPokerStoreService {
       }),
       transactions: [
         ...session.transactions,
-        this.createTransaction(session.id, playerId, 'REBUY', rebuyAmount, createdAt, comment)
+        this.createTransaction(session.id, sessionPlayerId, 'REBUY', rebuyAmount, createdAt, comment)
       ]
     }));
   }
 
-  recordCashOut(sessionId: string, playerId: string, amount: number): void {
+  async recordCashOut(sessionId: string, sessionPlayerId: string, amount: number): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .rpc('record_cashout', {
+          p_session_player_id: sessionPlayerId,
+          p_amount: this.normalizeAmount(amount)
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
     const completedAt = new Date().toISOString();
     const cashOut = this.normalizeAmount(amount);
 
     this.updateSession(sessionId, (session) => ({
       ...session,
       players: session.players.map((player) => {
-        if (player.id !== playerId) {
+        if (player.id !== sessionPlayerId) {
           return player;
         }
 
@@ -154,17 +369,34 @@ export class MockPokerStoreService {
       }),
       transactions: [
         ...session.transactions,
-        this.createTransaction(session.id, playerId, 'CASHOUT', cashOut, completedAt)
+        this.createTransaction(session.id, sessionPlayerId, 'CASHOUT', cashOut, completedAt)
       ]
     }));
   }
 
-  updateBuyInTransaction(
+  async updateBuyInTransaction(
     sessionId: string,
     transactionId: string,
     amount: number,
     comment = ''
-  ): void {
+  ): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .rpc('update_buy_in_transaction', {
+          p_transaction_id: transactionId,
+          p_amount: this.normalizeAmount(amount),
+          p_comment: comment.trim() || null
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
     const updatedAmount = this.normalizeAmount(amount);
     const cleanComment = comment.trim();
 
@@ -189,7 +421,22 @@ export class MockPokerStoreService {
     });
   }
 
-  deleteBuyInTransaction(sessionId: string, transactionId: string): void {
+  async deleteBuyInTransaction(sessionId: string, transactionId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .rpc('delete_buy_in_transaction', {
+          p_transaction_id: transactionId
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
     const deletedAt = new Date().toISOString();
 
     this.updateSession(sessionId, (session) => {
@@ -211,7 +458,20 @@ export class MockPokerStoreService {
     });
   }
 
-  closeSession(sessionId: string): void {
+  async closeSession(sessionId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService.requireClient().rpc('close_session', {
+        p_session_id: sessionId
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
     this.updateSession(sessionId, (session) => ({
       ...session,
       status: 'COMPLETED',
@@ -266,6 +526,77 @@ export class MockPokerStoreService {
 
         return a.createdAt.localeCompare(b.createdAt);
       });
+  }
+
+  private async loadPlayersById(playerIds: string[]): Promise<Map<string, PlayerRow>> {
+    if (playerIds.length === 0) {
+      return new Map();
+    }
+
+    const { data, error } = await this.supabaseService
+      .requireClient()
+      .from('players')
+      .select('id,user_id,host_id,name,created_at,updated_at')
+      .in('id', playerIds);
+
+    if (error) {
+      throw error;
+    }
+
+    return new Map(((data ?? []) as PlayerRow[]).map((player) => [player.id, player]));
+  }
+
+  private mapSession(
+    session: SessionRow,
+    sessionPlayers: SessionPlayerRow[],
+    playersById: Map<string, PlayerRow>,
+    transactions: TransactionRow[]
+  ): MockPokerSession {
+    const currentSessionPlayers = sessionPlayers.filter((player) => player.session_id === session.id);
+
+    return {
+      id: session.id,
+      name: session.name,
+      sessionDate: session.session_date,
+      status: session.status,
+      createdAt: session.created_at,
+      closedAt: session.closed_at,
+      players: currentSessionPlayers.map((sessionPlayer) =>
+        this.mapSessionPlayer(sessionPlayer, playersById.get(sessionPlayer.player_id))
+      ),
+      transactions: transactions
+        .filter((transaction) => transaction.session_id === session.id)
+        .map((transaction) => this.mapTransaction(transaction))
+    };
+  }
+
+  private mapSessionPlayer(
+    sessionPlayer: SessionPlayerRow,
+    player: PlayerRow | undefined
+  ): MockSessionPlayer {
+    return {
+      id: sessionPlayer.id,
+      name: player?.name ?? 'Unknown player',
+      status: sessionPlayer.status,
+      totalBuyIn: this.toNumber(sessionPlayer.total_buy_in),
+      cashOut: this.toNumber(sessionPlayer.cash_out),
+      net: this.toNumber(sessionPlayer.net),
+      joinedAt: sessionPlayer.joined_at,
+      completedAt: sessionPlayer.completed_at
+    };
+  }
+
+  private mapTransaction(transaction: TransactionRow): MockTransaction {
+    return {
+      id: transaction.id,
+      sessionId: transaction.session_id,
+      playerId: transaction.session_player_id,
+      type: transaction.type,
+      amount: this.toNumber(transaction.amount),
+      createdAt: transaction.created_at,
+      ...(transaction.comment ? { comment: transaction.comment } : {}),
+      ...(transaction.deleted_at ? { deletedAt: transaction.deleted_at } : {})
+    };
   }
 
   private updateSession(
@@ -331,8 +662,37 @@ export class MockPokerStoreService {
     });
   }
 
+  private shouldUseSupabase(): boolean {
+    return this.shouldUseSupabaseForUser(this.authState.user()?.id ?? null);
+  }
+
+  private shouldUseSupabaseForUser(userId: string | null): boolean {
+    return Boolean(
+      this.supabaseService.isConfigured &&
+        userId &&
+        !userId.startsWith('mock-') &&
+        this.authState.role() === 'HOST'
+    );
+  }
+
   private normalizeAmount(amount: number): number {
     return Math.max(0, Math.round((Number(amount) || 0) * 100) / 100);
+  }
+
+  private toNumber(value: number | string): number {
+    return Number(value) || 0;
+  }
+
+  private toMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Something went wrong.';
+  }
+
+  private setLoading(value: boolean): void {
+    this.loadingSignal.set(value);
+  }
+
+  private setError(value: string | null): void {
+    this.errorSignal.set(value);
   }
 
   private createId(prefix: string): string {
@@ -359,7 +719,7 @@ export class MockPokerStoreService {
   }
 
   private saveSessions(sessions: MockPokerSession[]): void {
-    if (typeof localStorage === 'undefined') {
+    if (typeof localStorage === 'undefined' || this.shouldUseSupabase()) {
       return;
     }
 

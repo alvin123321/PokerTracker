@@ -326,12 +326,12 @@ export class ActiveSessionPage {
       panelClass: 'pokertrack-dialog-panel'
     });
 
-    dialogRef.afterClosed().subscribe((result?: AddPlayerDialogResult) => {
+    dialogRef.afterClosed().subscribe(async (result?: AddPlayerDialogResult) => {
       if (!result || !result.name) {
         return;
       }
 
-      this.store.addPlayer(this.sessionId, result.name, result.buyIn, result.comment);
+      await this.store.addPlayer(this.sessionId, result.name, result.buyIn, result.comment);
     });
   }
 
@@ -345,9 +345,9 @@ export class ActiveSessionPage {
       }
     );
 
-    dialogRef.afterClosed().subscribe((result?: RebuyDialogResult) => {
+    dialogRef.afterClosed().subscribe(async (result?: RebuyDialogResult) => {
       if (result && result.amount > 0) {
-        this.store.recordRebuy(this.sessionId, player.id, result.amount, result.comment);
+        await this.store.recordRebuy(this.sessionId, player.id, result.amount, result.comment);
       }
     });
   }
@@ -362,9 +362,9 @@ export class ActiveSessionPage {
       }
     );
 
-    dialogRef.afterClosed().subscribe((amount?: number) => {
+    dialogRef.afterClosed().subscribe(async (amount?: number) => {
       if (amount !== undefined && amount >= 0) {
-        this.store.recordCashOut(this.sessionId, player.id, amount);
+        await this.store.recordCashOut(this.sessionId, player.id, amount);
       }
     });
   }
@@ -383,7 +383,7 @@ export class ActiveSessionPage {
       panelClass: 'pokertrack-dialog-panel'
     });
 
-    dialogRef.afterClosed().subscribe((result?: EditBuyInDialogResult) => {
+    dialogRef.afterClosed().subscribe(async (result?: EditBuyInDialogResult) => {
       if (!result) {
         return;
       }
@@ -394,7 +394,7 @@ export class ActiveSessionPage {
       }
 
       if (result.amount > 0) {
-        this.store.updateBuyInTransaction(
+        await this.store.updateBuyInTransaction(
           this.sessionId,
           transaction.id,
           result.amount,
@@ -426,9 +426,9 @@ export class ActiveSessionPage {
       }
     );
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (confirmed) {
-        this.store.deleteBuyInTransaction(this.sessionId, transaction.id);
+        await this.store.deleteBuyInTransaction(this.sessionId, transaction.id);
       }
     });
   }
@@ -475,7 +475,7 @@ export class ActiveSessionPage {
           title: 'Close session?',
           message:
             pendingPlayers.length > 0
-              ? 'Some players have not cashed out yet. You can close anyway, but their cash out will remain pending in this mock session.'
+              ? 'Some players have not cashed out yet. You can close anyway, but their cash out will remain pending in this session.'
               : 'This marks the session completed and opens the final summary.',
           confirmLabel: pendingPlayers.length > 0 ? 'Close anyway' : 'Close session',
           tone: pendingPlayers.length > 0 ? 'danger' : 'primary',
@@ -494,7 +494,7 @@ export class ActiveSessionPage {
         return;
       }
 
-      this.store.closeSession(this.sessionId);
+      await this.store.closeSession(this.sessionId);
       await this.router.navigate(['/host/sessions', this.sessionId, 'summary']);
     });
   }

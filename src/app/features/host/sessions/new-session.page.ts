@@ -70,7 +70,7 @@ export class NewSessionPage {
     }
 
     const value = this.form.getRawValue();
-    const session = this.store.createSession(value.name, value.sessionDate);
+    const session = await this.store.createSession(value.name, value.sessionDate);
 
     await this.router.navigate(['/host/sessions', session.id]);
   }
