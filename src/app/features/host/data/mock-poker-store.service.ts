@@ -48,6 +48,13 @@ export interface SessionTotals {
   totalNet: number;
 }
 
+export interface RegisteredPlayerOption {
+  id: string;
+  username: string;
+  displayName: string | null;
+  email: string;
+}
+
 interface SessionRow {
   id: string;
   host_id: string;
@@ -89,6 +96,23 @@ interface TransactionRow {
   created_at: string;
   comment: string | null;
   deleted_at: string | null;
+}
+
+interface RegisteredPlayerRow {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  email: string;
+}
+
+interface CreateRegisteredPlayerResponse {
+  player: {
+    id: string;
+    username: string;
+    displayName: string | null;
+    email: string;
+  };
+  temporaryPassword: string;
 }
 
 const storageKey = 'pokertrack.mockPokerStore';
@@ -239,16 +263,53 @@ export class MockPokerStoreService {
     return this.sessionsSignal().find((session) => session.id === sessionId);
   }
 
-  async addPlayer(sessionId: string, name: string, buyIn: number, comment = ''): Promise<void> {
+  async listRegisteredPlayers(): Promise<RegisteredPlayerOption[]> {
+    if (!this.shouldUseSupabase()) {
+      return [];
+    }
+
+    const { data, error } = await this.supabaseService
+      .requireClient()
+      .rpc('list_registered_players');
+
+    if (error) {
+      throw error;
+    }
+
+    return ((data ?? []) as RegisteredPlayerRow[]).map((player) => ({
+      id: player.id,
+      username: player.username ?? player.email.split('@')[0],
+      displayName: player.display_name,
+      email: player.email
+    }));
+  }
+
+  async addPlayer(
+    sessionId: string,
+    name: string,
+    buyIn: number,
+    comment = '',
+    playerUserId: string | null = null,
+    createRegisteredPlayer = false
+  ): Promise<void> {
     if (this.shouldUseSupabase()) {
+      let targetUserId = playerUserId;
+      let targetName = name.trim();
+
+      if (createRegisteredPlayer) {
+        const createdPlayer = await this.createRegisteredPlayer(targetName);
+        targetUserId = createdPlayer.id;
+        targetName = createdPlayer.displayName ?? createdPlayer.username;
+      }
+
       const { error } = await this.supabaseService
         .requireClient()
         .rpc('add_player_to_session', {
           p_session_id: sessionId,
-          p_player_name: name.trim(),
+          p_player_name: targetName,
           p_buy_in: this.normalizeAmount(buyIn),
           p_existing_player_id: null,
-          p_player_user_id: null,
+          p_player_user_id: targetUserId,
           p_comment: comment.trim() || null
         });
 
@@ -544,6 +605,26 @@ export class MockPokerStoreService {
     }
 
     return new Map(((data ?? []) as PlayerRow[]).map((player) => [player.id, player]));
+  }
+
+  private async createRegisteredPlayer(username: string): Promise<RegisteredPlayerOption> {
+    const { data, error } = await this.supabaseService
+      .requireClient()
+      .functions.invoke<CreateRegisteredPlayerResponse>('create-registered-player', {
+        body: {
+          username
+        }
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.player) {
+      throw new Error('Unable to create registered player.');
+    }
+
+    return data.player;
   }
 
   private mapSession(

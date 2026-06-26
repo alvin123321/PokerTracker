@@ -9,6 +9,7 @@ import {
   MockTransaction
 } from '../data/mock-poker-store.service';
 import {
+  AddPlayerDialogData,
   AddPlayerDialogComponent,
   AddPlayerDialogResult
 } from '../players/add-player-dialog.component';
@@ -320,9 +321,15 @@ export class ActiveSessionPage {
     this.store.sortedPlayersForActiveSession(this.session())
   );
 
-  protected openAddPlayerDialog(): void {
-    const dialogRef = this.dialog.open(AddPlayerDialogComponent, {
+  protected async openAddPlayerDialog(): Promise<void> {
+    const registeredPlayers = await this.store.listRegisteredPlayers();
+    const dialogRef = this.dialog.open<
+      AddPlayerDialogComponent,
+      AddPlayerDialogData,
+      AddPlayerDialogResult
+    >(AddPlayerDialogComponent, {
       autoFocus: 'first-tabbable',
+      data: { registeredPlayers },
       panelClass: 'pokertrack-dialog-panel'
     });
 
@@ -331,7 +338,14 @@ export class ActiveSessionPage {
         return;
       }
 
-      await this.store.addPlayer(this.sessionId, result.name, result.buyIn, result.comment);
+      await this.store.addPlayer(
+        this.sessionId,
+        result.name,
+        result.buyIn,
+        result.comment,
+        result.playerUserId,
+        result.createRegisteredPlayer
+      );
     });
   }
 
