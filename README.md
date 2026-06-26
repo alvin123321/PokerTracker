@@ -67,7 +67,13 @@ The repo includes `vercel.json`, so Vercel can read the production build setting
 
 `vercel.json` rewrites all routes to `index.html` so deep links like `/host/sessions/:id` and `/player/sessions/:id` work after refresh.
 
+Current production URL:
+
+```text
+https://poker-tracker-hazel-theta.vercel.app
+```
+
 After the first deployment, add the deployed Vercel URL in Supabase Auth:
 
-- Site URL: your Vercel production URL
-- Redirect URLs: your Vercel production URL and any preview URL pattern you choose to allow
+- Site URL: `https://poker-tracker-hazel-theta.vercel.app`
+- Redirect URLs: `https://poker-tracker-hazel-theta.vercel.app/**` and any preview URL pattern you choose to allow

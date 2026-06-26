@@ -32,6 +32,7 @@ The V1 focus is live-game speed for hosts and private player history for players
 - Mobile active-session compaction for fast rebuy and cash-out workflows.
 - Floating host action toast for pending/success/error feedback.
 - Vercel deployment configuration with production build command, output directory, Node version, and SPA route rewrite.
+- Production deployment on Vercel.
 
 ## Important Behavior
 
@@ -46,7 +47,7 @@ The V1 focus is live-game speed for hosts and private player history for players
 
 - GitHub branch cleanup and merge to `main`.
 - Reporting dashboard, filters, analytics, and export flows.
-- External deployment handoff: connect the GitHub repo to Vercel, deploy, then add the deployed URL to Supabase Auth Site URL and Redirect URLs.
+- External deployment handoff: add the deployed Vercel URL to Supabase Auth Site URL and Redirect URLs, then run a production login smoke test.
 
 ## Local Development
 
@@ -76,9 +77,10 @@ npm run test:ci
 
 ## Vercel Deployment
 
+- Production URL: `https://poker-tracker-hazel-theta.vercel.app`.
 - Framework preset: Angular.
 - Build command: `npm run vercel-build`.
 - Output directory: `dist/pokertrack/browser`.
 - Node version: 22.x from `.nvmrc` and `package.json`.
 - Supabase URL and publishable key are currently configured in `src/environments/environment.ts`.
-- In Supabase Auth URL Configuration, add the deployed Vercel URL to Site URL and Redirect URLs before production login testing.
+- In Supabase Auth URL Configuration, set Site URL to `https://poker-tracker-hazel-theta.vercel.app` and add `https://poker-tracker-hazel-theta.vercel.app/**` to Redirect URLs before production login testing.
