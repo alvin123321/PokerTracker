@@ -4,7 +4,9 @@
 
 PokerTrack is an Angular 20+ poker session management app connected to Supabase Auth, PostgreSQL tables, RLS policies, RPCs, and Edge Functions.
 
-The V1 focus is live-game speed for hosts and private player history for players. Reporting is intentionally deferred to the final phase.
+The V1 focus is live-game speed for hosts and private player history for players. V1 is merged to `main`, tagged as `v1.0.0`, and deployed to Vercel production. Reporting is intentionally deferred to the final phase.
+
+For the durable cross-computer roadmap and handoff context, read `docs/ROADMAP.md`.
 
 ## Development Login
 
@@ -45,9 +47,9 @@ The V1 focus is live-game speed for hosts and private player history for players
 
 ## Remaining Work
 
-- GitHub branch cleanup and merge to `main`.
 - Reporting dashboard, filters, analytics, and export flows.
-- External deployment handoff: add the deployed Vercel URL to Supabase Auth Site URL and Redirect URLs, then run a production login smoke test.
+- External deployment handoff: confirm the deployed Vercel URL is configured in Supabase Auth Site URL and Redirect URLs, then run a production login smoke test.
+- Post-V1 hardening: more tests, RLS review, and improved production error handling.
 
 ## Local Development
 
