@@ -277,7 +277,7 @@ export class MockPokerStoreService {
     const client = this.supabaseService.requireClient();
     const { data: directRows, error: directError } = await client
       .from('users')
-      .select('id,email,display_name,username')
+      .select('id,email,display_name')
       .eq('role', 'PLAYER')
       .order('display_name', { ascending: true });
 
@@ -289,7 +289,7 @@ export class MockPokerStoreService {
 
     if (error) {
       throw new Error(
-        `${this.toMessage(directError ?? error)} Run the latest Supabase player directory migration, then reload the page.`
+        `${this.toMessage(error)} Run the latest Supabase player directory migration, then reload the page.`
       );
     }
 
