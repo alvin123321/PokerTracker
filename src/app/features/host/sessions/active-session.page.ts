@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -39,15 +39,18 @@ import {
     @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
       @if (toastMessage(); as message) {
-        <div class="pokertrack-toast pointer-events-none fixed left-1/2 top-24 z-50 w-[min(90vw,22rem)] -translate-x-1/2">
+        <div class="pokertrack-toast pointer-events-none fixed bottom-4 right-4 z-50 w-[min(calc(100vw-2rem),22rem)] sm:bottom-6 sm:right-6">
           <div
-            class="rounded-xl border px-4 py-3 text-center text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
+            class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
             [class.border-red-400/30]="toastTone() === 'error'"
             [class.bg-red-400/15]="toastTone() === 'error'"
             [class.text-red-50]="toastTone() === 'error'"
             [class.border-emerald-300/25]="toastTone() === 'saving'"
             [class.bg-neutral-900/90]="toastTone() === 'saving'"
             [class.text-emerald-50]="toastTone() === 'saving'"
+            [class.border-emerald-300/30]="toastTone() === 'success'"
+            [class.bg-emerald-400/15]="toastTone() === 'success'"
+            [class.text-emerald-50]="toastTone() === 'success'"
           >
             {{ message }}
           </div>
@@ -405,32 +408,34 @@ import {
   styles: [
     `
       .pokertrack-toast {
-        animation: pokertrack-toast-in 180ms ease-out both;
+        animation: pokertrack-toast-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       @keyframes pokertrack-toast-in {
         from {
           opacity: 0;
-          transform: translate(-50%, -0.5rem) scale(0.98);
+          transform: translateY(0.75rem) scale(0.98);
         }
 
         to {
           opacity: 1;
-          transform: translate(-50%, 0) scale(1);
+          transform: translateY(0) scale(1);
         }
       }
     `
   ]
 })
-export class ActiveSessionPage {
+export class ActiveSessionPage implements OnDestroy {
   protected readonly store = inject(MockPokerStoreService);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
   private readonly expandedPlayerId = signal<string | null>(null);
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly successToast = signal<string | null>(null);
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly sortedPlayers = computed(() =>
@@ -445,11 +450,23 @@ export class ActiveSessionPage {
       return 'Saving changes...';
     }
 
-    return null;
+    return this.successToast();
   });
-  protected readonly toastTone = computed<'saving' | 'error'>(() =>
-    this.actionError() || this.store.error() ? 'error' : 'saving'
-  );
+  protected readonly toastTone = computed<'saving' | 'error' | 'success'>(() => {
+    if (this.actionError() || this.store.error()) {
+      return 'error';
+    }
+
+    if (this.pendingAction()) {
+      return 'saving';
+    }
+
+    return 'success';
+  });
+
+  ngOnDestroy(): void {
+    this.clearSuccessToast();
+  }
 
   protected async openAddPlayerDialog(): Promise<void> {
     if (this.isBusy()) {
@@ -693,16 +710,41 @@ export class ActiveSessionPage {
       return;
     }
 
+    this.clearSuccessToast();
     this.pendingAction.set(action);
     this.actionError.set(null);
+    let succeeded = false;
 
     try {
       await task();
+      succeeded = true;
     } catch (error) {
       this.actionError.set(this.toMessage(error));
     } finally {
       this.pendingAction.set(null);
+
+      if (succeeded) {
+        this.showSuccessToast('Saved');
+      }
     }
+  }
+
+  private showSuccessToast(message: string): void {
+    this.clearSuccessToast();
+    this.successToast.set(message);
+    this.toastTimer = setTimeout(() => {
+      this.successToast.set(null);
+      this.toastTimer = null;
+    }, 2400);
+  }
+
+  private clearSuccessToast(): void {
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
+
+    this.successToast.set(null);
   }
 
   private formatMoney(amount: number): string {
