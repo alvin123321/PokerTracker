@@ -158,8 +158,12 @@ export class MockPokerStoreService {
       }
 
       this.loadedSupabaseUserId = user?.id ?? null;
-      void this.refreshHostSessions();
+      void this.refreshSessions();
     });
+  }
+
+  async refreshSessions(): Promise<void> {
+    await this.refreshHostSessions();
   }
 
   async refreshHostSessions(): Promise<void> {

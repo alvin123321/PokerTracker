@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -159,7 +159,7 @@ interface PlayerSessionEntry {
     </section>
   `
 })
-export class PlayerDashboardPage {
+export class PlayerDashboardPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   protected readonly store = inject(MockPokerStoreService);
 
@@ -209,4 +209,12 @@ export class PlayerDashboardPage {
       .filter((entry) => entry.player.status === 'COMPLETED')
       .reduce((sum, entry) => sum + entry.player.net, 0)
   );
+
+  async ngOnInit(): Promise<void> {
+    try {
+      await this.store.refreshSessions();
+    } catch {
+      // The store surfaces the error in the page-level error block.
+    }
+  }
 }

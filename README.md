@@ -1,59 +1,68 @@
-# Pokertrack
+# PokerTrack
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.30.
+PokerTrack is a mobile-first poker session management app for hosts and players.
 
-## Development server
+Hosts can create sessions, add registered players, record buy-ins/rebuys, cash players out, close sessions, and manage player accounts. Players can sign in and only view their own session history, buy-ins, rebuys, cash-outs, and net results.
 
-To start a local development server, run:
+## Stack
 
-```bash
-ng serve
-```
+- Angular 20 standalone components
+- TypeScript
+- Tailwind CSS
+- Angular Material dialogs
+- Supabase Auth, PostgreSQL, RLS, RPCs, and Edge Functions
+- Vercel deployment
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Development Login
 
-## Code scaffolding
+- Host: `admin1223` / `admin1223`
+- Player: `player123` / `player123`
+- Auto-created player password: `123456`
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Short login names are expanded to `@pokertrack.local` by the app.
 
-```bash
-ng generate component component-name
-```
+## Local Development
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+Install dependencies:
 
 ```bash
-ng build
+npm install
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Run the app with Node 22:
 
 ```bash
-ng test
+npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng serve --host 127.0.0.1 --port 4201"
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+Build:
 
 ```bash
-ng e2e
+npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng build"
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Test:
 
-## Additional Resources
+```bash
+npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng test --watch=false --browsers=ChromeHeadless"
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Supabase
+
+Production environment values are currently set in:
+
+- `src/environments/environment.ts`
+- `src/environments/environment.development.ts`
+
+Database migrations and Edge Functions live in `supabase/`.
+
+## Vercel
+
+Use these settings:
+
+- Framework preset: Angular
+- Build command: `npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng build"`
+- Output directory: `dist/pokertrack/browser`
+- Node version: 22.x
+
+`vercel.json` rewrites all routes to `index.html` so deep links like `/host/sessions/:id` and `/player/sessions/:id` work after refresh.

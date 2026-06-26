@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -177,6 +177,11 @@ interface PlayerLedgerRow {
           </div>
         </section>
       }
+    } @else if (store.loading()) {
+      <section class="rounded-lg border border-sky-300/20 bg-sky-300/10 p-8 text-center">
+        <h1 class="text-2xl font-semibold text-white">Loading session</h1>
+        <p class="mt-2 text-sky-100">Checking your private player records...</p>
+      </section>
     } @else {
       <section class="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
         <h1 class="text-2xl font-semibold text-white">Session not found</h1>
@@ -191,7 +196,7 @@ interface PlayerLedgerRow {
     }
   `
 })
-export class PlayerSessionDetailPage {
+export class PlayerSessionDetailPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
   protected readonly store = inject(MockPokerStoreService);
@@ -248,4 +253,12 @@ export class PlayerSessionDetailPage {
       };
     });
   });
+
+  async ngOnInit(): Promise<void> {
+    try {
+      await this.store.refreshSessions();
+    } catch {
+      // The store exposes the error state; keep the page render path simple.
+    }
+  }
 }
