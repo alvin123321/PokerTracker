@@ -60,12 +60,11 @@ interface PlayerTotals {
             class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none transition focus:border-emerald-300"
             placeholder="player123"
           />
-          <p class="mt-2 text-xs text-neutral-500">Temporary password is 123456.</p>
         </div>
         <button
           type="button"
           [disabled]="newPlayerLogin.invalid || creatingPlayer()"
-          class="rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+          class="w-full rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 md:w-auto md:min-w-32"
           (click)="createPlayer()"
         >
           @if (creatingPlayer()) {
@@ -74,6 +73,7 @@ interface PlayerTotals {
             Add User
           }
         </button>
+        <p class="text-xs text-neutral-500 md:col-span-2">Temporary password is 123456.</p>
       </form>
 
       @if (errorMessage()) {
