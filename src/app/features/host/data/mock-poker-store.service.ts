@@ -20,6 +20,8 @@ export interface MockTransaction {
 
 export interface MockSessionPlayer {
   id: string;
+  playerRecordId?: string;
+  userId?: string | null;
   name: string;
   status: MockPlayerStatus;
   totalBuyIn: number;
@@ -113,6 +115,10 @@ interface CreateRegisteredPlayerResponse {
     email: string;
   };
   temporaryPassword: string;
+}
+
+interface DeleteRegisteredPlayerResponse {
+  ok: boolean;
 }
 
 const storageKey = 'pokertrack.mockPokerStore';
@@ -607,7 +613,7 @@ export class MockPokerStoreService {
     return new Map(((data ?? []) as PlayerRow[]).map((player) => [player.id, player]));
   }
 
-  private async createRegisteredPlayer(username: string): Promise<RegisteredPlayerOption> {
+  async createRegisteredPlayer(username: string): Promise<RegisteredPlayerOption> {
     const { data, error } = await this.supabaseService
       .requireClient()
       .functions.invoke<CreateRegisteredPlayerResponse>('create-registered-player', {
@@ -625,6 +631,30 @@ export class MockPokerStoreService {
     }
 
     return data.player;
+  }
+
+  async deleteRegisteredPlayer(userId: string): Promise<void> {
+    if (!this.shouldUseSupabase()) {
+      return;
+    }
+
+    const { data, error } = await this.supabaseService
+      .requireClient()
+      .functions.invoke<DeleteRegisteredPlayerResponse>('delete-registered-player', {
+        body: {
+          userId
+        }
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.ok) {
+      throw new Error('Unable to delete registered player.');
+    }
+
+    await this.refreshHostSessions();
   }
 
   private mapSession(
@@ -657,6 +687,8 @@ export class MockPokerStoreService {
   ): MockSessionPlayer {
     return {
       id: sessionPlayer.id,
+      playerRecordId: sessionPlayer.player_id,
+      userId: player?.user_id ?? null,
       name: player?.name ?? 'Unknown player',
       status: sessionPlayer.status,
       totalBuyIn: this.toNumber(sessionPlayer.total_buy_in),

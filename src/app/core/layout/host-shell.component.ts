@@ -26,6 +26,13 @@ import { AuthStateService } from '../auth/auth-state.service';
             >
               History
             </a>
+            <a
+              routerLink="/host/players"
+              routerLinkActive="bg-white/10 text-white"
+              class="rounded-md px-3 py-2 text-neutral-300 transition hover:text-white"
+            >
+              Players
+            </a>
             <button
               type="button"
               class="rounded-md border border-white/10 px-3 py-2 text-neutral-300 transition hover:bg-white/10 hover:text-white"

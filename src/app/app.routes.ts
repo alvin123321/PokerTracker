@@ -38,6 +38,11 @@ export const routes: Routes = [
           import('./features/host/sessions/new-session.page').then((m) => m.NewSessionPage)
       },
       {
+        path: 'players',
+        loadComponent: () =>
+          import('./features/host/players/players-admin.page').then((m) => m.PlayersAdminPage)
+      },
+      {
         path: 'sessions/history',
         loadComponent: () =>
           import('./features/host/sessions/session-history.page').then(
