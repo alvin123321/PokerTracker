@@ -387,6 +387,23 @@ export class PlayersAdminPage implements OnInit {
   }
 
   private toMessage(error: unknown): string {
-    return error instanceof Error ? error.message : 'Something went wrong.';
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (this.hasMessage(error)) {
+      return error.message;
+    }
+
+    return 'Something went wrong.';
+  }
+
+  private hasMessage(error: unknown): error is { message: string } {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      typeof (error as { message?: unknown }).message === 'string'
+    );
   }
 }
