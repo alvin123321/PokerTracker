@@ -102,7 +102,7 @@ interface TransactionRow {
 
 interface RegisteredPlayerRow {
   id: string;
-  username: string | null;
+  username?: string | null;
   display_name: string | null;
   email: string;
 }
@@ -274,15 +274,36 @@ export class MockPokerStoreService {
       return [];
     }
 
-    const { data, error } = await this.supabaseService
-      .requireClient()
-      .rpc('list_registered_players');
+    const client = this.supabaseService.requireClient();
+    const { data: directRows, error: directError } = await client
+      .from('users')
+      .select('id,email,display_name,username')
+      .eq('role', 'PLAYER')
+      .order('display_name', { ascending: true });
 
-    if (error) {
-      throw error;
+    if (!directError && directRows && directRows.length > 0) {
+      return this.mapRegisteredPlayers(directRows as RegisteredPlayerRow[]);
     }
 
-    return ((data ?? []) as RegisteredPlayerRow[]).map((player) => ({
+    const { data, error } = await client.rpc('list_registered_players');
+
+    if (error) {
+      throw new Error(
+        `${this.toMessage(directError ?? error)} Run the latest Supabase player directory migration, then reload the page.`
+      );
+    }
+
+    const rpcRows = (data ?? []) as RegisteredPlayerRow[];
+
+    if (rpcRows.length > 0 || !directError) {
+      return this.mapRegisteredPlayers(rpcRows);
+    }
+
+    return [];
+  }
+
+  private mapRegisteredPlayers(players: RegisteredPlayerRow[]): RegisteredPlayerOption[] {
+    return players.map((player) => ({
       id: player.id,
       username: player.username ?? player.email.split('@')[0],
       displayName: player.display_name,
