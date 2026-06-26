@@ -38,7 +38,7 @@ import {
   template: `
     @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
-      <section class="space-y-6">
+      <section class="space-y-4 sm:space-y-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">Dashboard</a>
@@ -85,7 +85,7 @@ import {
           </div>
         }
 
-        <div class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <div class="hidden gap-3 md:grid md:grid-cols-4 md:gap-4">
           <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 md:p-4">
             <p class="text-sm text-neutral-400">Players</p>
             <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ totals.totalPlayers }}</p>
@@ -140,76 +140,31 @@ import {
                 class="border-b border-white/5 transition last:border-b-0 hover:bg-white/[0.035]"
                 [class.opacity-70]="player.status === 'COMPLETED'"
               >
-                <div
-                  class="cursor-pointer p-3 lg:hidden"
-                  (click)="togglePlayer(player.id)"
-                >
-                  <div class="flex items-start justify-between gap-3">
+                <div class="lg:hidden">
+                  <div
+                    class="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 p-2"
+                    (click)="togglePlayer(player.id)"
+                  >
                     <button
                       type="button"
-                      class="group flex min-w-0 items-center gap-3 text-left"
+                      class="min-w-0 text-left"
                       (click)="$event.stopPropagation(); togglePlayer(player.id)"
                     >
-                      <span
-                        class="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-white/10 bg-neutral-950 transition group-hover:border-emerald-300/60 group-hover:bg-emerald-300/10"
-                        aria-hidden="true"
-                      >
-                        <span class="text-sm font-bold text-neutral-400 transition group-hover:text-emerald-300">
+                      <span class="flex min-w-0 items-center gap-2">
+                        <span class="truncate text-sm font-semibold text-white">{{ player.name }}</span>
+                        <span class="shrink-0 text-xs text-neutral-500">
                           {{ isExpanded(player.id) ? 'v' : '>' }}
                         </span>
                       </span>
-                      <span class="min-w-0">
-                        <span class="block truncate text-base font-semibold text-white">{{ player.name }}</span>
-                        <span class="mt-1 block text-xs text-neutral-500">
-                          {{ isExpanded(player.id) ? 'Hide timeline' : 'Tap for timeline' }}
-                        </span>
+                      <span class="mt-0.5 block text-xs text-neutral-400">
+                        {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }} buy-in
                       </span>
                     </button>
 
-                    <span
-                      class="shrink-0 rounded-full px-2.5 py-1 text-[0.65rem] font-semibold"
-                      [class.bg-emerald-300]="player.status === 'ACTIVE'"
-                      [class.text-neutral-950]="player.status === 'ACTIVE'"
-                      [class.bg-white]="player.status === 'COMPLETED'"
-                      [class.text-neutral-950]="player.status === 'COMPLETED'"
-                    >
-                      {{ player.status }}
-                    </span>
-                  </div>
-
-                  <div class="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-neutral-950 p-3 text-sm">
-                    <div>
-                      <p class="text-[0.7rem] uppercase text-neutral-500">Buy-in</p>
-                      <p class="mt-1 font-semibold text-white">
-                        {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="text-[0.7rem] uppercase text-neutral-500">Rebuys</p>
-                      <p class="mt-1 font-semibold text-white">{{ rebuyCount(player.id) }}</p>
-                    </div>
-                    <div>
-                      @if (player.status === 'COMPLETED') {
-                        <p class="text-[0.7rem] uppercase text-neutral-500">Net</p>
-                        <p
-                          class="mt-1 font-semibold"
-                          [class.text-emerald-300]="player.net >= 0"
-                          [class.text-red-300]="player.net < 0"
-                        >
-                          {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
-                        </p>
-                      } @else {
-                        <p class="text-[0.7rem] uppercase text-neutral-500">Cash out</p>
-                        <p class="mt-1 font-semibold text-neutral-500">Pending</p>
-                      }
-                    </div>
-                  </div>
-
-                  <div class="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       [disabled]="player.status === 'COMPLETED' || isBusy()"
-                      class="rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                      class="rounded-md bg-emerald-400 px-3 py-2 text-xs font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openRebuyDialog(player)"
                     >
                       Rebuy
@@ -217,7 +172,7 @@ import {
                     <button
                       type="button"
                       [disabled]="player.status === 'COMPLETED' || isBusy()"
-                      class="rounded-lg border border-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                      class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openCashOutDialog(player)"
                     >
                       Cash Out
@@ -321,7 +276,42 @@ import {
                 </div>
 
                 @if (isExpanded(player.id)) {
-                  <div class="border-t border-emerald-300/10 bg-neutral-950/80 px-4 py-4">
+                  <div class="border-t border-emerald-300/10 bg-neutral-950/80 px-3 py-3 sm:px-4 sm:py-4">
+                    <div class="mb-3 grid grid-cols-2 gap-2 text-sm lg:hidden">
+                      <div class="rounded-lg bg-white/[0.03] p-3">
+                        <p class="text-xs text-neutral-500">Status</p>
+                        <p class="mt-1 font-semibold text-white">{{ player.status }}</p>
+                      </div>
+                      <div class="rounded-lg bg-white/[0.03] p-3">
+                        <p class="text-xs text-neutral-500">Rebuys</p>
+                        <p class="mt-1 font-semibold text-white">{{ rebuyCount(player.id) }}</p>
+                      </div>
+                      <div class="rounded-lg bg-white/[0.03] p-3">
+                        <p class="text-xs text-neutral-500">Cash out</p>
+                        <p class="mt-1 font-semibold text-white">
+                          @if (player.status === 'COMPLETED') {
+                            {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                          } @else {
+                            <span class="text-neutral-500">Pending</span>
+                          }
+                        </p>
+                      </div>
+                      <div class="rounded-lg bg-white/[0.03] p-3">
+                        <p class="text-xs text-neutral-500">Net</p>
+                        @if (player.status === 'COMPLETED') {
+                          <p
+                            class="mt-1 font-semibold"
+                            [class.text-emerald-300]="player.net >= 0"
+                            [class.text-red-300]="player.net < 0"
+                          >
+                            {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                          </p>
+                        } @else {
+                          <p class="mt-1 font-semibold text-neutral-500">Pending</p>
+                        }
+                      </div>
+                    </div>
+
                     <div class="mb-3 flex items-center justify-between gap-3">
                       <p class="text-sm font-semibold text-white">Buy-in timeline</p>
                       <p class="hidden text-xs text-neutral-500 sm:block">Host can edit or delete buy-ins</p>
