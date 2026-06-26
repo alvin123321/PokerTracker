@@ -13,7 +13,7 @@ export interface ConfirmationDialogData {
 @Component({
   selector: 'app-confirmation-dialog',
   template: `
-    <section class="w-[min(92vw,30rem)] space-y-5 bg-neutral-950 p-5 text-neutral-50">
+    <section class="w-[min(94vw,30rem)] space-y-4 bg-neutral-950 p-4 text-neutral-50 sm:space-y-5 sm:p-5">
       <div>
         <h2 class="text-xl font-semibold">{{ data.title }}</h2>
         <p class="mt-2 text-sm leading-6 text-neutral-400">{{ data.message }}</p>
@@ -30,7 +30,7 @@ export interface ConfirmationDialogData {
       <div class="grid grid-cols-2 gap-3">
         <button
           type="button"
-          class="rounded-lg border border-white/10 px-4 py-3 font-semibold text-neutral-200 hover:bg-white/10"
+          class="rounded-lg border border-white/10 px-4 py-3 font-semibold text-neutral-200 transition hover:bg-white/10"
           (click)="dialogRef.close(false)"
         >
           {{ data.cancelLabel ?? 'Cancel' }}

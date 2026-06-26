@@ -22,11 +22,11 @@ interface PlayerSessionEntry {
   selector: 'app-player-dashboard-page',
   imports: [CurrencyPipe, DatePipe, RouterLink],
   template: `
-    <section class="space-y-8">
+    <section class="space-y-6 sm:space-y-8">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p class="text-sm font-medium uppercase text-sky-300">Player</p>
-          <h1 class="mt-2 text-3xl font-semibold text-white">My Sessions</h1>
+          <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">My Sessions</h1>
           <p class="mt-2 text-sm text-neutral-400">
             Signed in as {{ playerName() }}. Only your own buy-ins, cash-outs, and results are shown.
           </p>
@@ -36,31 +36,43 @@ interface PlayerSessionEntry {
         </div>
       </div>
 
-      <div class="grid gap-4 md:grid-cols-5">
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+      @if (store.error()) {
+        <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
+          {{ store.error() }}
+        </div>
+      }
+
+      @if (store.loading()) {
+        <div class="rounded-lg border border-sky-300/20 bg-sky-300/10 p-3 text-sm font-semibold text-sky-50">
+          Loading your latest sessions...
+        </div>
+      }
+
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
+        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
           <p class="text-sm text-neutral-400">Sessions</p>
-          <p class="mt-2 text-3xl font-semibold text-white">{{ entries().length }}</p>
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ entries().length }}</p>
         </div>
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+        <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5 md:block">
           <p class="text-sm text-neutral-400">Active</p>
-          <p class="mt-2 text-3xl font-semibold text-white">{{ activeEntries().length }}</p>
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ activeEntries().length }}</p>
         </div>
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
           <p class="text-sm text-neutral-400">My buy-ins</p>
-          <p class="mt-2 text-3xl font-semibold text-white">
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
             {{ totalBuyIn() | currency: 'USD' : 'symbol' : '1.0-0' }}
           </p>
         </div>
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+        <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5 md:block">
           <p class="text-sm text-neutral-400">My cash outs</p>
-          <p class="mt-2 text-3xl font-semibold text-white">
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
             {{ totalCashOut() | currency: 'USD' : 'symbol' : '1.0-0' }}
           </p>
         </div>
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
           <p class="text-sm text-neutral-400">Realized net</p>
           <p
-            class="mt-2 text-3xl font-semibold"
+            class="mt-1 text-2xl font-semibold sm:mt-2 sm:text-3xl"
             [class.text-emerald-300]="realizedNet() >= 0"
             [class.text-red-300]="realizedNet() < 0"
           >
@@ -81,7 +93,7 @@ interface PlayerSessionEntry {
           @for (entry of entries(); track entry.session.id + entry.player.id) {
             <a
               [routerLink]="['/player/sessions', entry.session.id]"
-              class="rounded-lg border border-white/10 bg-white/[0.04] p-5 transition hover:border-sky-300/50 hover:bg-white/[0.07]"
+              class="rounded-lg border border-white/10 bg-white/[0.04] p-4 transition hover:border-sky-300/50 hover:bg-white/[0.07] sm:p-5"
             >
               <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -110,7 +122,7 @@ interface PlayerSessionEntry {
                       {{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                     </p>
                   </div>
-                  <div>
+                  <div class="hidden sm:block">
                     <p class="text-neutral-500">Cash out</p>
                     <p class="mt-1 font-semibold text-white">
                       @if (entry.player.status === 'COMPLETED') {
@@ -125,8 +137,18 @@ interface PlayerSessionEntry {
                     <p class="mt-1 font-semibold text-white">{{ entry.rebuyCount }}</p>
                   </div>
                   <div>
-                    <p class="text-neutral-500">Transactions</p>
-                    <p class="mt-1 font-semibold text-white">{{ entry.transactions.length }}</p>
+                    <p class="text-neutral-500">Net</p>
+                    @if (entry.player.status === 'COMPLETED') {
+                      <p
+                        class="mt-1 font-semibold"
+                        [class.text-emerald-300]="entry.player.net >= 0"
+                        [class.text-red-300]="entry.player.net < 0"
+                      >
+                        {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </p>
+                    } @else {
+                      <p class="mt-1 font-semibold text-neutral-500">Pending</p>
+                    }
                   </div>
                 </div>
               </div>
@@ -139,7 +161,7 @@ interface PlayerSessionEntry {
 })
 export class PlayerDashboardPage {
   private readonly authState = inject(AuthStateService);
-  private readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(MockPokerStoreService);
 
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {

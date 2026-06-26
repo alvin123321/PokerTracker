@@ -16,12 +16,12 @@ interface PlayerLedgerRow {
   template: `
     @if (player(); as currentPlayer) {
       @if (session(); as currentSession) {
-        <section class="space-y-6">
+        <section class="space-y-5 sm:space-y-6">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <a routerLink="/player/dashboard" class="text-sm font-semibold text-sky-300">My Sessions</a>
               <div class="mt-3 flex flex-wrap items-center gap-3">
-                <h1 class="text-3xl font-semibold text-white">{{ currentSession.name }}</h1>
+                <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
                 <span
                   class="rounded-full px-3 py-1 text-xs font-semibold"
                   [class.bg-sky-300]="currentPlayer.status === 'ACTIVE'"
@@ -41,20 +41,26 @@ interface PlayerLedgerRow {
             </div>
           </div>
 
-          <div class="grid gap-4 md:grid-cols-4">
-            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+          @if (store.error()) {
+            <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
+              {{ store.error() }}
+            </div>
+          }
+
+          <div class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
               <p class="text-sm text-neutral-400">My buy-ins</p>
-              <p class="mt-2 text-3xl font-semibold text-white">
+              <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
                 {{ currentPlayer.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
               </p>
             </div>
-            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
               <p class="text-sm text-neutral-400">Rebuys</p>
-              <p class="mt-2 text-3xl font-semibold text-white">{{ rebuyCount() }}</p>
+              <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ rebuyCount() }}</p>
             </div>
-            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+            <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:block sm:p-5">
               <p class="text-sm text-neutral-400">My cash out</p>
-              <p class="mt-2 text-3xl font-semibold text-white">
+              <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
                 @if (currentPlayer.status === 'COMPLETED') {
                   {{ currentPlayer.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                 } @else {
@@ -62,10 +68,10 @@ interface PlayerLedgerRow {
                 }
               </p>
             </div>
-            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
               <p class="text-sm text-neutral-400">My net</p>
               <p
-                class="mt-2 text-3xl font-semibold"
+                class="mt-1 text-2xl font-semibold sm:mt-2 sm:text-3xl"
                 [class.text-emerald-300]="currentPlayer.net >= 0"
                 [class.text-red-300]="currentPlayer.net < 0"
                 [class.text-neutral-400]="currentPlayer.status !== 'COMPLETED'"
@@ -101,7 +107,7 @@ interface PlayerLedgerRow {
 
             @for (row of ledgerRows(); track row.transaction.id) {
               <div
-                class="grid gap-3 border-b border-white/5 px-4 py-4 text-sm last:border-b-0 md:grid-cols-[0.8fr_0.8fr_0.8fr_0.9fr_1.2fr] md:items-center"
+                class="grid gap-3 border-b border-white/5 px-3 py-4 text-sm last:border-b-0 sm:px-4 md:grid-cols-[0.8fr_0.8fr_0.8fr_0.9fr_1.2fr] md:items-center"
                 [class.opacity-60]="row.transaction.deletedAt"
               >
                 <span
@@ -138,8 +144,8 @@ interface PlayerLedgerRow {
                     {{ row.transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
                   </span>
                 </div>
-                <div class="grid grid-cols-2 gap-3 md:block">
-                  <span class="text-neutral-500 md:hidden">Running buy-in</span>
+                <div class="hidden grid-cols-2 gap-3 sm:grid md:block">
+                  <span class="text-neutral-500 md:hidden">Running</span>
                   <span
                     class="text-neutral-300"
                     [class.text-neutral-500]="row.transaction.deletedAt"
@@ -188,7 +194,7 @@ interface PlayerLedgerRow {
 export class PlayerSessionDetailPage {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
-  private readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(MockPokerStoreService);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId');
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));

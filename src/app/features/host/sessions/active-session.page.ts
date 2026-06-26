@@ -56,20 +56,34 @@ import {
           <div class="grid grid-cols-2 gap-3 sm:flex">
             <button
               type="button"
-              class="rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+              [disabled]="isBusy()"
+              class="rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
               (click)="openAddPlayerDialog()"
             >
               Add Player
             </button>
             <button
               type="button"
-              class="rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10"
+              [disabled]="isBusy()"
+              class="rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
               (click)="closeSession()"
             >
               Close Session
             </button>
           </div>
         </div>
+
+        @if (actionError() || store.error()) {
+          <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
+            {{ actionError() ?? store.error() }}
+          </div>
+        }
+
+        @if (pendingAction()) {
+          <div class="rounded-lg border border-emerald-300/20 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-50">
+            Saving changes...
+          </div>
+        }
 
         <div class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 md:p-4">
@@ -101,6 +115,7 @@ import {
             <button
               type="button"
               class="mt-5 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
+              [disabled]="isBusy()"
               (click)="openAddPlayerDialog()"
             >
               Add Player
@@ -193,7 +208,7 @@ import {
                   <div class="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      [disabled]="player.status === 'COMPLETED'"
+                      [disabled]="player.status === 'COMPLETED' || isBusy()"
                       class="rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openRebuyDialog(player)"
                     >
@@ -201,7 +216,7 @@ import {
                     </button>
                     <button
                       type="button"
-                      [disabled]="player.status === 'COMPLETED'"
+                      [disabled]="player.status === 'COMPLETED' || isBusy()"
                       class="rounded-lg border border-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openCashOutDialog(player)"
                     >
@@ -288,7 +303,7 @@ import {
                   <div class="grid grid-cols-2 gap-2 lg:justify-end">
                     <button
                       type="button"
-                      [disabled]="player.status === 'COMPLETED'"
+                      [disabled]="player.status === 'COMPLETED' || isBusy()"
                       class="rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openRebuyDialog(player)"
                     >
@@ -296,7 +311,7 @@ import {
                     </button>
                     <button
                       type="button"
-                      [disabled]="player.status === 'COMPLETED'"
+                      [disabled]="player.status === 'COMPLETED' || isBusy()"
                       class="rounded-lg border border-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openCashOutDialog(player)"
                     >
@@ -363,7 +378,8 @@ import {
                             </span>
                             <button
                               type="button"
-                              class="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                              [disabled]="isBusy()"
+                              class="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                               (click)="openEditBuyInDialog(player, transaction)"
                             >
                               Edit
@@ -400,6 +416,8 @@ export class ActiveSessionPage {
   private readonly router = inject(Router);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
   private readonly expandedPlayerId = signal<string | null>(null);
+  protected readonly pendingAction = signal<string | null>(null);
+  protected readonly actionError = signal<string | null>(null);
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly sortedPlayers = computed(() =>
@@ -407,7 +425,20 @@ export class ActiveSessionPage {
   );
 
   protected async openAddPlayerDialog(): Promise<void> {
-    const registeredPlayers = await this.store.listRegisteredPlayers();
+    if (this.isBusy()) {
+      return;
+    }
+
+    let registeredPlayers: AddPlayerDialogData['registeredPlayers'] = [];
+
+    try {
+      this.actionError.set(null);
+      registeredPlayers = await this.store.listRegisteredPlayers();
+    } catch (error) {
+      this.actionError.set(this.toMessage(error));
+      return;
+    }
+
     const dialogRef = this.dialog.open<
       AddPlayerDialogComponent,
       AddPlayerDialogData,
@@ -423,18 +454,24 @@ export class ActiveSessionPage {
         return;
       }
 
-      await this.store.addPlayer(
-        this.sessionId,
-        result.name,
-        result.buyIn,
-        result.comment,
-        result.playerUserId,
-        result.createRegisteredPlayer
+      await this.runAction('add-player', () =>
+        this.store.addPlayer(
+          this.sessionId,
+          result.name,
+          result.buyIn,
+          result.comment,
+          result.playerUserId,
+          result.createRegisteredPlayer
+        )
       );
     });
   }
 
   protected openRebuyDialog(player: MockSessionPlayer): void {
+    if (this.isBusy()) {
+      return;
+    }
+
     const dialogRef = this.dialog.open<RebuyDialogComponent, RebuyDialogData, RebuyDialogResult>(
       RebuyDialogComponent,
       {
@@ -446,12 +483,18 @@ export class ActiveSessionPage {
 
     dialogRef.afterClosed().subscribe(async (result?: RebuyDialogResult) => {
       if (result && result.amount > 0) {
-        await this.store.recordRebuy(this.sessionId, player.id, result.amount, result.comment);
+        await this.runAction('rebuy', () =>
+          this.store.recordRebuy(this.sessionId, player.id, result.amount, result.comment)
+        );
       }
     });
   }
 
   protected openCashOutDialog(player: MockSessionPlayer): void {
+    if (this.isBusy()) {
+      return;
+    }
+
     const dialogRef = this.dialog.open<CashOutDialogComponent, CashOutDialogData, number>(
       CashOutDialogComponent,
       {
@@ -463,12 +506,18 @@ export class ActiveSessionPage {
 
     dialogRef.afterClosed().subscribe(async (amount?: number) => {
       if (amount !== undefined && amount >= 0) {
-        await this.store.recordCashOut(this.sessionId, player.id, amount);
+        await this.runAction('cash-out', () =>
+          this.store.recordCashOut(this.sessionId, player.id, amount)
+        );
       }
     });
   }
 
   protected openEditBuyInDialog(player: MockSessionPlayer, transaction: MockTransaction): void {
+    if (this.isBusy()) {
+      return;
+    }
+
     const dialogRef = this.dialog.open<
       EditBuyInDialogComponent,
       EditBuyInDialogData,
@@ -493,11 +542,13 @@ export class ActiveSessionPage {
       }
 
       if (result.amount > 0) {
-        await this.store.updateBuyInTransaction(
-          this.sessionId,
-          transaction.id,
-          result.amount,
-          result.comment
+        await this.runAction('edit-buy-in', () =>
+          this.store.updateBuyInTransaction(
+            this.sessionId,
+            transaction.id,
+            result.amount,
+            result.comment
+          )
         );
       }
     });
@@ -527,7 +578,9 @@ export class ActiveSessionPage {
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (confirmed) {
-        await this.store.deleteBuyInTransaction(this.sessionId, transaction.id);
+        await this.runAction('delete-buy-in', () =>
+          this.store.deleteBuyInTransaction(this.sessionId, transaction.id)
+        );
       }
     });
   }
@@ -557,7 +610,15 @@ export class ActiveSessionPage {
     return this.expandedPlayerId() === playerId;
   }
 
+  protected isBusy(): boolean {
+    return Boolean(this.pendingAction() || this.store.loading());
+  }
+
   protected closeSession(): void {
+    if (this.isBusy()) {
+      return;
+    }
+
     const currentSession = this.session();
 
     if (!currentSession) {
@@ -593,9 +654,28 @@ export class ActiveSessionPage {
         return;
       }
 
-      await this.store.closeSession(this.sessionId);
-      await this.router.navigate(['/host/sessions', this.sessionId, 'summary']);
+      await this.runAction('close-session', async () => {
+        await this.store.closeSession(this.sessionId);
+        await this.router.navigate(['/host/sessions', this.sessionId, 'summary']);
+      });
     });
+  }
+
+  private async runAction(action: string, task: () => Promise<void>): Promise<void> {
+    if (this.pendingAction()) {
+      return;
+    }
+
+    this.pendingAction.set(action);
+    this.actionError.set(null);
+
+    try {
+      await task();
+    } catch (error) {
+      this.actionError.set(this.toMessage(error));
+    } finally {
+      this.pendingAction.set(null);
+    }
   }
 
   private formatMoney(amount: number): string {
@@ -604,5 +684,13 @@ export class ActiveSessionPage {
       currency: 'USD',
       maximumFractionDigits: 0
     }).format(amount);
+  }
+
+  private toMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return 'Unable to save changes.';
   }
 }

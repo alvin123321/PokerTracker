@@ -10,12 +10,12 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
   template: `
     @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
-      <section class="space-y-6">
+      <section class="space-y-5 sm:space-y-6">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">Dashboard</a>
             <div class="mt-3 flex flex-wrap items-center gap-3">
-              <h1 class="text-3xl font-semibold text-white">Session Summary</h1>
+              <h1 class="text-2xl font-semibold text-white sm:text-3xl">Session Summary</h1>
               <span
                 class="rounded-full px-3 py-1 text-xs font-semibold"
                 [class.bg-emerald-300]="currentSession.status === 'ACTIVE'"
@@ -26,7 +26,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
                 {{ currentSession.status }}
               </span>
             </div>
-            <p class="mt-2 text-neutral-400">
+            <p class="mt-2 text-sm text-neutral-400 sm:text-base">
               {{ currentSession.name }} · {{ currentSession.sessionDate | date: 'mediumDate' }}
               @if (currentSession.closedAt) {
                 · Closed {{ currentSession.closedAt | date: 'shortTime' }}
@@ -41,27 +41,33 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
           </a>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-4">
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
-            <p class="text-sm text-neutral-400">Total players</p>
-            <p class="mt-2 text-2xl font-semibold text-white">{{ totals.totalPlayers }}</p>
+        @if (store.error()) {
+          <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
+            {{ store.error() }}
           </div>
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+        }
+
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
+            <p class="text-sm text-neutral-400">Total players</p>
+            <p class="mt-1 text-2xl font-semibold text-white sm:mt-2">{{ totals.totalPlayers }}</p>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
             <p class="text-sm text-neutral-400">Total buy-in</p>
-            <p class="mt-2 text-2xl font-semibold text-white">
+            <p class="mt-1 text-2xl font-semibold text-white sm:mt-2">
               {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
             </p>
           </div>
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:block sm:p-4">
             <p class="text-sm text-neutral-400">Total cash out</p>
-            <p class="mt-2 text-2xl font-semibold text-white">
+            <p class="mt-1 text-2xl font-semibold text-white sm:mt-2">
               {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
             </p>
           </div>
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
             <p class="text-sm text-neutral-400">Net total</p>
             <p
-              class="mt-2 text-2xl font-semibold"
+              class="mt-1 text-2xl font-semibold sm:mt-2"
               [class.text-emerald-300]="totals.totalNet >= 0"
               [class.text-red-300]="totals.totalNet < 0"
             >
@@ -84,7 +90,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
             <span>Net</span>
           </div>
           @for (player of sortedPlayers(); track player.id) {
-            <div class="grid gap-3 border-b border-white/5 px-4 py-4 text-sm last:border-b-0 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:items-center">
+            <div class="grid gap-3 border-b border-white/5 px-3 py-4 text-sm last:border-b-0 sm:px-4 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:items-center">
               <div>
                 <span class="font-semibold text-white">{{ player.name }}</span>
                 @if (player.status === 'ACTIVE') {
@@ -97,7 +103,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
                 <span class="text-neutral-500 md:hidden">Buy In</span>
                 <span class="text-neutral-200">{{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
               </div>
-              <div class="grid grid-cols-2 gap-3 md:block">
+              <div class="hidden grid-cols-2 gap-3 sm:grid md:block">
                 <span class="text-neutral-500 md:hidden">Cash Out</span>
                 @if (player.status === 'COMPLETED') {
                   <span class="text-neutral-200">{{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}</span>

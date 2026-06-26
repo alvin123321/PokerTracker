@@ -8,11 +8,11 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
   selector: 'app-session-history-page',
   imports: [CurrencyPipe, DatePipe, RouterLink],
   template: `
-    <section class="space-y-6">
+    <section class="space-y-5 sm:space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p class="text-sm font-medium uppercase text-emerald-300">Reports</p>
-          <h1 class="mt-2 text-3xl font-semibold text-white">Session History</h1>
+          <p class="text-sm font-medium uppercase text-emerald-300">History</p>
+          <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Session History</h1>
           <p class="mt-2 text-sm text-neutral-400">Active and completed sessions, newest first.</p>
         </div>
         <a
@@ -23,18 +23,24 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
         </a>
       </div>
 
-      <div class="grid gap-4 md:grid-cols-3">
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+      @if (store.error()) {
+        <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
+          {{ store.error() }}
+        </div>
+      }
+
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
           <p class="text-sm text-neutral-400">Total sessions</p>
-          <p class="mt-2 text-2xl font-semibold text-white">{{ store.sessions().length }}</p>
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2">{{ store.sessions().length }}</p>
         </div>
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+        <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4 md:block">
           <p class="text-sm text-neutral-400">Completed</p>
-          <p class="mt-2 text-2xl font-semibold text-white">{{ store.completedSessions().length }}</p>
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2">{{ store.completedSessions().length }}</p>
         </div>
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
           <p class="text-sm text-neutral-400">Tracked buy-ins</p>
-          <p class="mt-2 text-2xl font-semibold text-white">
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2">
             {{ allTimeBuyIns() | currency: 'USD' : 'symbol' : '1.0-0' }}
           </p>
         </div>
@@ -55,7 +61,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
                   ? ['/host/sessions', session.id, 'summary']
                   : ['/host/sessions', session.id]
               "
-              class="rounded-lg border border-white/10 bg-white/[0.04] p-5 transition hover:border-emerald-300/50 hover:bg-white/[0.07]"
+              class="rounded-lg border border-white/10 bg-white/[0.04] p-4 transition hover:border-emerald-300/50 hover:bg-white/[0.07] sm:p-5"
             >
               <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -76,7 +82,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
                   </p>
                 </div>
 
-                <div class="grid grid-cols-3 gap-5 text-sm md:min-w-96">
+                <div class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3 md:min-w-96">
                   <div>
                     <p class="text-neutral-500">Players</p>
                     <p class="mt-1 font-semibold text-white">{{ totals.totalPlayers }}</p>
@@ -87,7 +93,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
                       {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                     </p>
                   </div>
-                  <div>
+                  <div class="hidden sm:block">
                     <p class="text-neutral-500">Cash out</p>
                     <p class="mt-1 font-semibold text-white">
                       {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}

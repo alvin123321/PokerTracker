@@ -24,7 +24,7 @@ export interface AddPlayerDialogResult {
   imports: [CurrencyPipe, ReactiveFormsModule],
   template: `
     <form
-      class="w-[min(92vw,30rem)] space-y-5 bg-neutral-950 p-5 text-neutral-50"
+      class="w-[min(94vw,30rem)] space-y-4 bg-neutral-950 p-4 text-neutral-50 sm:space-y-5 sm:p-5"
       [formGroup]="form"
     >
       <div>
@@ -122,7 +122,7 @@ export interface AddPlayerDialogResult {
       <div class="grid grid-cols-2 gap-3 pt-2">
         <button
           type="button"
-          class="rounded-lg border border-white/10 px-4 py-3 font-semibold text-neutral-200 hover:bg-white/10"
+          class="rounded-lg border border-white/10 px-4 py-3 font-semibold text-neutral-200 transition hover:bg-white/10"
           (click)="dialogRef.close()"
         >
           Cancel
@@ -130,7 +130,7 @@ export interface AddPlayerDialogResult {
         <button
           type="button"
           [disabled]="!canSubmit()"
-          class="rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 disabled:bg-neutral-700 disabled:text-neutral-400"
+          class="rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
           (click)="submit()"
         >
           Add player

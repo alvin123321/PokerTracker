@@ -8,11 +8,11 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
   selector: 'app-host-dashboard-page',
   imports: [CurrencyPipe, DatePipe, RouterLink],
   template: `
-    <section class="space-y-8">
+    <section class="space-y-6 sm:space-y-8">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p class="text-sm font-medium uppercase text-emerald-300">Host</p>
-          <h1 class="mt-2 text-3xl font-semibold text-white">Dashboard</h1>
+          <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Dashboard</h1>
         </div>
 
         <a
@@ -23,18 +23,30 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
         </a>
       </div>
 
-      <div class="grid gap-4 md:grid-cols-3">
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+      @if (store.error()) {
+        <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
+          {{ store.error() }}
+        </div>
+      }
+
+      @if (store.loading()) {
+        <div class="rounded-lg border border-emerald-300/20 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-50">
+          Loading latest sessions...
+        </div>
+      }
+
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
           <p class="text-sm text-neutral-400">Active sessions</p>
-          <p class="mt-2 text-3xl font-semibold text-white">{{ store.activeSessions().length }}</p>
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ store.activeSessions().length }}</p>
         </div>
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+        <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5 md:block">
           <p class="text-sm text-neutral-400">Total players today</p>
-          <p class="mt-2 text-3xl font-semibold text-white">{{ todaysPlayerCount() }}</p>
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ todaysPlayerCount() }}</p>
         </div>
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-5">
+        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
           <p class="text-sm text-neutral-400">Open buy-ins</p>
-          <p class="mt-2 text-3xl font-semibold text-white">
+          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
             {{ openBuyIns() | currency: 'USD' : 'symbol' : '1.0-0' }}
           </p>
         </div>
@@ -65,7 +77,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
               @let totals = store.totalsFor(session);
               <a
                 [routerLink]="['/host/sessions', session.id]"
-                class="rounded-lg border border-white/10 bg-white/[0.04] p-5 transition hover:border-emerald-300/50 hover:bg-white/[0.07]"
+                class="rounded-lg border border-white/10 bg-white/[0.04] p-4 transition hover:border-emerald-300/50 hover:bg-white/[0.07] sm:p-5"
               >
                 <div class="flex items-start justify-between gap-4">
                   <div>
