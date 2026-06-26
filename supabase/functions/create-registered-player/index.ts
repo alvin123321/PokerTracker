@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Authentication required.' }, 401);
   }
 
-  const { data: hostProfile, error: hostError } = await serviceClient
+  const { data: hostProfile, error: hostError } = await userClient
     .from('users')
     .select('id,role')
     .eq('id', user.id)
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
   const email = `${username}@pokertrack.local`;
   const displayName = username;
 
-  const { data: duplicateUser, error: duplicateError } = await serviceClient
+  const { data: duplicateUser, error: duplicateError } = await userClient
     .from('users')
     .select('id,email,username')
     .or(`username.eq.${username},email.eq.${email}`)
@@ -142,33 +142,30 @@ Deno.serve(async (req) => {
     return json({ error: createUserError?.message ?? 'Unable to create player.' }, 400);
   }
 
-  const { data: profile, error: profileError } = await serviceClient
+  const { data: profile, error: profileError } = await userClient
     .from('users')
-    .upsert(
-      {
-        id: createdUser.user.id,
-        email,
-        username,
-        display_name: displayName,
-        role: 'PLAYER'
-      },
-      {
-        onConflict: 'id'
-      }
-    )
     .select('id,email,username,display_name,role')
+    .eq('id', createdUser.user.id)
     .single<UserProfileRow>();
 
   if (profileError) {
-    return json({ error: profileError.message }, 500);
+    return json({
+      player: {
+        id: createdUser.user.id,
+        email,
+        username,
+        displayName
+      },
+      temporaryPassword: defaultPassword
+    });
   }
 
   return json({
     player: {
       id: profile.id,
       email: profile.email,
-      username: profile.username,
-      displayName: profile.display_name
+      username: profile.username ?? username,
+      displayName: profile.display_name ?? displayName
     },
     temporaryPassword: defaultPassword
   });
