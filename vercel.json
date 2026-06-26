@@ -1,4 +1,7 @@
 {
+  "framework": "angular",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "dist/pokertrack/browser",
   "rewrites": [
     {
       "source": "/(.*)",

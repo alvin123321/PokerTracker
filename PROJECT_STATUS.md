@@ -31,7 +31,7 @@ The V1 focus is live-game speed for hosts and private player history for players
 - Admin-only registered Players page with add/delete and player detail.
 - Mobile active-session compaction for fast rebuy and cash-out workflows.
 - Floating host action toast for pending/success/error feedback.
-- Vercel SPA rewrite configuration.
+- Vercel deployment configuration with production build command, output directory, Node version, and SPA route rewrite.
 
 ## Important Behavior
 
@@ -44,10 +44,9 @@ The V1 focus is live-game speed for hosts and private player history for players
 
 ## Remaining Work
 
-- Final mobile QA on any new V1 changes.
-- Vercel project setup and production smoke test.
 - GitHub branch cleanup and merge to `main`.
 - Reporting dashboard, filters, analytics, and export flows.
+- External deployment handoff: connect the GitHub repo to Vercel, deploy, then add the deployed URL to Supabase Auth Site URL and Redirect URLs.
 
 ## Local Development
 
@@ -66,20 +65,20 @@ npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng serve --host 127.0.0.
 Run build:
 
 ```bash
-npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng build"
+npm run build:prod
 ```
 
 Run tests:
 
 ```bash
-npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng test --watch=false --browsers=ChromeHeadless"
+npm run test:ci
 ```
 
 ## Vercel Deployment
 
 - Framework preset: Angular.
-- Build command: `npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng build"`.
+- Build command: `npm run vercel-build`.
 - Output directory: `dist/pokertrack/browser`.
-- Node version: 22.x.
+- Node version: 22.x from `.nvmrc` and `package.json`.
 - Supabase URL and publishable key are currently configured in `src/environments/environment.ts`.
 - In Supabase Auth URL Configuration, add the deployed Vercel URL to Site URL and Redirect URLs before production login testing.

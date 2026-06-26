@@ -38,13 +38,13 @@ npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng serve --host 127.0.0.
 Build:
 
 ```bash
-npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng build"
+npm run build:prod
 ```
 
 Test:
 
 ```bash
-npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng test --watch=false --browsers=ChromeHeadless"
+npm run test:ci
 ```
 
 ## Supabase
@@ -58,11 +58,16 @@ Database migrations and Edge Functions live in `supabase/`.
 
 ## Vercel
 
-Use these settings:
+The repo includes `vercel.json`, so Vercel can read the production build settings automatically:
 
 - Framework preset: Angular
-- Build command: `npx -p node@22 -c "node ./node_modules/@angular/cli/bin/ng build"`
+- Build command: `npm run vercel-build`
 - Output directory: `dist/pokertrack/browser`
 - Node version: 22.x
 
 `vercel.json` rewrites all routes to `index.html` so deep links like `/host/sessions/:id` and `/player/sessions/:id` work after refresh.
+
+After the first deployment, add the deployed Vercel URL in Supabase Auth:
+
+- Site URL: your Vercel production URL
+- Redirect URLs: your Vercel production URL and any preview URL pattern you choose to allow
