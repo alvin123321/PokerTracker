@@ -4,10 +4,10 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import {
-  MockPokerStoreService,
-  MockSessionPlayer,
-  MockTransaction
-} from '../data/mock-poker-store.service';
+  PokerStoreService,
+  SessionPlayer,
+  PokerTransaction
+} from '../data/poker-store.service';
 import {
   AddPlayerDialogData,
   AddPlayerDialogComponent,
@@ -426,7 +426,7 @@ import {
   ]
 })
 export class ActiveSessionPage implements OnDestroy {
-  protected readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(PokerStoreService);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -511,7 +511,7 @@ export class ActiveSessionPage implements OnDestroy {
     });
   }
 
-  protected openRebuyDialog(player: MockSessionPlayer): void {
+  protected openRebuyDialog(player: SessionPlayer): void {
     if (this.isBusy()) {
       return;
     }
@@ -534,7 +534,7 @@ export class ActiveSessionPage implements OnDestroy {
     });
   }
 
-  protected openCashOutDialog(player: MockSessionPlayer): void {
+  protected openCashOutDialog(player: SessionPlayer): void {
     if (this.isBusy()) {
       return;
     }
@@ -557,7 +557,7 @@ export class ActiveSessionPage implements OnDestroy {
     });
   }
 
-  protected openEditBuyInDialog(player: MockSessionPlayer, transaction: MockTransaction): void {
+  protected openEditBuyInDialog(player: SessionPlayer, transaction: PokerTransaction): void {
     if (this.isBusy()) {
       return;
     }
@@ -598,7 +598,7 @@ export class ActiveSessionPage implements OnDestroy {
     });
   }
 
-  private confirmDeleteBuyIn(player: MockSessionPlayer, transaction: MockTransaction): void {
+  private confirmDeleteBuyIn(player: SessionPlayer, transaction: PokerTransaction): void {
     const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
       ConfirmationDialogComponent,
       {
@@ -640,7 +640,7 @@ export class ActiveSessionPage implements OnDestroy {
     );
   }
 
-  protected buyInTransactions(playerId: string): MockTransaction[] {
+  protected buyInTransactions(playerId: string): PokerTransaction[] {
     return this.store.buyInTransactionsForPlayer(this.session(), playerId);
   }
 

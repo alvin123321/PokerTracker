@@ -5,21 +5,21 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 
 import {
-  MockPokerSession,
-  MockSessionPlayer,
-  MockTransaction,
-  MockPokerStoreService,
+  PokerSession,
+  SessionPlayer,
+  PokerTransaction,
+  PokerStoreService,
   RegisteredPlayerOption
-} from '../data/mock-poker-store.service';
+} from '../data/poker-store.service';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
 } from '../shared/confirmation-dialog.component';
 
 interface PlayerLedgerRow {
-  session: MockPokerSession;
-  player: MockSessionPlayer;
-  transactions: MockTransaction[];
+  session: PokerSession;
+  player: SessionPlayer;
+  transactions: PokerTransaction[];
 }
 
 interface PlayerTotals {
@@ -250,7 +250,7 @@ interface PlayerTotals {
   `
 })
 export class PlayersAdminPage implements OnInit {
-  protected readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(PokerStoreService);
   private readonly dialog = inject(MatDialog);
   protected readonly players = signal<RegisteredPlayerOption[]>([]);
   protected readonly selectedPlayerId = signal<string | null>(null);
@@ -395,7 +395,7 @@ export class PlayersAdminPage implements OnInit {
       return error.message;
     }
 
-    return 'Something went wrong.';
+    return 'Unable to update the player directory.';
   }
 
   private hasMessage(error: unknown): error is { message: string } {

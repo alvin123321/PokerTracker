@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Session, User } from '@supabase/supabase-js';
 
+import { environment } from '../../../environments/environment';
 import { UserProfile, UserRole } from '../models/user.model';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AuthService } from './auth.service';
@@ -14,20 +15,21 @@ interface UserProfileRow {
   updated_at: string;
 }
 
-interface MockSession {
+interface DevelopmentSession {
   user: User;
   profile: UserProfile;
 }
 
-const mockSessionStorageKey = 'pokertrack.mockSession';
+const developmentSessionStorageKey = 'pokertrack.developmentSession';
+const legacyMockSessionStorageKey = 'pokertrack.mockSession';
 
 const nowIso = () => new Date().toISOString();
 
-const mockUsers: Record<string, { password: string; profile: UserProfile }> = {
+const developmentUsers: Record<string, { password: string; profile: UserProfile }> = {
   admin: {
     password: 'admin',
     profile: {
-      id: 'mock-host-admin',
+      id: 'dev-host-admin',
       email: 'admin@pokertrack.local',
       displayName: 'Admin',
       role: 'HOST',
@@ -38,7 +40,7 @@ const mockUsers: Record<string, { password: string; profile: UserProfile }> = {
   player: {
     password: 'player',
     profile: {
-      id: 'mock-player',
+      id: 'dev-player',
       email: 'player@pokertrack.local',
       displayName: 'Player',
       role: 'PLAYER',
@@ -70,7 +72,7 @@ export class AuthStateService {
   readonly isAuthenticated = computed(() => this.userSignal() !== null);
   readonly role = computed(() => this.profileSignal()?.role ?? null);
   readonly isConfigured = this.supabaseService.isConfigured;
-  readonly isMockAuthEnabled = true;
+  readonly isDevelopmentAuthEnabled = !environment.production;
 
   initialize(): Promise<void> {
     if (this.initializedSignal()) {
@@ -87,10 +89,12 @@ export class AuthStateService {
     this.errorSignal.set(null);
 
     try {
-      const mockProfile = this.tryMockSignIn(loginName, password);
+      const developmentProfile = this.isDevelopmentAuthEnabled
+        ? this.tryDevelopmentSignIn(loginName, password)
+        : null;
 
-      if (mockProfile) {
-        return mockProfile;
+      if (developmentProfile) {
+        return developmentProfile;
       }
 
       if (!this.isConfigured) {
@@ -111,7 +115,7 @@ export class AuthStateService {
       }
 
       await this.applySession(data.session);
-      localStorage.removeItem(mockSessionStorageKey);
+      this.clearDevelopmentSession();
 
       const profile = this.profileSignal();
 
@@ -133,7 +137,7 @@ export class AuthStateService {
       await this.authService.signOut();
     }
 
-    localStorage.removeItem(mockSessionStorageKey);
+    this.clearDevelopmentSession();
     this.userSignal.set(null);
     this.profileSignal.set(null);
   }
@@ -157,13 +161,13 @@ export class AuthStateService {
         }
 
         if (data.session) {
-          localStorage.removeItem(mockSessionStorageKey);
+          this.clearDevelopmentSession();
           await this.applySession(data.session);
           return;
         }
       }
 
-      if (this.restoreMockSession()) {
+      if (this.isDevelopmentAuthEnabled && this.restoreDevelopmentSession()) {
         return;
       }
     } catch (error) {
@@ -233,26 +237,27 @@ export class AuthStateService {
   }
 
   private toMessage(error: unknown): string {
-    return error instanceof Error ? error.message : 'Something went wrong.';
+    return error instanceof Error ? error.message : 'Unable to complete sign in.';
   }
 
-  private tryMockSignIn(username: string, password: string): UserProfile | null {
+  private tryDevelopmentSignIn(username: string, password: string): UserProfile | null {
     const normalizedUsername = username.trim().toLowerCase();
-    const mockUser = mockUsers[normalizedUsername];
+    const developmentUser = developmentUsers[normalizedUsername];
 
-    if (!mockUser || mockUser.password !== password) {
+    if (!developmentUser || developmentUser.password !== password) {
       return null;
     }
 
     const profile = {
-      ...mockUser.profile,
+      ...developmentUser.profile,
       updatedAt: nowIso()
     };
-    const user = this.createMockUser(profile);
+    const user = this.createDevelopmentUser(profile);
 
     this.userSignal.set(user);
     this.profileSignal.set(profile);
-    localStorage.setItem(mockSessionStorageKey, JSON.stringify({ user, profile }));
+    localStorage.setItem(developmentSessionStorageKey, JSON.stringify({ user, profile }));
+    localStorage.removeItem(legacyMockSessionStorageKey);
 
     return profile;
   }
@@ -267,31 +272,35 @@ export class AuthStateService {
     return `${normalizedLoginName}@pokertrack.local`;
   }
 
-  private restoreMockSession(): boolean {
-    const rawSession = localStorage.getItem(mockSessionStorageKey);
+  private restoreDevelopmentSession(): boolean {
+    const rawSession =
+      localStorage.getItem(developmentSessionStorageKey) ??
+      localStorage.getItem(legacyMockSessionStorageKey);
 
     if (!rawSession) {
       return false;
     }
 
     try {
-      const session = JSON.parse(rawSession) as MockSession;
+      const session = JSON.parse(rawSession) as DevelopmentSession;
 
       if (!session.user?.id || !session.profile?.role) {
-        localStorage.removeItem(mockSessionStorageKey);
+        this.clearDevelopmentSession();
         return false;
       }
 
       this.userSignal.set(session.user);
       this.profileSignal.set(session.profile);
+      localStorage.setItem(developmentSessionStorageKey, JSON.stringify(session));
+      localStorage.removeItem(legacyMockSessionStorageKey);
       return true;
     } catch {
-      localStorage.removeItem(mockSessionStorageKey);
+      this.clearDevelopmentSession();
       return false;
     }
   }
 
-  private createMockUser(profile: UserProfile): User {
+  private createDevelopmentUser(profile: UserProfile): User {
     return {
       id: profile.id,
       app_metadata: {},
@@ -303,5 +312,10 @@ export class AuthStateService {
       created_at: profile.createdAt,
       email: profile.email
     };
+  }
+
+  private clearDevelopmentSession(): void {
+    localStorage.removeItem(developmentSessionStorageKey);
+    localStorage.removeItem(legacyMockSessionStorageKey);
   }
 }

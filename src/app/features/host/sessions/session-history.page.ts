@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { MockPokerStoreService } from '../data/mock-poker-store.service';
+import { PokerStoreService } from '../data/poker-store.service';
 
 @Component({
   selector: 'app-session-history-page',
@@ -114,7 +114,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
   `
 })
 export class SessionHistoryPage {
-  protected readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(PokerStoreService);
   protected readonly sortedSessions = computed(() =>
     [...this.store.sessions()].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   );

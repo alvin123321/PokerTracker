@@ -3,7 +3,7 @@ import { Component, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { RegisteredPlayerOption } from '../data/mock-poker-store.service';
+import { RegisteredPlayerOption } from '../data/poker-store.service';
 
 type AddPlayerMode = 'existing' | 'new';
 

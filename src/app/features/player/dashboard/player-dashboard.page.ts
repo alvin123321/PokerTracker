@@ -4,16 +4,16 @@ import { RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import {
-  MockPokerSession,
-  MockPokerStoreService,
-  MockSessionPlayer,
-  MockTransaction
-} from '../../host/data/mock-poker-store.service';
+  PokerSession,
+  PokerStoreService,
+  SessionPlayer,
+  PokerTransaction
+} from '../../host/data/poker-store.service';
 
 interface PlayerSessionEntry {
-  session: MockPokerSession;
-  player: MockSessionPlayer;
-  transactions: MockTransaction[];
+  session: PokerSession;
+  player: SessionPlayer;
+  transactions: PokerTransaction[];
   rebuyCount: number;
   lastActivityAt: string;
 }
@@ -85,7 +85,7 @@ interface PlayerSessionEntry {
         <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
           <p class="text-lg font-semibold text-white">No player sessions found</p>
           <p class="mt-2 text-sm text-neutral-400">
-            For mock data, add a host-session player named "{{ playerName() }}".
+            Ask the host to add this login to a session before play starts.
           </p>
         </div>
       } @else {
@@ -161,7 +161,7 @@ interface PlayerSessionEntry {
 })
 export class PlayerDashboardPage implements OnInit {
   private readonly authState = inject(AuthStateService);
-  protected readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(PokerStoreService);
 
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {

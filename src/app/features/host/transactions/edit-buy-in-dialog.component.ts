@@ -3,11 +3,11 @@ import { Component, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { MockTransaction } from '../data/mock-poker-store.service';
+import { PokerTransaction } from '../data/poker-store.service';
 
 export interface EditBuyInDialogData {
   playerName: string;
-  transaction: MockTransaction;
+  transaction: PokerTransaction;
 }
 
 export type EditBuyInDialogResult =

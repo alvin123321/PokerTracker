@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { MockPokerStoreService } from '../data/mock-poker-store.service';
+import { PokerStoreService } from '../data/poker-store.service';
 
 @Component({
   selector: 'app-session-summary-page',
@@ -147,7 +147,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
   `
 })
 export class SessionSummaryPage {
-  protected readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(PokerStoreService);
   private readonly route = inject(ActivatedRoute);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
 

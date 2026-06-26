@@ -3,10 +3,10 @@ import { Component, OnInit, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
-import { MockPokerStoreService, MockTransaction } from '../../host/data/mock-poker-store.service';
+import { PokerStoreService, PokerTransaction } from '../../host/data/poker-store.service';
 
 interface PlayerLedgerRow {
-  transaction: MockTransaction;
+  transaction: PokerTransaction;
   runningBuyIn: number;
 }
 
@@ -199,7 +199,7 @@ interface PlayerLedgerRow {
 export class PlayerSessionDetailPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
-  protected readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(PokerStoreService);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId');
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));

@@ -3,10 +3,10 @@ import { Component, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { MockSessionPlayer } from '../data/mock-poker-store.service';
+import { SessionPlayer } from '../data/poker-store.service';
 
 export interface CashOutDialogData {
-  player: MockSessionPlayer;
+  player: SessionPlayer;
 }
 
 @Component({

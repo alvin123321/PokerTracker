@@ -3,27 +3,27 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { SupabaseService } from '../../../core/supabase/supabase.service';
 
-export type MockSessionStatus = 'ACTIVE' | 'COMPLETED';
-export type MockPlayerStatus = 'ACTIVE' | 'COMPLETED';
-export type MockTransactionType = 'BUYIN' | 'REBUY' | 'CASHOUT';
+export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
+export type PokerPlayerStatus = 'ACTIVE' | 'COMPLETED';
+export type PokerTransactionType = 'BUYIN' | 'REBUY' | 'CASHOUT';
 
-export interface MockTransaction {
+export interface PokerTransaction {
   id: string;
   sessionId: string;
   playerId: string;
-  type: MockTransactionType;
+  type: PokerTransactionType;
   amount: number;
   createdAt: string;
   comment?: string;
   deletedAt?: string;
 }
 
-export interface MockSessionPlayer {
+export interface SessionPlayer {
   id: string;
   playerRecordId?: string;
   userId?: string | null;
   name: string;
-  status: MockPlayerStatus;
+  status: PokerPlayerStatus;
   totalBuyIn: number;
   cashOut: number;
   net: number;
@@ -31,15 +31,15 @@ export interface MockSessionPlayer {
   completedAt: string | null;
 }
 
-export interface MockPokerSession {
+export interface PokerSession {
   id: string;
   name: string;
   sessionDate: string;
-  status: MockSessionStatus;
+  status: PokerSessionStatus;
   createdAt: string;
   closedAt: string | null;
-  players: MockSessionPlayer[];
-  transactions: MockTransaction[];
+  players: SessionPlayer[];
+  transactions: PokerTransaction[];
 }
 
 export interface SessionTotals {
@@ -62,7 +62,7 @@ interface SessionRow {
   host_id: string;
   name: string;
   session_date: string;
-  status: MockSessionStatus;
+  status: PokerSessionStatus;
   created_at: string;
   closed_at: string | null;
 }
@@ -80,7 +80,7 @@ interface SessionPlayerRow {
   id: string;
   session_id: string;
   player_id: string;
-  status: MockPlayerStatus;
+  status: PokerPlayerStatus;
   total_buy_in: number | string;
   cash_out: number | string;
   net: number | string;
@@ -93,7 +93,7 @@ interface TransactionRow {
   session_id: string;
   player_id: string;
   session_player_id: string;
-  type: MockTransactionType;
+  type: PokerTransactionType;
   amount: number | string;
   created_at: string;
   comment: string | null;
@@ -121,15 +121,16 @@ interface DeleteRegisteredPlayerResponse {
   ok: boolean;
 }
 
-const storageKey = 'pokertrack.mockPokerStore';
+const localStorageKey = 'pokertrack.localPokerStore';
+const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
 
 @Injectable({
   providedIn: 'root'
 })
-export class MockPokerStoreService {
+export class PokerStoreService {
   private readonly authState = inject(AuthStateService);
   private readonly supabaseService = inject(SupabaseService);
-  private readonly sessionsSignal = signal<MockPokerSession[]>(this.loadSessions());
+  private readonly sessionsSignal = signal<PokerSession[]>(this.loadSessions());
   private readonly loadingSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
   private loadedSupabaseUserId: string | null = null;
@@ -234,7 +235,7 @@ export class MockPokerStoreService {
     }
   }
 
-  async createSession(name: string, sessionDate: string): Promise<MockPokerSession> {
+  async createSession(name: string, sessionDate: string): Promise<PokerSession> {
     if (this.shouldUseSupabase()) {
       const { data, error } = await this.supabaseService
         .requireClient()
@@ -253,7 +254,7 @@ export class MockPokerStoreService {
       return this.getSession(createdSession.id) ?? createdSession;
     }
 
-    const session: MockPokerSession = {
+    const session: PokerSession = {
       id: this.createId('session'),
       name: name.trim(),
       sessionDate,
@@ -269,7 +270,7 @@ export class MockPokerStoreService {
     return session;
   }
 
-  getSession(sessionId: string | null): MockPokerSession | undefined {
+  getSession(sessionId: string | null): PokerSession | undefined {
     return this.sessionsSignal().find((session) => session.id === sessionId);
   }
 
@@ -355,7 +356,7 @@ export class MockPokerStoreService {
     const joinedAt = new Date().toISOString();
     const playerId = this.createId('player');
     const cleanBuyIn = this.normalizeAmount(buyIn);
-    const player: MockSessionPlayer = {
+    const player: SessionPlayer = {
       id: playerId,
       name: name.trim(),
       status: 'ACTIVE',
@@ -571,7 +572,7 @@ export class MockPokerStoreService {
     }));
   }
 
-  totalsFor(session: MockPokerSession | undefined): SessionTotals {
+  totalsFor(session: PokerSession | undefined): SessionTotals {
     const players = session?.players ?? [];
 
     return {
@@ -583,11 +584,11 @@ export class MockPokerStoreService {
     };
   }
 
-  sortedPlayersByNet(session: MockPokerSession | undefined): MockSessionPlayer[] {
+  sortedPlayersByNet(session: PokerSession | undefined): SessionPlayer[] {
     return [...(session?.players ?? [])].sort((a, b) => b.net - a.net);
   }
 
-  sortedPlayersForActiveSession(session: MockPokerSession | undefined): MockSessionPlayer[] {
+  sortedPlayersForActiveSession(session: PokerSession | undefined): SessionPlayer[] {
     return [...(session?.players ?? [])].sort((a, b) => {
       if (a.status !== b.status) {
         return a.status === 'ACTIVE' ? -1 : 1;
@@ -602,9 +603,9 @@ export class MockPokerStoreService {
   }
 
   buyInTransactionsForPlayer(
-    session: MockPokerSession | undefined,
+    session: PokerSession | undefined,
     playerId: string
-  ): MockTransaction[] {
+  ): PokerTransaction[] {
     return [...(session?.transactions ?? [])]
       .filter(
         (transaction) =>
@@ -687,7 +688,7 @@ export class MockPokerStoreService {
     sessionPlayers: SessionPlayerRow[],
     playersById: Map<string, PlayerRow>,
     transactions: TransactionRow[]
-  ): MockPokerSession {
+  ): PokerSession {
     const currentSessionPlayers = sessionPlayers.filter((player) => player.session_id === session.id);
 
     return {
@@ -709,7 +710,7 @@ export class MockPokerStoreService {
   private mapSessionPlayer(
     sessionPlayer: SessionPlayerRow,
     player: PlayerRow | undefined
-  ): MockSessionPlayer {
+  ): SessionPlayer {
     return {
       id: sessionPlayer.id,
       playerRecordId: sessionPlayer.player_id,
@@ -724,7 +725,7 @@ export class MockPokerStoreService {
     };
   }
 
-  private mapTransaction(transaction: TransactionRow): MockTransaction {
+  private mapTransaction(transaction: TransactionRow): PokerTransaction {
     return {
       id: transaction.id,
       sessionId: transaction.session_id,
@@ -739,14 +740,14 @@ export class MockPokerStoreService {
 
   private updateSession(
     sessionId: string,
-    updater: (session: MockPokerSession) => MockPokerSession
+    updater: (session: PokerSession) => PokerSession
   ): void {
     this.updateSessions((sessions) =>
       sessions.map((session) => (session.id === sessionId ? updater(session) : session))
     );
   }
 
-  private updateSessions(updater: (sessions: MockPokerSession[]) => MockPokerSession[]): void {
+  private updateSessions(updater: (sessions: PokerSession[]) => PokerSession[]): void {
     const sessions = updater(this.sessionsSignal());
     this.sessionsSignal.set(sessions);
     this.saveSessions(sessions);
@@ -755,11 +756,11 @@ export class MockPokerStoreService {
   private createTransaction(
     sessionId: string,
     playerId: string,
-    type: MockTransactionType,
+    type: PokerTransactionType,
     amount: number,
     createdAt: string,
     comment = ''
-  ): MockTransaction {
+  ): PokerTransaction {
     const cleanComment = comment.trim();
 
     return {
@@ -774,10 +775,10 @@ export class MockPokerStoreService {
   }
 
   private recalculatePlayerBuyIn(
-    players: MockSessionPlayer[],
-    transactions: MockTransaction[],
+    players: SessionPlayer[],
+    transactions: PokerTransaction[],
     playerId: string
-  ): MockSessionPlayer[] {
+  ): SessionPlayer[] {
     const totalBuyIn = transactions
       .filter(
         (item) =>
@@ -806,9 +807,10 @@ export class MockPokerStoreService {
 
   private shouldUseSupabaseForUser(userId: string | null): boolean {
     return Boolean(
-      this.supabaseService.isConfigured &&
+        this.supabaseService.isConfigured &&
         userId &&
         !userId.startsWith('mock-') &&
+        !userId.startsWith('dev-') &&
         (this.authState.role() === 'HOST' || this.authState.role() === 'PLAYER')
     );
   }
@@ -830,7 +832,7 @@ export class MockPokerStoreService {
       return error.message;
     }
 
-    return 'Something went wrong.';
+    return 'Unable to sync poker data.';
   }
 
   private hasMessage(error: unknown): error is { message: string } {
@@ -854,30 +856,32 @@ export class MockPokerStoreService {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   }
 
-  private loadSessions(): MockPokerSession[] {
+  private loadSessions(): PokerSession[] {
     if (typeof localStorage === 'undefined') {
       return [];
     }
 
-    const raw = localStorage.getItem(storageKey);
+    const raw = localStorage.getItem(localStorageKey) ?? localStorage.getItem(legacyLocalStorageKey);
 
     if (!raw) {
       return [];
     }
 
     try {
-      return JSON.parse(raw) as MockPokerSession[];
+      return JSON.parse(raw) as PokerSession[];
     } catch {
-      localStorage.removeItem(storageKey);
+      localStorage.removeItem(localStorageKey);
+      localStorage.removeItem(legacyLocalStorageKey);
       return [];
     }
   }
 
-  private saveSessions(sessions: MockPokerSession[]): void {
+  private saveSessions(sessions: PokerSession[]): void {
     if (typeof localStorage === 'undefined' || this.shouldUseSupabase()) {
       return;
     }
 
-    localStorage.setItem(storageKey, JSON.stringify(sessions));
+    localStorage.setItem(localStorageKey, JSON.stringify(sessions));
+    localStorage.removeItem(legacyLocalStorageKey);
   }
 }

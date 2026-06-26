@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { MockPokerStoreService } from '../data/mock-poker-store.service';
+import { PokerStoreService } from '../data/poker-store.service';
 
 @Component({
   selector: 'app-host-dashboard-page',
@@ -116,7 +116,7 @@ import { MockPokerStoreService } from '../data/mock-poker-store.service';
   `
 })
 export class HostDashboardPage {
-  protected readonly store = inject(MockPokerStoreService);
+  protected readonly store = inject(PokerStoreService);
   protected readonly todaysPlayerCount = computed(() => {
     const today = new Date().toISOString().slice(0, 10);
 
