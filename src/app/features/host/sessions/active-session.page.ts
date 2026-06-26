@@ -43,7 +43,7 @@ import {
           <div>
             <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">Dashboard</a>
             <div class="mt-3 flex flex-wrap items-center gap-3">
-              <h1 class="text-3xl font-semibold text-white">{{ currentSession.name }}</h1>
+              <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
               <span class="rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-neutral-950">
                 {{ currentSession.status }}
               </span>
@@ -71,24 +71,24 @@ import {
           </div>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-4">
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 md:p-4">
             <p class="text-sm text-neutral-400">Players</p>
-            <p class="mt-2 text-2xl font-semibold text-white">{{ totals.totalPlayers }}</p>
+            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ totals.totalPlayers }}</p>
           </div>
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 md:block md:p-4">
             <p class="text-sm text-neutral-400">Active</p>
-            <p class="mt-2 text-2xl font-semibold text-white">{{ totals.activePlayers }}</p>
+            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ totals.activePlayers }}</p>
           </div>
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 md:p-4">
             <p class="text-sm text-neutral-400">Total buy-in</p>
-            <p class="mt-2 text-2xl font-semibold text-white">
+            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">
               {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
             </p>
           </div>
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 md:block md:p-4">
             <p class="text-sm text-neutral-400">Cash out</p>
-            <p class="mt-2 text-2xl font-semibold text-white">
+            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">
               {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
             </p>
           </div>
@@ -126,7 +126,92 @@ import {
                 [class.opacity-70]="player.status === 'COMPLETED'"
               >
                 <div
-                  class="grid cursor-pointer gap-4 p-4 lg:grid-cols-[1.35fr_0.8fr_0.9fr_0.9fr_0.65fr_0.85fr_1.4fr] lg:items-center lg:gap-3"
+                  class="cursor-pointer p-3 lg:hidden"
+                  (click)="togglePlayer(player.id)"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      class="group flex min-w-0 items-center gap-3 text-left"
+                      (click)="$event.stopPropagation(); togglePlayer(player.id)"
+                    >
+                      <span
+                        class="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-white/10 bg-neutral-950 transition group-hover:border-emerald-300/60 group-hover:bg-emerald-300/10"
+                        aria-hidden="true"
+                      >
+                        <span class="text-sm font-bold text-neutral-400 transition group-hover:text-emerald-300">
+                          {{ isExpanded(player.id) ? 'v' : '>' }}
+                        </span>
+                      </span>
+                      <span class="min-w-0">
+                        <span class="block truncate text-base font-semibold text-white">{{ player.name }}</span>
+                        <span class="mt-1 block text-xs text-neutral-500">
+                          {{ isExpanded(player.id) ? 'Hide timeline' : 'Tap for timeline' }}
+                        </span>
+                      </span>
+                    </button>
+
+                    <span
+                      class="shrink-0 rounded-full px-2.5 py-1 text-[0.65rem] font-semibold"
+                      [class.bg-emerald-300]="player.status === 'ACTIVE'"
+                      [class.text-neutral-950]="player.status === 'ACTIVE'"
+                      [class.bg-white]="player.status === 'COMPLETED'"
+                      [class.text-neutral-950]="player.status === 'COMPLETED'"
+                    >
+                      {{ player.status }}
+                    </span>
+                  </div>
+
+                  <div class="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-neutral-950 p-3 text-sm">
+                    <div>
+                      <p class="text-[0.7rem] uppercase text-neutral-500">Buy-in</p>
+                      <p class="mt-1 font-semibold text-white">
+                        {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-[0.7rem] uppercase text-neutral-500">Rebuys</p>
+                      <p class="mt-1 font-semibold text-white">{{ rebuyCount(player.id) }}</p>
+                    </div>
+                    <div>
+                      @if (player.status === 'COMPLETED') {
+                        <p class="text-[0.7rem] uppercase text-neutral-500">Net</p>
+                        <p
+                          class="mt-1 font-semibold"
+                          [class.text-emerald-300]="player.net >= 0"
+                          [class.text-red-300]="player.net < 0"
+                        >
+                          {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        </p>
+                      } @else {
+                        <p class="text-[0.7rem] uppercase text-neutral-500">Cash out</p>
+                        <p class="mt-1 font-semibold text-neutral-500">Pending</p>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      [disabled]="player.status === 'COMPLETED'"
+                      class="rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                      (click)="$event.stopPropagation(); openRebuyDialog(player)"
+                    >
+                      Rebuy
+                    </button>
+                    <button
+                      type="button"
+                      [disabled]="player.status === 'COMPLETED'"
+                      class="rounded-lg border border-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                      (click)="$event.stopPropagation(); openCashOutDialog(player)"
+                    >
+                      Cash Out
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  class="hidden cursor-pointer gap-4 p-4 lg:grid lg:grid-cols-[1.35fr_0.8fr_0.9fr_0.9fr_0.65fr_0.85fr_1.4fr] lg:items-center lg:gap-3"
                   (click)="togglePlayer(player.id)"
                 >
                   <button
@@ -224,7 +309,7 @@ import {
                   <div class="border-t border-emerald-300/10 bg-neutral-950/80 px-4 py-4">
                     <div class="mb-3 flex items-center justify-between gap-3">
                       <p class="text-sm font-semibold text-white">Buy-in timeline</p>
-                      <p class="text-xs text-neutral-500">Host can edit or delete buy-ins</p>
+                      <p class="hidden text-xs text-neutral-500 sm:block">Host can edit or delete buy-ins</p>
                     </div>
 
                     <div class="space-y-2">

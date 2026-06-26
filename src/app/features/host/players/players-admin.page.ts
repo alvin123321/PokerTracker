@@ -34,11 +34,11 @@ interface PlayerTotals {
   selector: 'app-players-admin-page',
   imports: [CurrencyPipe, DatePipe, MatDialogModule, ReactiveFormsModule, RouterLink],
   template: `
-    <section class="space-y-6">
+    <section class="space-y-5 sm:space-y-6">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p class="text-sm font-medium uppercase text-emerald-300">Admin</p>
-          <h1 class="mt-2 text-3xl font-semibold text-white">Players</h1>
+          <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Players</h1>
           <p class="mt-2 max-w-2xl text-sm leading-6 text-neutral-400">
             Manage player logins and review linked buy-ins, cash-outs, and net results.
           </p>
@@ -51,7 +51,7 @@ interface PlayerTotals {
         </a>
       </div>
 
-      <form class="grid gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-4 md:grid-cols-[1fr_auto] md:items-end">
+      <form class="grid gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4 md:grid-cols-[1fr_auto] md:items-end">
         <div>
           <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add user</label>
           <input
@@ -98,7 +98,7 @@ interface PlayerTotals {
                 @let totals = totalsFor(player.id);
                 <button
                   type="button"
-                  class="grid w-full gap-3 px-4 py-4 text-left transition hover:bg-white/[0.04] md:grid-cols-[1fr_auto]"
+                  class="grid w-full gap-3 px-3 py-3 text-left transition hover:bg-white/[0.04] sm:px-4 sm:py-4 md:grid-cols-[1fr_auto]"
                   [class.ring-1]="selectedPlayerId() === player.id"
                   [class.ring-inset]="selectedPlayerId() === player.id"
                   [class.ring-emerald-300]="selectedPlayerId() === player.id"
@@ -106,16 +106,16 @@ interface PlayerTotals {
                 >
                   <span>
                     <span class="block font-semibold text-white">{{ playerLabel(player) }}</span>
-                    <span class="mt-1 block text-xs text-neutral-500">{{ player.email }}</span>
+                    <span class="mt-1 hidden text-xs text-neutral-500 sm:block">{{ player.email }}</span>
                   </span>
-                  <span class="grid grid-cols-3 gap-3 text-sm md:min-w-64">
+                  <span class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 md:min-w-64">
                     <span>
                       <span class="block text-neutral-500">Buy-in</span>
                       <span class="font-semibold text-white">
                         {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                       </span>
                     </span>
-                    <span>
+                    <span class="hidden sm:block">
                       <span class="block text-neutral-500">Cash</span>
                       <span class="font-semibold text-white">
                         {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
@@ -158,12 +158,12 @@ interface PlayerTotals {
               </div>
             </div>
 
-            <div class="grid gap-3 p-4 sm:grid-cols-5">
+            <div class="grid grid-cols-3 gap-2 p-3 sm:gap-3 sm:p-4 md:grid-cols-5">
               <div class="rounded-lg bg-neutral-950 p-3">
                 <p class="text-xs text-neutral-500">Sessions</p>
                 <p class="mt-1 text-xl font-semibold text-white">{{ totals.sessions }}</p>
               </div>
-              <div class="rounded-lg bg-neutral-950 p-3">
+              <div class="hidden rounded-lg bg-neutral-950 p-3 md:block">
                 <p class="text-xs text-neutral-500">Active</p>
                 <p class="mt-1 text-xl font-semibold text-white">{{ totals.activeSessions }}</p>
               </div>
@@ -173,7 +173,7 @@ interface PlayerTotals {
                   {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                 </p>
               </div>
-              <div class="rounded-lg bg-neutral-950 p-3">
+              <div class="hidden rounded-lg bg-neutral-950 p-3 md:block">
                 <p class="text-xs text-neutral-500">Cash out</p>
                 <p class="mt-1 text-xl font-semibold text-white">
                   {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
@@ -191,10 +191,10 @@ interface PlayerTotals {
               </div>
             </div>
 
-            <div class="space-y-3 p-4 pt-0">
+            <div class="space-y-3 p-3 pt-0 sm:p-4 sm:pt-0">
               <h3 class="text-sm font-semibold uppercase text-neutral-500">Session detail</h3>
               @for (row of selectedRows(); track row.session.id + row.player.id) {
-                <div class="rounded-lg border border-white/10 bg-neutral-950 p-4">
+                <div class="rounded-lg border border-white/10 bg-neutral-950 p-3 sm:p-4">
                   <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <p class="font-semibold text-white">{{ row.session.name }}</p>
@@ -202,14 +202,14 @@ interface PlayerTotals {
                         {{ row.session.sessionDate | date: 'mediumDate' }} · {{ row.player.status }}
                       </p>
                     </div>
-                    <div class="grid grid-cols-3 gap-4 text-sm md:min-w-72">
+                    <div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 md:min-w-72">
                       <span>
                         <span class="block text-neutral-500">Buy-in</span>
                         <span class="font-semibold text-white">
                           {{ row.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                         </span>
                       </span>
-                      <span>
+                      <span class="hidden sm:block">
                         <span class="block text-neutral-500">Cash</span>
                         <span class="font-semibold text-white">
                           {{ row.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
