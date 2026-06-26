@@ -143,13 +143,16 @@ export class PlayerDashboardPage {
 
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {
+    const userId = this.authState.user()?.id ?? null;
     const targetName = this.playerName().trim().toLowerCase();
 
     return this.store
       .sessions()
       .flatMap((session) =>
         session.players
-          .filter((player) => player.name.trim().toLowerCase() === targetName)
+          .filter((player) =>
+            userId ? player.userId === userId : player.name.trim().toLowerCase() === targetName
+          )
           .map((player) => {
             const transactions = session.transactions
               .filter((transaction) => transaction.playerId === player.id)

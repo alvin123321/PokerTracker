@@ -194,10 +194,12 @@ export class PlayerSessionDetailPage {
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly player = computed(() => {
+    const userId = this.authState.user()?.id ?? null;
     const targetName = this.playerName().trim().toLowerCase();
 
     return this.session()?.players.find(
-      (player) => player.name.trim().toLowerCase() === targetName
+      (player) =>
+        userId ? player.userId === userId : player.name.trim().toLowerCase() === targetName
     );
   });
   protected readonly transactions = computed(() => {

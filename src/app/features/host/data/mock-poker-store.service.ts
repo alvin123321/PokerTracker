@@ -805,7 +805,7 @@ export class MockPokerStoreService {
       this.supabaseService.isConfigured &&
         userId &&
         !userId.startsWith('mock-') &&
-        this.authState.role() === 'HOST'
+        (this.authState.role() === 'HOST' || this.authState.role() === 'PLAYER')
     );
   }
 
