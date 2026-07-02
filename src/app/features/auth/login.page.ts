@@ -17,7 +17,12 @@ import { UserProfile } from '../../core/models/user.model';
         class="mx-auto grid min-h-dvh w-full max-w-6xl items-center gap-8 px-5 py-8 sm:gap-10 sm:py-10 lg:grid-cols-[1.1fr_0.9fr]"
       >
         <div class="login-copy">
-          <p class="text-sm font-medium uppercase tracking-[0.2em] text-emerald-300">PokerTrack</p>
+          <div class="flex items-center gap-3">
+            <p class="text-sm font-medium uppercase tracking-[0.2em] text-emerald-300">PokerTrack</p>
+            <span class="rounded-full border border-emerald-300/30 px-2.5 py-1 text-xs font-semibold text-emerald-100">
+              v1.1
+            </span>
+          </div>
           <h1 class="mt-4 max-w-2xl text-4xl font-semibold leading-tight text-white md:text-6xl">
             Live poker session management for fast-moving hosts.
           </h1>

@@ -10,6 +10,9 @@
 /node_modules
 npm-debug.log
 yarn-error.log
+.npm-cache/
+.supabase/
+supabase/.temp/
 
 # IDEs and editors
 .idea/
@@ -35,6 +38,7 @@ yarn-error.log
 /coverage
 /libpeerconnection.log
 testem.log
+angular-server*.log
 /typings
 __screenshots__/
 

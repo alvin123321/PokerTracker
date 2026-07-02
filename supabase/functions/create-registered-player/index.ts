@@ -1,12 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 interface CreateRegisteredPlayerRequest {
-  username: string;
+  displayName?: string;
+  username?: string;
 }
 
 interface UserProfileRow {
   id: string;
-  email: string;
   username: string | null;
   display_name: string | null;
   role: 'HOST' | 'PLAYER';
@@ -14,6 +14,7 @@ interface UserProfileRow {
 
 const defaultPassword = '123456';
 const usernamePattern = /^[a-z0-9][a-z0-9_-]{2,31}$/;
+const displayNameMaxLength = 80;
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -30,6 +31,19 @@ const json = (body: unknown, status = 200) =>
   });
 
 const normalizeUsername = (username: string) => username.trim().toLowerCase();
+const normalizeDisplayName = (displayName: string) => displayName.trim().replace(/\s+/g, ' ');
+const usernameFromDisplayName = (displayName: string) => {
+  const baseUsername = normalizeUsername(displayName)
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24);
+
+  return baseUsername.length >= 3 ? baseUsername : `player-${crypto.randomUUID().slice(0, 8)}`;
+};
+const usernameWithSuffix = (username: string, suffix: string) => {
+  const maxBaseLength = 32 - suffix.length - 1;
+  return `${username.slice(0, maxBaseLength)}-${suffix}`;
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -62,7 +76,13 @@ Deno.serve(async (req) => {
     return json({ error: 'Invalid JSON request body.' }, 400);
   }
 
-  const username = normalizeUsername(payload.username ?? '');
+  const displayName = normalizeDisplayName(payload.displayName ?? payload.username ?? '');
+
+  if (displayName.length === 0 || displayName.length > displayNameMaxLength) {
+    return json({ error: 'Player name must be 1-80 characters.' }, 400);
+  }
+
+  let username = normalizeUsername(payload.username ?? usernameFromDisplayName(displayName));
 
   if (!usernamePattern.test(username)) {
     return json(
@@ -110,17 +130,29 @@ Deno.serve(async (req) => {
     return json({ error: 'Host privileges required.' }, 403);
   }
 
-  const email = `${username}@pokertrack.local`;
-  const displayName = username;
+  const usernameWasRequested = Boolean(payload.username?.trim());
+  let email = `${username}@pokertrack.local`;
+  let duplicateUser = null;
 
-  const { data: duplicateUser, error: duplicateError } = await userClient
-    .from('users')
-    .select('id,email,username')
-    .or(`username.eq.${username},email.eq.${email}`)
-    .maybeSingle();
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { data, error: duplicateError } = await userClient
+      .from('users')
+      .select('id,username')
+      .eq('username', username)
+      .maybeSingle();
 
-  if (duplicateError) {
-    return json({ error: duplicateError.message }, 500);
+    if (duplicateError) {
+      return json({ error: duplicateError.message }, 500);
+    }
+
+    duplicateUser = data;
+
+    if (!duplicateUser || usernameWasRequested) {
+      break;
+    }
+
+    username = usernameWithSuffix(username, crypto.randomUUID().slice(0, 6));
+    email = `${username}@pokertrack.local`;
   }
 
   if (duplicateUser) {
@@ -144,7 +176,7 @@ Deno.serve(async (req) => {
 
   const { data: profile, error: profileError } = await userClient
     .from('users')
-    .select('id,email,username,display_name,role')
+    .select('id,username,display_name,role')
     .eq('id', createdUser.user.id)
     .single<UserProfileRow>();
 
@@ -152,7 +184,6 @@ Deno.serve(async (req) => {
     return json({
       player: {
         id: createdUser.user.id,
-        email,
         username,
         displayName
       },
@@ -163,7 +194,6 @@ Deno.serve(async (req) => {
   return json({
     player: {
       id: profile.id,
-      email: profile.email,
       username: profile.username ?? username,
       displayName: profile.display_name ?? displayName
     },

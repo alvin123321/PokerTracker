@@ -8,7 +8,6 @@ import { AuthService } from './auth.service';
 
 interface UserProfileRow {
   id: string;
-  email: string;
   display_name: string | null;
   role: UserRole;
   created_at: string;
@@ -30,7 +29,6 @@ const developmentUsers: Record<string, { password: string; profile: UserProfile 
     password: 'admin',
     profile: {
       id: 'dev-host-admin',
-      email: 'admin@pokertrack.local',
       displayName: 'Admin',
       role: 'HOST',
       createdAt: nowIso(),
@@ -41,7 +39,6 @@ const developmentUsers: Record<string, { password: string; profile: UserProfile 
     password: 'player',
     profile: {
       id: 'dev-player',
-      email: 'player@pokertrack.local',
       displayName: 'Player',
       role: 'PLAYER',
       createdAt: nowIso(),
@@ -208,7 +205,7 @@ export class AuthStateService {
     const { data, error } = await this.supabaseService
       .requireClient()
       .from('users')
-      .select('id,email,display_name,role,created_at,updated_at')
+      .select('id,display_name,role,created_at,updated_at')
       .eq('id', userId)
       .single<UserProfileRow>();
 
@@ -222,7 +219,6 @@ export class AuthStateService {
   private mapProfile(row: UserProfileRow): UserProfile {
     return {
       id: row.id,
-      email: row.email,
       displayName: row.display_name,
       role: row.role,
       createdAt: row.created_at,
@@ -310,7 +306,7 @@ export class AuthStateService {
       },
       aud: 'authenticated',
       created_at: profile.createdAt,
-      email: profile.email
+      email: `${profile.id}@pokertrack.local`
     };
   }
 

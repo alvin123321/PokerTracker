@@ -29,7 +29,7 @@ export interface AddPlayerDialogResult {
     >
       <div>
         <h2 class="text-xl font-semibold">Add player</h2>
-        <p class="mt-1 text-sm text-neutral-400">Select a login or create one with password 123456.</p>
+        <p class="mt-1 text-sm text-neutral-400">Select a player or create a login with password 123456.</p>
       </div>
 
       <div class="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-neutral-900 p-1">
@@ -73,17 +73,17 @@ export interface AddPlayerDialogResult {
         </select>
       } @else {
         <label class="block text-sm font-medium text-neutral-200" for="playerName">
-          New player login
+          New player name
         </label>
         <input
           id="playerName"
           formControlName="name"
           class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
-          placeholder="player123"
+          placeholder="Player A"
         />
         @if (duplicateName()) {
           <p class="mt-2 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-100">
-            This player login already exists. Select it from Existing instead.
+            This player already exists. Select it from Existing instead.
           </p>
         }
       }
@@ -154,7 +154,7 @@ export class AddPlayerDialogComponent {
     }),
     name: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.pattern(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,31}$/)]
+      validators: [Validators.required, Validators.maxLength(80)]
     }),
     buyIn: new FormControl(200, {
       nonNullable: true,
@@ -195,7 +195,7 @@ export class AddPlayerDialogComponent {
     }
 
     this.dialogRef.close({
-      name: value.name.trim().toLowerCase(),
+      name: value.name.trim(),
       buyIn: value.buyIn,
       comment: value.comment.trim(),
       playerUserId: null,
@@ -232,9 +232,12 @@ export class AddPlayerDialogComponent {
       return false;
     }
 
-    const username = this.form.controls.name.value.trim().toLowerCase();
+    const name = this.form.controls.name.value.trim().toLowerCase();
 
-    return this.registeredPlayers.some((player) => player.username.toLowerCase() === username);
+    return this.registeredPlayers.some((player) => {
+      const displayName = player.displayName?.trim().toLowerCase();
+      return displayName === name || player.username.toLowerCase() === name;
+    });
   }
 
   protected playerLabel(player: RegisteredPlayerOption): string {

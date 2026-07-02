@@ -1,4 +1,6 @@
-import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, OnDestroy, signal } from '@angular/core';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { Subject, Subscription, auditTime } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { SupabaseService } from '../../../core/supabase/supabase.service';
@@ -54,7 +56,6 @@ export interface RegisteredPlayerOption {
   id: string;
   username: string;
   displayName: string | null;
-  email: string;
 }
 
 interface SessionRow {
@@ -104,7 +105,6 @@ interface RegisteredPlayerRow {
   id: string;
   username?: string | null;
   display_name: string | null;
-  email: string;
 }
 
 interface CreateRegisteredPlayerResponse {
@@ -112,7 +112,6 @@ interface CreateRegisteredPlayerResponse {
     id: string;
     username: string;
     displayName: string | null;
-    email: string;
   };
   temporaryPassword: string;
 }
@@ -127,12 +126,16 @@ const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
 @Injectable({
   providedIn: 'root'
 })
-export class PokerStoreService {
+export class PokerStoreService implements OnDestroy {
   private readonly authState = inject(AuthStateService);
   private readonly supabaseService = inject(SupabaseService);
   private readonly sessionsSignal = signal<PokerSession[]>(this.loadSessions());
   private readonly loadingSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
+  private readonly realtimeRefreshSignal = new Subject<void>();
+  private readonly realtimeRefreshSubscription: Subscription;
+  private realtimeChannel: RealtimeChannel | null = null;
+  private realtimeUserKey: string | null = null;
   private loadedSupabaseUserId: string | null = null;
 
   readonly sessions = this.sessionsSignal.asReadonly();
@@ -146,13 +149,23 @@ export class PokerStoreService {
   );
 
   constructor() {
+    this.realtimeRefreshSubscription = this.realtimeRefreshSignal
+      .pipe(auditTime(250))
+      .subscribe(() => {
+        void this.refreshSessions();
+      });
+
     effect(() => {
       const initialized = this.authState.initialized();
       const user = this.authState.user();
+      const role = this.authState.role();
 
       if (!initialized || !this.shouldUseSupabaseForUser(user?.id ?? null)) {
+        this.teardownRealtimeChannel();
         return;
       }
+
+      this.setupRealtimeChannel(user?.id ?? null, role);
 
       if (this.loadedSupabaseUserId === user?.id) {
         return;
@@ -161,6 +174,12 @@ export class PokerStoreService {
       this.loadedSupabaseUserId = user?.id ?? null;
       void this.refreshSessions();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.teardownRealtimeChannel();
+    this.realtimeRefreshSubscription.unsubscribe();
+    this.realtimeRefreshSignal.complete();
   }
 
   async refreshSessions(): Promise<void> {
@@ -282,7 +301,7 @@ export class PokerStoreService {
     const client = this.supabaseService.requireClient();
     const { data: directRows, error: directError } = await client
       .from('users')
-      .select('id,email,display_name')
+      .select('id,username,display_name')
       .eq('role', 'PLAYER')
       .order('display_name', { ascending: true });
 
@@ -310,9 +329,8 @@ export class PokerStoreService {
   private mapRegisteredPlayers(players: RegisteredPlayerRow[]): RegisteredPlayerOption[] {
     return players.map((player) => ({
       id: player.id,
-      username: player.username ?? player.email.split('@')[0],
-      displayName: player.display_name,
-      email: player.email
+      username: player.username ?? player.id.slice(0, 8),
+      displayName: player.display_name
     }));
   }
 
@@ -639,17 +657,22 @@ export class PokerStoreService {
     return new Map(((data ?? []) as PlayerRow[]).map((player) => [player.id, player]));
   }
 
-  async createRegisteredPlayer(username: string): Promise<RegisteredPlayerOption> {
+  async createRegisteredPlayer(displayName: string): Promise<RegisteredPlayerOption> {
+    const cleanDisplayName = displayName.trim();
+    const username = this.usernameFromDisplayName(cleanDisplayName);
     const { data, error } = await this.supabaseService
       .requireClient()
       .functions.invoke<CreateRegisteredPlayerResponse>('create-registered-player', {
         body: {
+          displayName: cleanDisplayName,
           username
         }
       });
 
     if (error) {
-      throw error;
+      throw new Error(
+        `${this.toMessage(error)} Deploy the latest create-registered-player Edge Function, then try again.`
+      );
     }
 
     if (!data?.player) {
@@ -801,6 +824,61 @@ export class PokerStoreService {
     });
   }
 
+  private setupRealtimeChannel(userId: string | null, role: string | null): void {
+    if (!userId || !role) {
+      this.teardownRealtimeChannel();
+      return;
+    }
+
+    const userKey = `${role}:${userId}`;
+
+    if (this.realtimeUserKey === userKey && this.realtimeChannel) {
+      return;
+    }
+
+    this.teardownRealtimeChannel();
+
+    const client = this.supabaseService.requireClient();
+    const channel = client.channel(`pokertrack-session-sync:${userKey}`);
+    const handleChange = () => this.queueRealtimeRefresh();
+
+    for (const table of ['sessions', 'players', 'session_players', 'transactions']) {
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table
+        },
+        handleChange
+      );
+    }
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        this.queueRealtimeRefresh();
+      }
+    });
+
+    this.realtimeChannel = channel;
+    this.realtimeUserKey = userKey;
+  }
+
+  private teardownRealtimeChannel(): void {
+    if (this.realtimeChannel) {
+      void this.supabaseService.client?.removeChannel(this.realtimeChannel);
+    }
+
+    this.realtimeChannel = null;
+    this.realtimeUserKey = null;
+  }
+
+  private queueRealtimeRefresh(): void {
+    if (this.shouldUseSupabase()) {
+      this.realtimeRefreshSignal.next();
+    }
+  }
+
   private shouldUseSupabase(): boolean {
     return this.shouldUseSupabaseForUser(this.authState.user()?.id ?? null);
   }
@@ -817,6 +895,17 @@ export class PokerStoreService {
 
   private normalizeAmount(amount: number): number {
     return Math.max(0, Math.round((Number(amount) || 0) * 100) / 100);
+  }
+
+  private usernameFromDisplayName(displayName: string): string {
+    const normalized = displayName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 24);
+
+    return normalized.length >= 3 ? normalized : `player-${Date.now().toString(36)}`;
   }
 
   private toNumber(value: number | string): number {

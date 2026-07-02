@@ -53,12 +53,12 @@ interface PlayerTotals {
 
       <form class="grid gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4 md:grid-cols-[1fr_auto] md:items-end">
         <div>
-          <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add user</label>
+          <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add player</label>
           <input
             id="newPlayerLogin"
             [formControl]="newPlayerLogin"
             class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none transition focus:border-emerald-300"
-            placeholder="player123"
+            placeholder="Player A"
           />
         </div>
         <button
@@ -70,7 +70,7 @@ interface PlayerTotals {
           @if (creatingPlayer()) {
             Adding...
           } @else {
-            Add User
+            Add Player
           }
         </button>
         <p class="text-xs text-neutral-500 md:col-span-2">Temporary password is 123456.</p>
@@ -106,7 +106,7 @@ interface PlayerTotals {
                 >
                   <span>
                     <span class="block font-semibold text-white">{{ playerLabel(player) }}</span>
-                    <span class="mt-1 hidden text-xs text-neutral-500 sm:block">{{ player.email }}</span>
+                    <span class="mt-1 hidden text-xs text-neutral-500 sm:block">Login: {{ player.username }}</span>
                   </span>
                   <span class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 md:min-w-64">
                     <span>
@@ -145,8 +145,7 @@ interface PlayerTotals {
               <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <h2 class="text-xl font-semibold text-white">{{ playerLabel(player) }}</h2>
-                  <p class="mt-1 text-sm text-neutral-400">{{ player.email }}</p>
-                  <p class="mt-1 text-xs text-neutral-500">Login: {{ player.username }}</p>
+                  <p class="mt-1 text-sm text-neutral-400">Login: {{ player.username }}</p>
                 </div>
                 <button
                   type="button"
@@ -259,7 +258,7 @@ export class PlayersAdminPage implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly newPlayerLogin = new FormControl('', {
     nonNullable: true,
-    validators: [Validators.required, Validators.pattern(/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,31}$/)]
+    validators: [Validators.required, Validators.maxLength(80)]
   });
 
   protected readonly selectedPlayer = computed(() =>
@@ -305,7 +304,7 @@ export class PlayersAdminPage implements OnInit {
             'This deletes the player login account. Existing poker records stay in session history but will no longer be linked to a player login.',
           confirmLabel: 'Delete user',
           tone: 'danger',
-          details: [this.playerLabel(player), player.email]
+          details: [this.playerLabel(player), `Login: ${player.username}`]
         },
         panelClass: 'pokertrack-dialog-panel'
       }
