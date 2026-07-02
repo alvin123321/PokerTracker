@@ -9,7 +9,19 @@ interface UserProfileRow {
   id: string;
   username: string | null;
   display_name: string | null;
-  role: 'HOST' | 'PLAYER';
+}
+
+interface AuthAdminUserResponse {
+  id?: string;
+  user?: {
+    id?: string;
+  };
+  code?: string;
+  error_code?: string;
+  error?: string;
+  msg?: string;
+  message?: string;
+  [key: string]: unknown;
 }
 
 const defaultPassword = '123456';
@@ -43,6 +55,77 @@ const usernameFromDisplayName = (displayName: string) => {
 const usernameWithSuffix = (username: string, suffix: string) => {
   const maxBaseLength = 32 - suffix.length - 1;
   return `${username.slice(0, maxBaseLength)}-${suffix}`;
+};
+const authAdminErrorMessage = (body: AuthAdminUserResponse, fallback: string) =>
+  body.error ?? body.msg ?? body.message ?? fallback;
+
+const authAdminErrorDetails = (body: AuthAdminUserResponse) => ({
+  code: body.code ?? body.error_code ?? null,
+  message: body.message ?? body.msg ?? body.error ?? null,
+  raw: body
+});
+
+const createAuthUser = async (
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  email: string,
+  username: string,
+  displayName: string
+) => {
+  let response: Response;
+
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        password: defaultPassword,
+        email_confirm: true,
+        user_metadata: {
+          username,
+          display_name: displayName,
+          role: 'PLAYER'
+        }
+      })
+    });
+  } catch (error) {
+    return {
+      userId: null,
+      error: error instanceof Error ? error.message : 'Auth admin request failed.',
+      details: null
+    };
+  }
+
+  const body = (await response.json().catch(() => ({}))) as AuthAdminUserResponse;
+
+  if (!response.ok) {
+    return {
+      userId: null,
+      error: authAdminErrorMessage(body, `Auth admin request failed with ${response.status}.`),
+      details: authAdminErrorDetails(body)
+    };
+  }
+
+  const userId = body.user?.id ?? body.id ?? null;
+
+  if (!userId) {
+    return {
+      userId: null,
+      error: 'Auth admin response did not include a user id.',
+      details: authAdminErrorDetails(body)
+    };
+  }
+
+  return {
+    userId,
+    error: null,
+    details: null
+  };
 };
 
 Deno.serve(async (req) => {
@@ -105,12 +188,6 @@ Deno.serve(async (req) => {
     }
   });
 
-  const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false
-    }
-  });
-
   const {
     data: { user },
     error: userError
@@ -159,36 +236,41 @@ Deno.serve(async (req) => {
     return json({ error: 'A player with this login already exists.' }, 409);
   }
 
-  const { data: createdUser, error: createUserError } = await serviceClient.auth.admin.createUser({
+  const createdUser = await createAuthUser(
+    supabaseUrl,
+    serviceRoleKey,
     email,
-    password: defaultPassword,
-    email_confirm: true,
-    user_metadata: {
-      username,
-      display_name: displayName,
-      role: 'PLAYER'
-    }
-  });
+    username,
+    displayName
+  );
 
-  if (createUserError || !createdUser.user) {
-    return json({ error: createUserError?.message ?? 'Unable to create player.' }, 400);
+  if (createdUser.error || !createdUser.userId) {
+    return json(
+      {
+        error: createdUser.error ?? 'Unable to create player.',
+        details: createdUser.details
+      },
+      400
+    );
   }
 
-  const { data: profile, error: profileError } = await userClient
-    .from('users')
-    .select('id,username,display_name,role')
-    .eq('id', createdUser.user.id)
-    .single<UserProfileRow>();
+  const { data: createdProfiles, error: profileError } = await userClient.rpc(
+    'create_registered_player_profile',
+    {
+      p_user_id: createdUser.userId,
+      p_username: username,
+      p_display_name: displayName
+    }
+  );
 
   if (profileError) {
-    return json({
-      player: {
-        id: createdUser.user.id,
-        username,
-        displayName
-      },
-      temporaryPassword: defaultPassword
-    });
+    return json({ error: profileError.message }, 500);
+  }
+
+  const profile = (createdProfiles as UserProfileRow[] | null)?.[0];
+
+  if (!profile) {
+    return json({ error: 'Player profile was not returned after creation.' }, 500);
   }
 
   return json({
