@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Authentication required.' }, 401);
   }
 
-  const { data: hostProfile, error: hostError } = await serviceClient
+  const { data: hostProfile, error: hostError } = await userClient
     .from('users')
     .select('id,role')
     .eq('id', user.id)
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Host privileges required.' }, 403);
   }
 
-  const { data: playerProfile, error: playerError } = await serviceClient
+  const { data: playerProfile, error: playerError } = await userClient
     .from('users')
     .select('id,role')
     .eq('id', payload.userId)

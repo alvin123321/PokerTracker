@@ -327,11 +327,15 @@ export class PokerStoreService implements OnDestroy {
   }
 
   private mapRegisteredPlayers(players: RegisteredPlayerRow[]): RegisteredPlayerOption[] {
-    return players.map((player) => ({
-      id: player.id,
-      username: player.username ?? player.id.slice(0, 8),
-      displayName: player.display_name
-    }));
+    return players
+      .map((player) => ({
+        id: player.id,
+        username: player.username ?? player.id.slice(0, 8),
+        displayName: player.display_name
+      }))
+      .sort((a, b) =>
+        this.registeredPlayerSortName(a).localeCompare(this.registeredPlayerSortName(b))
+      );
   }
 
   async addPlayer(
@@ -906,6 +910,10 @@ export class PokerStoreService implements OnDestroy {
       .slice(0, 24);
 
     return normalized.length >= 3 ? normalized : `player-${Date.now().toString(36)}`;
+  }
+
+  private registeredPlayerSortName(player: RegisteredPlayerOption): string {
+    return (player.displayName ?? player.username).trim().toLocaleLowerCase();
   }
 
   private toNumber(value: number | string): number {

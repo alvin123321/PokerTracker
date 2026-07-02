@@ -64,10 +64,11 @@ interface PlayerTotals {
         <button
           type="button"
           [disabled]="newPlayerLogin.invalid || creatingPlayer()"
-          class="w-full rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 md:w-auto md:min-w-32"
+          class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 md:w-auto md:min-w-32"
           (click)="createPlayer()"
         >
           @if (creatingPlayer()) {
+            <span class="action-spinner" aria-hidden="true"></span>
             Adding...
           } @else {
             Add Player
@@ -96,19 +97,23 @@ interface PlayerTotals {
             <div class="divide-y divide-white/5">
               @for (player of players(); track player.id) {
                 @let totals = totalsFor(player.id);
-                <button
-                  type="button"
-                  class="grid w-full gap-3 px-3 py-3 text-left transition hover:bg-white/[0.04] sm:px-4 sm:py-4 md:grid-cols-[1fr_auto]"
+                <div
+                  class="grid gap-3 px-3 py-3 transition hover:bg-white/[0.04] sm:px-4 sm:py-4 md:grid-cols-[1fr_auto_auto] md:items-center"
                   [class.ring-1]="selectedPlayerId() === player.id"
                   [class.ring-inset]="selectedPlayerId() === player.id"
                   [class.ring-emerald-300]="selectedPlayerId() === player.id"
-                  (click)="selectPlayer(player.id)"
                 >
-                  <span>
-                    <span class="block font-semibold text-white">{{ playerLabel(player) }}</span>
-                    <span class="mt-1 hidden text-xs text-neutral-500 sm:block">Login: {{ player.username }}</span>
-                  </span>
-                  <span class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 md:min-w-64">
+                  <button type="button" class="min-w-0 text-left" (click)="selectPlayer(player.id)">
+                    <span>
+                      <span class="block truncate font-semibold text-white">{{ playerLabel(player) }}</span>
+                      <span class="mt-1 hidden text-xs text-neutral-500 sm:block">Login: {{ player.username }}</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="grid grid-cols-2 gap-3 text-left text-sm sm:grid-cols-3 md:min-w-64"
+                    (click)="selectPlayer(player.id)"
+                  >
                     <span>
                       <span class="block text-neutral-500">Buy-in</span>
                       <span class="font-semibold text-white">
@@ -131,8 +136,21 @@ interface PlayerTotals {
                         {{ totals.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                       </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    [disabled]="isDeletingAnyPlayer()"
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-300/30 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+                    (click)="confirmDeletePlayer(player)"
+                  >
+                    @if (isDeletingPlayer(player.id)) {
+                      <span class="action-spinner" aria-hidden="true"></span>
+                      Deleting...
+                    } @else {
+                      Delete
+                    }
+                  </button>
+                </div>
               }
             </div>
           }
@@ -149,10 +167,16 @@ interface PlayerTotals {
                 </div>
                 <button
                   type="button"
-                  class="rounded-lg border border-red-300/30 px-4 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10"
+                  [disabled]="isDeletingAnyPlayer()"
+                  class="inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-4 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
                   (click)="confirmDeletePlayer(player)"
                 >
-                  Delete User
+                  @if (isDeletingPlayer(player.id)) {
+                    <span class="action-spinner" aria-hidden="true"></span>
+                    Deleting...
+                  } @else {
+                    Delete User
+                  }
                 </button>
               </div>
             </div>
@@ -246,7 +270,26 @@ interface PlayerTotals {
         </section>
       </div>
     </section>
-  `
+  `,
+  styles: [
+    `
+      .action-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 9999px;
+        animation: action-spinner 700ms linear infinite;
+      }
+
+      @keyframes action-spinner {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    `
+  ]
 })
 export class PlayersAdminPage implements OnInit {
   protected readonly store = inject(PokerStoreService);
@@ -255,6 +298,7 @@ export class PlayersAdminPage implements OnInit {
   protected readonly selectedPlayerId = signal<string | null>(null);
   protected readonly loadingPlayers = signal(false);
   protected readonly creatingPlayer = signal(false);
+  protected readonly deletingPlayerId = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly newPlayerLogin = new FormControl('', {
     nonNullable: true,
@@ -294,6 +338,10 @@ export class PlayersAdminPage implements OnInit {
   }
 
   protected confirmDeletePlayer(player: RegisteredPlayerOption): void {
+    if (this.isDeletingAnyPlayer()) {
+      return;
+    }
+
     const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
       ConfirmationDialogComponent,
       {
@@ -315,11 +363,16 @@ export class PlayersAdminPage implements OnInit {
         return;
       }
 
+      this.deletingPlayerId.set(player.id);
+      this.errorMessage.set(null);
+
       try {
         await this.store.deleteRegisteredPlayer(player.id);
         await this.loadPlayers();
       } catch (error) {
         this.errorMessage.set(this.toMessage(error));
+      } finally {
+        this.deletingPlayerId.set(null);
       }
     });
   }
@@ -330,6 +383,14 @@ export class PlayersAdminPage implements OnInit {
 
   protected playerLabel(player: RegisteredPlayerOption): string {
     return player.displayName ?? player.username;
+  }
+
+  protected isDeletingAnyPlayer(): boolean {
+    return this.deletingPlayerId() !== null;
+  }
+
+  protected isDeletingPlayer(playerId: string): boolean {
+    return this.deletingPlayerId() === playerId;
   }
 
   protected totalsFor(playerId: string): PlayerTotals {

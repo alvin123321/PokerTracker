@@ -241,8 +241,6 @@ export class AddPlayerDialogComponent {
   }
 
   protected playerLabel(player: RegisteredPlayerOption): string {
-    const displayName = player.displayName ?? player.username;
-
-    return `${displayName} (${player.username})`;
+    return player.displayName ?? player.username;
   }
 }

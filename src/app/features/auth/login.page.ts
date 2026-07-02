@@ -90,11 +90,13 @@ import { UserProfile } from '../../core/models/user.model';
           <button
             type="submit"
             [disabled]="form.invalid || authState.loading() || isLeaving()"
-            class="mt-6 w-full rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 shadow-lg shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-emerald-300 hover:shadow-emerald-900/40 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 disabled:shadow-none"
+            class="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 shadow-lg shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-emerald-300 hover:shadow-emerald-900/40 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 disabled:shadow-none"
           >
             @if (isLeaving()) {
+              <span class="login-spinner border-neutral-400 border-t-transparent" aria-hidden="true"></span>
               Opening dashboard...
             } @else if (authState.loading()) {
+              <span class="login-spinner border-neutral-400 border-t-transparent" aria-hidden="true"></span>
               Signing in...
             } @else {
               Sign in
@@ -120,6 +122,22 @@ import { UserProfile } from '../../core/models/user.model';
 
       .login-shell-leaving {
         animation: login-shell-out 280ms cubic-bezier(0.4, 0, 1, 1) both;
+      }
+
+      .login-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border-width: 2px;
+        border-style: solid;
+        border-radius: 9999px;
+        animation: login-spinner 700ms linear infinite;
+      }
+
+      @keyframes login-spinner {
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       @keyframes login-shell-in {

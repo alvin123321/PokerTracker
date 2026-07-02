@@ -76,18 +76,28 @@ import {
             <button
               type="button"
               [disabled]="isBusy()"
-              class="rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
               (click)="openAddPlayerDialog()"
             >
-              Add Player
+              @if (isPending('add-player')) {
+                <span class="action-spinner" aria-hidden="true"></span>
+                Adding...
+              } @else {
+                Add Player
+              }
             </button>
             <button
               type="button"
               [disabled]="isBusy()"
-              class="rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+              class="inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
               (click)="closeSession()"
             >
-              Close Session
+              @if (isPending('close-session')) {
+                <span class="action-spinner" aria-hidden="true"></span>
+                Closing...
+              } @else {
+                Close Session
+              }
             </button>
           </div>
         </div>
@@ -171,18 +181,28 @@ import {
                     <button
                       type="button"
                       [disabled]="player.status === 'COMPLETED' || isBusy()"
-                      class="rounded-md bg-emerald-400 px-3 py-2 text-xs font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                      class="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-400 px-3 py-2 text-xs font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openRebuyDialog(player)"
                     >
-                      Rebuy
+                      @if (isPending(playerAction('rebuy', player.id))) {
+                        <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
+                        Saving
+                      } @else {
+                        Rebuy
+                      }
                     </button>
                     <button
                       type="button"
                       [disabled]="player.status === 'COMPLETED' || isBusy()"
-                      class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                      class="inline-flex items-center justify-center gap-1.5 rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openCashOutDialog(player)"
                     >
-                      Cash Out
+                      @if (isPending(playerAction('cash-out', player.id))) {
+                        <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
+                        Saving
+                      } @else {
+                        Cash Out
+                      }
                     </button>
                   </div>
                 </div>
@@ -266,18 +286,28 @@ import {
                     <button
                       type="button"
                       [disabled]="player.status === 'COMPLETED' || isBusy()"
-                      class="rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                      class="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openRebuyDialog(player)"
                     >
-                      Rebuy
+                      @if (isPending(playerAction('rebuy', player.id))) {
+                        <span class="action-spinner" aria-hidden="true"></span>
+                        Saving...
+                      } @else {
+                        Rebuy
+                      }
                     </button>
                     <button
                       type="button"
                       [disabled]="player.status === 'COMPLETED' || isBusy()"
-                      class="rounded-lg border border-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                      class="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
                       (click)="$event.stopPropagation(); openCashOutDialog(player)"
                     >
-                      Cash Out
+                      @if (isPending(playerAction('cash-out', player.id))) {
+                        <span class="action-spinner" aria-hidden="true"></span>
+                        Saving...
+                      } @else {
+                        Cash Out
+                      }
                     </button>
                   </div>
                 </div>
@@ -376,10 +406,18 @@ import {
                             <button
                               type="button"
                               [disabled]="isBusy()"
-                              class="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              class="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                               (click)="openEditBuyInDialog(player, transaction)"
                             >
-                              Edit
+                              @if (
+                                isPending(transactionAction('edit-buy-in', transaction.id)) ||
+                                isPending(transactionAction('delete-buy-in', transaction.id))
+                              ) {
+                                <span class="action-spinner" aria-hidden="true"></span>
+                                Saving...
+                              } @else {
+                                Edit
+                              }
                             </button>
                           </div>
                         }
@@ -409,6 +447,27 @@ import {
     `
       .pokertrack-toast {
         animation: pokertrack-toast-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .action-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 9999px;
+        animation: action-spinner 700ms linear infinite;
+      }
+
+      .action-spinner-sm {
+        width: 0.75rem;
+        height: 0.75rem;
+      }
+
+      @keyframes action-spinner {
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       @keyframes pokertrack-toast-in {
@@ -527,7 +586,7 @@ export class ActiveSessionPage implements OnDestroy {
 
     dialogRef.afterClosed().subscribe(async (result?: RebuyDialogResult) => {
       if (result && result.amount > 0) {
-        await this.runAction('rebuy', () =>
+        await this.runAction(this.playerAction('rebuy', player.id), () =>
           this.store.recordRebuy(this.sessionId, player.id, result.amount, result.comment)
         );
       }
@@ -550,7 +609,7 @@ export class ActiveSessionPage implements OnDestroy {
 
     dialogRef.afterClosed().subscribe(async (amount?: number) => {
       if (amount !== undefined && amount >= 0) {
-        await this.runAction('cash-out', () =>
+        await this.runAction(this.playerAction('cash-out', player.id), () =>
           this.store.recordCashOut(this.sessionId, player.id, amount)
         );
       }
@@ -586,7 +645,7 @@ export class ActiveSessionPage implements OnDestroy {
       }
 
       if (result.amount > 0) {
-        await this.runAction('edit-buy-in', () =>
+        await this.runAction(this.transactionAction('edit-buy-in', transaction.id), () =>
           this.store.updateBuyInTransaction(
             this.sessionId,
             transaction.id,
@@ -622,7 +681,7 @@ export class ActiveSessionPage implements OnDestroy {
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (confirmed) {
-        await this.runAction('delete-buy-in', () =>
+        await this.runAction(this.transactionAction('delete-buy-in', transaction.id), () =>
           this.store.deleteBuyInTransaction(this.sessionId, transaction.id)
         );
       }
@@ -656,6 +715,18 @@ export class ActiveSessionPage implements OnDestroy {
 
   protected isBusy(): boolean {
     return Boolean(this.pendingAction() || this.store.loading());
+  }
+
+  protected isPending(action: string): boolean {
+    return this.pendingAction() === action;
+  }
+
+  protected playerAction(action: string, playerId: string): string {
+    return `${action}:${playerId}`;
+  }
+
+  protected transactionAction(action: string, transactionId: string): string {
+    return `${action}:${transactionId}`;
   }
 
   protected closeSession(): void {
