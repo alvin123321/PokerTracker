@@ -6,9 +6,18 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import {
   PokerStoreService,
+  RecordedHand,
+  RecordedHandActionType,
+  RecordedHandBoardCard,
+  RecordedHandStreet,
+  SaveRecordedHandInput,
   SessionPlayer,
   PokerTransaction
 } from '../data/poker-store.service';
+import {
+  RecordHandDialogComponent,
+  RecordHandDialogData
+} from '../../recorded-hands/record-hand-dialog.component';
 import {
   AddPlayerDialogData,
   AddPlayerDialogComponent,
@@ -88,6 +97,19 @@ import {
           </div>
 
           <div class="flex flex-wrap gap-3 lg:justify-end">
+            <button
+              type="button"
+              [disabled]="isBusy() || currentSession.players.length === 0"
+              class="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-5 py-3 text-sm font-semibold text-emerald-50 transition hover:bg-emerald-300 hover:text-neutral-950 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-neutral-800 disabled:text-neutral-500"
+              (click)="openRecordHandDialog()"
+            >
+              @if (isPending('record-hand')) {
+                <span class="action-spinner" aria-hidden="true"></span>
+                Saving...
+              } @else {
+                Record Hand
+              }
+            </button>
             <button
               type="button"
               [disabled]="isBusy()"
@@ -174,6 +196,58 @@ import {
             </button>
           </div>
         } @else {
+          @if (recordedHands().length > 0) {
+            <section class="rounded-lg border border-white/10 bg-white/[0.04]">
+              <div class="flex flex-col gap-1 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 class="text-sm font-semibold uppercase text-neutral-500">Recorded hands</h2>
+                <p class="text-sm text-neutral-500">{{ recordedHands().length }} hand(s)</p>
+              </div>
+              <div class="grid gap-3 p-3 lg:grid-cols-2">
+                @for (hand of recordedHands(); track hand.id) {
+                  <article class="rounded-lg border border-white/10 bg-neutral-950 p-4">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div class="flex flex-wrap gap-2">
+                          @for (tag of hand.tags; track tag) {
+                            <span class="rounded-full bg-emerald-300 px-2.5 py-1 text-xs font-bold text-neutral-950">
+                              {{ tag }}
+                            </span>
+                          } @empty {
+                            <span class="rounded-full border border-white/10 px-2.5 py-1 text-xs font-bold text-neutral-400">
+                              Recorded hand
+                            </span>
+                          }
+                        </div>
+                        <p class="mt-2 text-sm text-neutral-400">
+                          {{ hand.createdAt | date: 'short' }} · {{ hand.status }}
+                        </p>
+                      </div>
+                      <span class="rounded-md bg-white/[0.06] px-2.5 py-1 text-xs font-bold text-neutral-300">
+                        {{ hand.actions.length }} actions
+                      </span>
+                    </div>
+                    <p class="mt-3 text-sm text-neutral-300">
+                      <span class="text-neutral-500">Players:</span> {{ handPlayerNames(hand) }}
+                    </p>
+                    <p class="mt-1 text-sm text-neutral-300">
+                      <span class="text-neutral-500">Board:</span> {{ handBoardLabel(hand.board) }}
+                    </p>
+                    @if (hand.comment) {
+                      <p class="mt-3 rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-neutral-300">
+                        {{ hand.comment }}
+                      </p>
+                    }
+                    @if (hand.actions.length > 0) {
+                      <p class="mt-3 text-xs font-semibold uppercase text-neutral-500">
+                        {{ handActionsPreview(hand) }}
+                      </p>
+                    }
+                  </article>
+                }
+              </div>
+            </section>
+          }
+
           <div class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
             <div
               class="hidden grid-cols-[1.35fr_0.8fr_0.9fr_0.9fr_0.65fr_0.85fr_1.4fr] gap-3 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase text-neutral-500 lg:grid"
@@ -689,6 +763,7 @@ export class ActiveSessionPage implements OnDestroy {
   protected readonly sortedPlayers = computed(() =>
     this.store.sortedPlayersForActiveSession(this.session())
   );
+  protected readonly recordedHands = computed(() => this.store.recordedHandsForSession(this.session()));
   protected readonly toastMessage = computed(() => {
     if (this.actionError() || this.store.error()) {
       return this.actionError() ?? this.store.error();
@@ -720,6 +795,10 @@ export class ActiveSessionPage implements OnDestroy {
 
     if (action?.startsWith('cash-out:')) {
       return 'Recording cash out...';
+    }
+
+    if (action === 'record-hand') {
+      return 'Saving hand...';
     }
 
     if (action === 'delete-session') {
@@ -778,6 +857,36 @@ export class ActiveSessionPage implements OnDestroy {
           result.createRegisteredPlayer
         )
       );
+    });
+  }
+
+  protected openRecordHandDialog(): void {
+    if (this.isBusy()) {
+      return;
+    }
+
+    const currentSession = this.session();
+
+    if (!currentSession || currentSession.players.length === 0) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open<
+      RecordHandDialogComponent,
+      RecordHandDialogData,
+      SaveRecordedHandInput
+    >(RecordHandDialogComponent, {
+      autoFocus: false,
+      data: { session: currentSession, accent: 'emerald' },
+      panelClass: 'pokertrack-dialog-panel'
+    });
+
+    dialogRef.afterClosed().subscribe(async (result?: SaveRecordedHandInput) => {
+      if (!result) {
+        return;
+      }
+
+      await this.runAction('record-hand', () => this.store.saveRecordedHand(result));
     });
   }
 
@@ -917,6 +1026,52 @@ export class ActiveSessionPage implements OnDestroy {
 
   protected buyInTransactions(playerId: string): PokerTransaction[] {
     return this.store.buyInTransactionsForPlayer(this.session(), playerId);
+  }
+
+  protected handPlayerNames(hand: RecordedHand): string {
+    const currentSession = this.session();
+
+    return (
+      hand.playerIds
+        .map(
+          (playerId) =>
+            currentSession?.players.find((player) => player.id === playerId)?.name ?? 'Unknown'
+        )
+        .join(', ') || 'No players selected'
+    );
+  }
+
+  protected handBoardLabel(board: RecordedHandBoardCard[]): string {
+    return board.map((card) => `${card.rank}${this.suitSymbol(card.suit)}`).join(' ') || 'No board';
+  }
+
+  protected handActionsPreview(hand: RecordedHand): string {
+    return hand.actions
+      .slice(0, 4)
+      .map(
+        (action) =>
+          `${this.streetLabel(action.street)}: ${action.playerName} ${this.actionLabel(
+            action.actionType
+          )}${action.amount === null ? '' : ` ${this.formatMoney(action.amount)}`}`
+      )
+      .join(' · ');
+  }
+
+  protected streetLabel(street: RecordedHandStreet): string {
+    return street.charAt(0) + street.slice(1).toLowerCase();
+  }
+
+  protected actionLabel(action: RecordedHandActionType): string {
+    return action === 'ALL_IN' ? 'All In' : action.charAt(0) + action.slice(1).toLowerCase();
+  }
+
+  protected suitSymbol(suit: RecordedHandBoardCard['suit']): string {
+    return {
+      HEART: '♥',
+      DIAMOND: '♦',
+      CLUB: '♣',
+      SPADE: '♠'
+    }[suit];
   }
 
   protected togglePlayer(playerId: string): void {

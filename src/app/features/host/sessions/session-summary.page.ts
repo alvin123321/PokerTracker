@@ -2,7 +2,14 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { PokerStoreService, PokerTransaction } from '../data/poker-store.service';
+import {
+  PokerStoreService,
+  PokerTransaction,
+  RecordedHand,
+  RecordedHandActionType,
+  RecordedHandBoardCard,
+  RecordedHandStreet
+} from '../data/poker-store.service';
 
 @Component({
   selector: 'app-session-summary-page',
@@ -80,6 +87,53 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
           <div class="rounded-lg border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-50">
             {{ totals.activePlayers }} player(s) still have pending cash out values in this session.
           </div>
+        }
+
+        @if (recordedHands().length > 0) {
+          <section class="rounded-lg border border-white/10 bg-white/[0.04]">
+            <div class="flex flex-col gap-1 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 class="text-sm font-semibold uppercase text-neutral-500">Recorded hands</h2>
+              <p class="text-sm text-neutral-500">{{ recordedHands().length }} hand(s)</p>
+            </div>
+            <div class="grid gap-3 p-3 lg:grid-cols-2">
+              @for (hand of recordedHands(); track hand.id) {
+                <article class="rounded-lg border border-white/10 bg-neutral-950 p-4">
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="flex flex-wrap gap-2">
+                      @for (tag of hand.tags; track tag) {
+                        <span class="rounded-full bg-emerald-300 px-2.5 py-1 text-xs font-bold text-neutral-950">
+                          {{ tag }}
+                        </span>
+                      } @empty {
+                        <span class="rounded-full border border-white/10 px-2.5 py-1 text-xs font-bold text-neutral-400">
+                          Recorded hand
+                        </span>
+                      }
+                    </div>
+                    <span class="rounded-md bg-white/[0.06] px-2.5 py-1 text-xs font-bold text-neutral-300">
+                      {{ hand.createdAt | date: 'short' }}
+                    </span>
+                  </div>
+                  <p class="mt-3 text-sm text-neutral-300">
+                    <span class="text-neutral-500">Players:</span> {{ handPlayerNames(hand) }}
+                  </p>
+                  <p class="mt-1 text-sm text-neutral-300">
+                    <span class="text-neutral-500">Board:</span> {{ handBoardLabel(hand.board) }}
+                  </p>
+                  @if (hand.comment) {
+                    <p class="mt-3 rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-neutral-300">
+                      {{ hand.comment }}
+                    </p>
+                  }
+                  @if (hand.actions.length > 0) {
+                    <p class="mt-3 text-xs font-semibold uppercase text-neutral-500">
+                      {{ handActionsPreview(hand) }}
+                    </p>
+                  }
+                </article>
+              }
+            </div>
+          </section>
         }
 
         <section class="rounded-lg border border-white/10 bg-white/[0.04]">
@@ -267,6 +321,7 @@ export class SessionSummaryPage {
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly sortedPlayers = computed(() => this.store.sortedPlayersByNet(this.session()));
+  protected readonly recordedHands = computed(() => this.store.recordedHandsForSession(this.session()));
 
   protected togglePlayer(playerId: string): void {
     this.expandedPlayerId.update((currentPlayerId) =>
@@ -284,5 +339,49 @@ export class SessionSummaryPage {
         ?.transactions.filter((transaction) => transaction.playerId === playerId && !transaction.deletedAt)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt)) ?? []
     );
+  }
+
+  protected handPlayerNames(hand: RecordedHand): string {
+    return (
+      hand.playerIds
+        .map(
+          (playerId) =>
+            this.session()?.players.find((player) => player.id === playerId)?.name ?? 'Unknown'
+        )
+        .join(', ') || 'No players selected'
+    );
+  }
+
+  protected handBoardLabel(board: RecordedHandBoardCard[]): string {
+    return board.map((card) => `${card.rank}${this.suitSymbol(card.suit)}`).join(' ') || 'No board';
+  }
+
+  protected handActionsPreview(hand: RecordedHand): string {
+    return hand.actions
+      .slice(0, 4)
+      .map(
+        (action) =>
+          `${this.streetLabel(action.street)}: ${action.playerName} ${this.actionLabel(
+            action.actionType
+          )}${action.amount === null ? '' : ` $${action.amount}`}`
+      )
+      .join(' · ');
+  }
+
+  protected streetLabel(street: RecordedHandStreet): string {
+    return street.charAt(0) + street.slice(1).toLowerCase();
+  }
+
+  protected actionLabel(action: RecordedHandActionType): string {
+    return action === 'ALL_IN' ? 'All In' : action.charAt(0) + action.slice(1).toLowerCase();
+  }
+
+  protected suitSymbol(suit: RecordedHandBoardCard['suit']): string {
+    return {
+      HEART: '♥',
+      DIAMOND: '♦',
+      CLUB: '♣',
+      SPADE: '♠'
+    }[suit];
   }
 }

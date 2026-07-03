@@ -8,6 +8,58 @@ import { SupabaseService } from '../../../core/supabase/supabase.service';
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerPlayerStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTransactionType = 'BUYIN' | 'REBUY' | 'CASHOUT';
+export type RecordedHandStatus = 'DRAFT' | 'SAVED';
+export type RecordedHandStreet = 'PREFLOP' | 'FLOP' | 'TURN' | 'RIVER';
+export type RecordedHandActionType = 'RAISE' | 'CALL' | 'CHECK' | 'FOLD' | 'BET' | 'ALL_IN';
+
+export interface RecordedHandAction {
+  id: string;
+  handId: string;
+  street: RecordedHandStreet;
+  actionOrder: number;
+  sessionPlayerId: string;
+  playerName: string;
+  actionType: RecordedHandActionType;
+  amount: number | null;
+  createdAt: string;
+}
+
+export interface RecordedHandBoardCard {
+  rank: string;
+  suit: 'HEART' | 'DIAMOND' | 'CLUB' | 'SPADE';
+}
+
+export interface RecordedHand {
+  id: string;
+  sessionId: string;
+  createdBy: string;
+  creatorPlayerId: string | null;
+  title?: string;
+  comment?: string;
+  tags: string[];
+  playerIds: string[];
+  board: RecordedHandBoardCard[];
+  status: RecordedHandStatus;
+  createdAt: string;
+  updatedAt: string;
+  actions: RecordedHandAction[];
+}
+
+export interface SaveRecordedHandInput {
+  sessionId: string;
+  title?: string;
+  comment?: string;
+  tags: string[];
+  playerIds: string[];
+  board: RecordedHandBoardCard[];
+  status: RecordedHandStatus;
+  actions: Array<{
+    street: RecordedHandStreet;
+    sessionPlayerId: string;
+    actionType: RecordedHandActionType;
+    amount: number | null;
+  }>;
+}
 
 export interface PokerTransaction {
   id: string;
@@ -42,6 +94,7 @@ export interface PokerSession {
   closedAt: string | null;
   players: SessionPlayer[];
   transactions: PokerTransaction[];
+  recordedHands: RecordedHand[];
 }
 
 export interface SessionTotals {
@@ -101,6 +154,32 @@ interface TransactionRow {
   created_at: string;
   comment: string | null;
   deleted_at: string | null;
+}
+
+interface RecordedHandRow {
+  id: string;
+  session_id: string;
+  created_by: string;
+  creator_player_id: string | null;
+  title: string | null;
+  comment: string | null;
+  tags: string[] | null;
+  player_ids?: string[] | null;
+  board: RecordedHandBoardCard[] | null;
+  status: RecordedHandStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+interface RecordedHandActionRow {
+  id: string;
+  hand_id: string;
+  street: RecordedHandStreet;
+  action_order: number;
+  session_player_id: string;
+  action_type: RecordedHandActionType;
+  amount: number | string | null;
+  created_at: string;
 }
 
 interface RegisteredPlayerRow {
@@ -224,7 +303,7 @@ export class PokerStoreService implements OnDestroy {
         return;
       }
 
-      const [sessionPlayersResult, transactionsResult] = await Promise.all([
+      const [sessionPlayersResult, transactionsResult, recordedHandsResult] = await Promise.all([
         client
           .from('session_players')
           .select(
@@ -236,7 +315,14 @@ export class PokerStoreService implements OnDestroy {
           .from('transactions')
           .select('id,session_id,player_id,session_player_id,type,amount,created_at,comment,deleted_at')
           .in('session_id', sessionIds)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: true }),
+        client
+          .from('recorded_hands')
+          .select(
+            'id,session_id,created_by,creator_player_id,title,comment,tags,player_ids,board,status,created_at,updated_at'
+          )
+          .in('session_id', sessionIds)
+          .order('created_at', { ascending: false })
       ]);
 
       if (sessionPlayersResult.error) {
@@ -247,14 +333,31 @@ export class PokerStoreService implements OnDestroy {
         throw transactionsResult.error;
       }
 
+      if (recordedHandsResult.error) {
+        throw recordedHandsResult.error;
+      }
+
       const sessionPlayers = (sessionPlayersResult.data ?? []) as SessionPlayerRow[];
       const playerIds = [...new Set(sessionPlayers.map((player) => player.player_id))];
       const playersById = await this.loadPlayersById(playerIds);
       const transactions = (transactionsResult.data ?? []) as TransactionRow[];
+      const recordedHands = (recordedHandsResult.data ?? []) as RecordedHandRow[];
+      const recordedHandIds = recordedHands.map((hand) => hand.id);
+      const recordedHandActions =
+        recordedHandIds.length > 0
+          ? await this.loadRecordedHandActions(recordedHandIds)
+          : [];
 
       this.sessionsSignal.set(
         sessions.map((session) =>
-          this.mapSession(session, sessionPlayers, playersById, transactions)
+          this.mapSession(
+            session,
+            sessionPlayers,
+            playersById,
+            transactions,
+            recordedHands,
+            recordedHandActions
+          )
         )
       );
     } catch (error) {
@@ -292,7 +395,8 @@ export class PokerStoreService implements OnDestroy {
       createdAt: new Date().toISOString(),
       closedAt: null,
       players: [],
-      transactions: []
+      transactions: [],
+      recordedHands: []
     };
 
     this.updateSessions((sessions) => [session, ...sessions]);
@@ -639,6 +743,107 @@ export class PokerStoreService implements OnDestroy {
     this.updateSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
   }
 
+  async saveRecordedHand(input: SaveRecordedHandInput): Promise<void> {
+    const session = this.getSession(input.sessionId);
+
+    if (!session) {
+      throw new Error('Session not found.');
+    }
+
+    const cleanInput = {
+      ...input,
+      tags: input.tags.slice(0, 8),
+      playerIds: input.playerIds.filter((playerId) =>
+        session.players.some((player) => player.id === playerId)
+      ),
+      board: input.board.slice(0, 5),
+      comment: input.comment?.trim() ?? '',
+      title: input.title?.trim() ?? ''
+    };
+
+    const creatorPlayerId = this.creatorPlayerIdForSession(session);
+
+    if (this.shouldUseSupabase()) {
+      const client = this.supabaseService.requireClient();
+      const { data: handRow, error: handError } = await client
+        .from('recorded_hands')
+        .insert({
+          session_id: cleanInput.sessionId,
+          created_by: this.authState.user()?.id,
+          creator_player_id: creatorPlayerId,
+          title: cleanInput.title || null,
+          comment: cleanInput.comment || null,
+          tags: cleanInput.tags,
+          player_ids: cleanInput.playerIds,
+          board: cleanInput.board,
+          status: cleanInput.status
+        })
+        .select(
+          'id,session_id,created_by,creator_player_id,title,comment,tags,player_ids,board,status,created_at,updated_at'
+        )
+        .single<RecordedHandRow>();
+
+      if (handError) {
+        throw handError;
+      }
+
+      if (cleanInput.actions.length > 0) {
+        const { error: actionsError } = await client.from('recorded_hand_actions').insert(
+          cleanInput.actions.map((action, index) => ({
+            hand_id: handRow.id,
+            street: action.street,
+            action_order: index + 1,
+            session_player_id: action.sessionPlayerId,
+            action_type: action.actionType,
+            amount: action.amount === null ? null : this.normalizeAmount(action.amount)
+          }))
+        );
+
+        if (actionsError) {
+          throw actionsError;
+        }
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const handId = this.createId('hand');
+    const hand: RecordedHand = {
+      id: handId,
+      sessionId: cleanInput.sessionId,
+      createdBy: this.authState.user()?.id ?? 'local-user',
+      creatorPlayerId,
+      ...(cleanInput.title ? { title: cleanInput.title } : {}),
+      ...(cleanInput.comment ? { comment: cleanInput.comment } : {}),
+      tags: cleanInput.tags,
+      playerIds: cleanInput.playerIds,
+      board: cleanInput.board,
+      status: cleanInput.status,
+      createdAt: now,
+      updatedAt: now,
+      actions: cleanInput.actions.map((action, index) => ({
+        id: this.createId('hand-action'),
+        handId,
+        street: action.street,
+        actionOrder: index + 1,
+        sessionPlayerId: action.sessionPlayerId,
+        playerName:
+          session.players.find((player) => player.id === action.sessionPlayerId)?.name ??
+          'Unknown player',
+        actionType: action.actionType,
+        amount: action.amount === null ? null : this.normalizeAmount(action.amount),
+        createdAt: now
+      }))
+    };
+
+    this.updateSession(cleanInput.sessionId, (currentSession) => ({
+      ...currentSession,
+      recordedHands: [hand, ...(currentSession.recordedHands ?? [])]
+    }));
+  }
+
   totalsFor(session: PokerSession | undefined): SessionTotals {
     const players = session?.players ?? [];
 
@@ -687,6 +892,10 @@ export class PokerStoreService implements OnDestroy {
 
         return a.createdAt.localeCompare(b.createdAt);
       });
+  }
+
+  recordedHandsForSession(session: PokerSession | undefined): RecordedHand[] {
+    return [...(session?.recordedHands ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   private async loadPlayersById(playerIds: string[]): Promise<Map<string, PlayerRow>> {
@@ -799,9 +1008,14 @@ export class PokerStoreService implements OnDestroy {
     session: SessionRow,
     sessionPlayers: SessionPlayerRow[],
     playersById: Map<string, PlayerRow>,
-    transactions: TransactionRow[]
+    transactions: TransactionRow[],
+    recordedHands: RecordedHandRow[] = [],
+    recordedHandActions: RecordedHandActionRow[] = []
   ): PokerSession {
     const currentSessionPlayers = sessionPlayers.filter((player) => player.session_id === session.id);
+    const mappedPlayers = currentSessionPlayers.map((sessionPlayer) =>
+      this.mapSessionPlayer(sessionPlayer, playersById.get(sessionPlayer.player_id))
+    );
 
     return {
       id: session.id,
@@ -810,12 +1024,13 @@ export class PokerStoreService implements OnDestroy {
       status: session.status,
       createdAt: session.created_at,
       closedAt: session.closed_at,
-      players: currentSessionPlayers.map((sessionPlayer) =>
-        this.mapSessionPlayer(sessionPlayer, playersById.get(sessionPlayer.player_id))
-      ),
+      players: mappedPlayers,
       transactions: transactions
         .filter((transaction) => transaction.session_id === session.id)
-        .map((transaction) => this.mapTransaction(transaction))
+        .map((transaction) => this.mapTransaction(transaction)),
+      recordedHands: recordedHands
+        .filter((hand) => hand.session_id === session.id)
+        .map((hand) => this.mapRecordedHand(hand, recordedHandActions, mappedPlayers))
     };
   }
 
@@ -848,6 +1063,79 @@ export class PokerStoreService implements OnDestroy {
       ...(transaction.comment ? { comment: transaction.comment } : {}),
       ...(transaction.deleted_at ? { deletedAt: transaction.deleted_at } : {})
     };
+  }
+
+  private mapRecordedHand(
+    hand: RecordedHandRow,
+    actions: RecordedHandActionRow[],
+    sessionPlayers: SessionPlayer[]
+  ): RecordedHand {
+    return {
+      id: hand.id,
+      sessionId: hand.session_id,
+      createdBy: hand.created_by,
+      creatorPlayerId: hand.creator_player_id,
+      ...(hand.title ? { title: hand.title } : {}),
+      ...(hand.comment ? { comment: hand.comment } : {}),
+      tags: Array.isArray(hand.tags) ? hand.tags : [],
+      playerIds: Array.isArray(hand.player_ids) ? hand.player_ids : [],
+      board: Array.isArray(hand.board) ? hand.board : [],
+      status: hand.status,
+      createdAt: hand.created_at,
+      updatedAt: hand.updated_at,
+      actions: actions
+        .filter((action) => action.hand_id === hand.id)
+        .sort((a, b) => a.action_order - b.action_order)
+        .map((action) => this.mapRecordedHandAction(action, sessionPlayers))
+    };
+  }
+
+  private mapRecordedHandAction(
+    action: RecordedHandActionRow,
+    sessionPlayers: SessionPlayer[]
+  ): RecordedHandAction {
+    return {
+      id: action.id,
+      handId: action.hand_id,
+      street: action.street,
+      actionOrder: action.action_order,
+      sessionPlayerId: action.session_player_id,
+      playerName:
+        sessionPlayers.find((player) => player.id === action.session_player_id)?.name ??
+        'Unknown player',
+      actionType: action.action_type,
+      amount: action.amount === null ? null : this.toNumber(action.amount),
+      createdAt: action.created_at
+    };
+  }
+
+  private async loadRecordedHandActions(handIds: string[]): Promise<RecordedHandActionRow[]> {
+    if (handIds.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await this.supabaseService
+      .requireClient()
+      .from('recorded_hand_actions')
+      .select('id,hand_id,street,action_order,session_player_id,action_type,amount,created_at')
+      .in('hand_id', handIds)
+      .order('action_order', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []) as RecordedHandActionRow[];
+  }
+
+  private creatorPlayerIdForSession(session: PokerSession): string | null {
+    const userId = this.authState.user()?.id ?? null;
+
+    if (!userId) {
+      return null;
+    }
+
+    return session.players.find((player) => player.userId === userId)?.id ?? null;
   }
 
   private updateSession(
@@ -931,7 +1219,14 @@ export class PokerStoreService implements OnDestroy {
     const channel = client.channel(`pokertrack-session-sync:${userKey}`);
     const handleChange = () => this.queueRealtimeRefresh();
 
-    for (const table of ['sessions', 'players', 'session_players', 'transactions']) {
+    for (const table of [
+      'sessions',
+      'players',
+      'session_players',
+      'transactions',
+      'recorded_hands',
+      'recorded_hand_actions'
+    ]) {
       channel.on(
         'postgres_changes',
         {
@@ -1140,7 +1435,10 @@ export class PokerStoreService implements OnDestroy {
     }
 
     try {
-      return JSON.parse(raw) as PokerSession[];
+      return (JSON.parse(raw) as PokerSession[]).map((session) => ({
+        ...session,
+        recordedHands: session.recordedHands ?? []
+      }));
     } catch {
       localStorage.removeItem(localStorageKey);
       localStorage.removeItem(legacyLocalStorageKey);
