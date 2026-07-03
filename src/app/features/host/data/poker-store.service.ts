@@ -47,6 +47,7 @@ export interface PokerSession {
 export interface SessionTotals {
   totalPlayers: number;
   activePlayers: number;
+  cashedOutPlayers: number;
   totalBuyIn: number;
   totalCashOut: number;
   totalNet: number;
@@ -56,6 +57,7 @@ export interface RegisteredPlayerOption {
   id: string;
   username: string;
   displayName: string | null;
+  role: 'MANAGER' | 'PLAYER';
 }
 
 interface SessionRow {
@@ -105,6 +107,7 @@ interface RegisteredPlayerRow {
   id: string;
   username?: string | null;
   display_name: string | null;
+  role?: 'MANAGER' | 'PLAYER' | null;
 }
 
 interface CreateRegisteredPlayerResponse {
@@ -122,6 +125,8 @@ interface DeleteRegisteredPlayerResponse {
 
 const localStorageKey = 'pokertrack.localPokerStore';
 const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
+const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers';
+const localDeletedRegisteredPlayersStorageKey = 'pokertrack.localDeletedRegisteredPlayers';
 
 @Injectable({
   providedIn: 'root'
@@ -130,6 +135,12 @@ export class PokerStoreService implements OnDestroy {
   private readonly authState = inject(AuthStateService);
   private readonly supabaseService = inject(SupabaseService);
   private readonly sessionsSignal = signal<PokerSession[]>(this.loadSessions());
+  private readonly localRegisteredPlayersSignal = signal<RegisteredPlayerOption[]>(
+    this.loadLocalRegisteredPlayers()
+  );
+  private readonly localDeletedRegisteredPlayerIdsSignal = signal<string[]>(
+    this.loadLocalDeletedRegisteredPlayerIds()
+  );
   private readonly loadingSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
   private readonly realtimeRefreshSignal = new Subject<void>();
@@ -295,14 +306,14 @@ export class PokerStoreService implements OnDestroy {
 
   async listRegisteredPlayers(): Promise<RegisteredPlayerOption[]> {
     if (!this.shouldUseSupabase()) {
-      return [];
+      return this.localRegisteredPlayers();
     }
 
     const client = this.supabaseService.requireClient();
     const { data: directRows, error: directError } = await client
       .from('users')
-      .select('id,username,display_name')
-      .eq('role', 'PLAYER')
+      .select('id,username,display_name,role')
+      .in('role', ['PLAYER', 'MANAGER'])
       .order('display_name', { ascending: true });
 
     if (!directError && directRows && directRows.length > 0) {
@@ -331,7 +342,8 @@ export class PokerStoreService implements OnDestroy {
       .map((player) => ({
         id: player.id,
         username: player.username ?? player.id.slice(0, 8),
-        displayName: player.display_name
+        displayName: player.display_name ? this.titleCaseName(player.display_name) : null,
+        role: (player.role === 'MANAGER' ? 'MANAGER' : 'PLAYER') as RegisteredPlayerOption['role']
       }))
       .sort((a, b) =>
         this.registeredPlayerSortName(a).localeCompare(this.registeredPlayerSortName(b))
@@ -356,6 +368,8 @@ export class PokerStoreService implements OnDestroy {
         targetName = createdPlayer.displayName ?? createdPlayer.username;
       }
 
+      targetName = this.titleCaseName(targetName);
+
       const { error } = await this.supabaseService
         .requireClient()
         .rpc('add_player_to_session', {
@@ -375,12 +389,22 @@ export class PokerStoreService implements OnDestroy {
       return;
     }
 
+    let targetName = this.titleCaseName(name);
+    let targetUserId = playerUserId;
+
+    if (!this.shouldUseSupabase()) {
+      const localPlayer = this.upsertLocalRegisteredPlayer(targetName, targetUserId);
+      targetName = localPlayer.displayName ?? localPlayer.username;
+      targetUserId = localPlayer.id;
+    }
+
     const joinedAt = new Date().toISOString();
     const playerId = this.createId('player');
     const cleanBuyIn = this.normalizeAmount(buyIn);
     const player: SessionPlayer = {
       id: playerId,
-      name: name.trim(),
+      userId: targetUserId,
+      name: targetName,
       status: 'ACTIVE',
       totalBuyIn: cleanBuyIn,
       cashOut: 0,
@@ -448,13 +472,14 @@ export class PokerStoreService implements OnDestroy {
   }
 
   async recordCashOut(sessionId: string, sessionPlayerId: string, amount: number): Promise<void> {
+    const currentPlayer = this.getSession(sessionId)?.players.find((player) => player.id === sessionPlayerId);
+
     if (this.shouldUseSupabase()) {
-      const { error } = await this.supabaseService
-        .requireClient()
-        .rpc('record_cashout', {
-          p_session_player_id: sessionPlayerId,
-          p_amount: this.normalizeAmount(amount)
-        });
+      const rpcName = currentPlayer?.status === 'COMPLETED' ? 'update_cashout' : 'record_cashout';
+      const { error } = await this.supabaseService.requireClient().rpc(rpcName, {
+        p_session_player_id: sessionPlayerId,
+        p_amount: this.normalizeAmount(amount)
+      });
 
       if (error) {
         throw error;
@@ -479,7 +504,7 @@ export class PokerStoreService implements OnDestroy {
           status: 'COMPLETED',
           cashOut,
           net: cashOut - player.totalBuyIn,
-          completedAt
+          completedAt: player.completedAt ?? completedAt
         };
       }),
       transactions: [
@@ -594,12 +619,33 @@ export class PokerStoreService implements OnDestroy {
     }));
   }
 
+  async deleteSession(sessionId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId);
+
+      if (error) {
+        throw error;
+      }
+
+      this.updateSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
+      await this.refreshHostSessions();
+      return;
+    }
+
+    this.updateSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
+  }
+
   totalsFor(session: PokerSession | undefined): SessionTotals {
     const players = session?.players ?? [];
 
     return {
       totalPlayers: players.length,
       activePlayers: players.filter((player) => player.status === 'ACTIVE').length,
+      cashedOutPlayers: players.filter((player) => player.status === 'COMPLETED').length,
       totalBuyIn: players.reduce((sum, player) => sum + player.totalBuyIn, 0),
       totalCashOut: players.reduce((sum, player) => sum + player.cashOut, 0),
       totalNet: players.reduce((sum, player) => sum + player.net, 0)
@@ -662,6 +708,10 @@ export class PokerStoreService implements OnDestroy {
   }
 
   async createRegisteredPlayer(displayName: string): Promise<RegisteredPlayerOption> {
+    if (!this.shouldUseSupabase()) {
+      return this.upsertLocalRegisteredPlayer(displayName);
+    }
+
     const cleanDisplayName = displayName.trim();
     const username = this.usernameFromDisplayName(cleanDisplayName);
     const { data, error } = await this.supabaseService
@@ -683,11 +733,26 @@ export class PokerStoreService implements OnDestroy {
       throw new Error('Unable to create registered player.');
     }
 
-    return data.player;
+    return {
+      ...data.player,
+      role: 'PLAYER'
+    };
   }
 
   async deleteRegisteredPlayer(userId: string): Promise<void> {
     if (!this.shouldUseSupabase()) {
+      this.updateLocalDeletedRegisteredPlayerIds((ids) =>
+        ids.includes(userId) ? ids : [...ids, userId]
+      );
+      this.updateLocalRegisteredPlayers((players) => players.filter((player) => player.id !== userId));
+      this.updateSessions((sessions) =>
+        sessions.map((session) => ({
+          ...session,
+          players: session.players.map((player) =>
+            player.userId === userId ? { ...player, userId: null } : player
+          )
+        }))
+      );
       return;
     }
 
@@ -705,6 +770,26 @@ export class PokerStoreService implements OnDestroy {
 
     if (!data?.ok) {
       throw new Error('Unable to delete registered player.');
+    }
+
+    await this.refreshHostSessions();
+  }
+
+  async setRegisteredPlayerRole(userId: string, role: 'MANAGER' | 'PLAYER'): Promise<void> {
+    if (!this.shouldUseSupabase()) {
+      this.updateLocalRegisteredPlayers((players) =>
+        players.map((player) => (player.id === userId ? { ...player, role } : player))
+      );
+      return;
+    }
+
+    const { error } = await this.supabaseService.requireClient().rpc('set_registered_user_role', {
+      p_user_id: userId,
+      p_role: role
+    });
+
+    if (error) {
+      throw error;
     }
 
     await this.refreshHostSessions();
@@ -742,7 +827,7 @@ export class PokerStoreService implements OnDestroy {
       id: sessionPlayer.id,
       playerRecordId: sessionPlayer.player_id,
       userId: player?.user_id ?? null,
-      name: player?.name ?? 'Unknown player',
+      name: this.titleCaseName(player?.name ?? 'Unknown player'),
       status: sessionPlayer.status,
       totalBuyIn: this.toNumber(sessionPlayer.total_buy_in),
       cashOut: this.toNumber(sessionPlayer.cash_out),
@@ -893,12 +978,95 @@ export class PokerStoreService implements OnDestroy {
         userId &&
         !userId.startsWith('mock-') &&
         !userId.startsWith('dev-') &&
-        (this.authState.role() === 'HOST' || this.authState.role() === 'PLAYER')
+        (this.authState.role() === 'HOST' ||
+          this.authState.role() === 'MANAGER' ||
+          this.authState.role() === 'PLAYER')
     );
   }
 
   private normalizeAmount(amount: number): number {
     return Math.max(0, Math.round((Number(amount) || 0) * 100) / 100);
+  }
+
+  private localRegisteredPlayers(): RegisteredPlayerOption[] {
+    const deletedIds = new Set(this.localDeletedRegisteredPlayerIdsSignal());
+    const playersByKey = new Map<string, RegisteredPlayerOption>(
+      this.localRegisteredPlayersSignal()
+        .filter((player) => !deletedIds.has(player.id))
+        .map((player) => [player.id, player])
+    );
+
+    for (const session of this.sessionsSignal()) {
+      for (const player of session.players) {
+        const displayName = this.titleCaseName(player.name);
+        const id = player.userId ?? this.localRegisteredPlayerId(displayName);
+
+        if (!deletedIds.has(id) && !playersByKey.has(id)) {
+          playersByKey.set(id, {
+            id,
+            username: this.usernameFromDisplayName(displayName),
+            displayName,
+            role: 'PLAYER'
+          });
+        }
+      }
+    }
+
+    return [...playersByKey.values()].sort((a, b) =>
+      this.registeredPlayerSortName(a).localeCompare(this.registeredPlayerSortName(b))
+    );
+  }
+
+  private upsertLocalRegisteredPlayer(
+    displayName: string,
+    preferredId: string | null = null
+  ): RegisteredPlayerOption {
+    const cleanDisplayName = this.titleCaseName(displayName);
+    const id = preferredId ?? this.localRegisteredPlayerId(cleanDisplayName);
+    const existingPlayer = this.localRegisteredPlayersSignal().find((player) => player.id === id);
+    const player: RegisteredPlayerOption = {
+      id,
+      username: existingPlayer?.username ?? this.usernameFromDisplayName(cleanDisplayName),
+      displayName: cleanDisplayName,
+      role: existingPlayer?.role ?? 'PLAYER'
+    };
+
+    this.updateLocalDeletedRegisteredPlayerIds((ids) => ids.filter((deletedId) => deletedId !== id));
+    this.updateLocalRegisteredPlayers((players) => [
+      ...players.filter((item) => item.id !== player.id),
+      player
+    ]);
+
+    return player;
+  }
+
+  private updateLocalRegisteredPlayers(
+    updater: (players: RegisteredPlayerOption[]) => RegisteredPlayerOption[]
+  ): void {
+    const players = updater(this.localRegisteredPlayersSignal());
+    this.localRegisteredPlayersSignal.set(players);
+    this.saveLocalRegisteredPlayers(players);
+  }
+
+  private updateLocalDeletedRegisteredPlayerIds(updater: (ids: string[]) => string[]): void {
+    const ids = updater(this.localDeletedRegisteredPlayerIdsSignal());
+    this.localDeletedRegisteredPlayerIdsSignal.set(ids);
+    this.saveLocalDeletedRegisteredPlayerIds(ids);
+  }
+
+  private localRegisteredPlayerId(name: string): string {
+    return `local-player-${this.localPlayerSlug(name)}`;
+  }
+
+  private localPlayerSlug(name: string): string {
+    const normalized = name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 24);
+
+    return normalized.length >= 3 ? normalized : 'player';
   }
 
   private usernameFromDisplayName(displayName: string): string {
@@ -910,6 +1078,13 @@ export class PokerStoreService implements OnDestroy {
       .slice(0, 24);
 
     return normalized.length >= 3 ? normalized : `player-${Date.now().toString(36)}`;
+  }
+
+  private titleCaseName(name: string): string {
+    return name
+      .trim()
+      .toLocaleLowerCase()
+      .replace(/\b[\p{L}\p{N}]/gu, (letter) => letter.toLocaleUpperCase());
   }
 
   private registeredPlayerSortName(player: RegisteredPlayerOption): string {
@@ -973,6 +1148,46 @@ export class PokerStoreService implements OnDestroy {
     }
   }
 
+  private loadLocalRegisteredPlayers(): RegisteredPlayerOption[] {
+    if (typeof localStorage === 'undefined') {
+      return [];
+    }
+
+    const raw = localStorage.getItem(localRegisteredPlayersStorageKey);
+
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      const players = JSON.parse(raw) as RegisteredPlayerOption[];
+      return players.filter((player) => player.id && player.username);
+    } catch {
+      localStorage.removeItem(localRegisteredPlayersStorageKey);
+      return [];
+    }
+  }
+
+  private loadLocalDeletedRegisteredPlayerIds(): string[] {
+    if (typeof localStorage === 'undefined') {
+      return [];
+    }
+
+    const raw = localStorage.getItem(localDeletedRegisteredPlayersStorageKey);
+
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      const ids = JSON.parse(raw) as string[];
+      return ids.filter((id) => typeof id === 'string' && id.length > 0);
+    } catch {
+      localStorage.removeItem(localDeletedRegisteredPlayersStorageKey);
+      return [];
+    }
+  }
+
   private saveSessions(sessions: PokerSession[]): void {
     if (typeof localStorage === 'undefined' || this.shouldUseSupabase()) {
       return;
@@ -980,5 +1195,21 @@ export class PokerStoreService implements OnDestroy {
 
     localStorage.setItem(localStorageKey, JSON.stringify(sessions));
     localStorage.removeItem(legacyLocalStorageKey);
+  }
+
+  private saveLocalRegisteredPlayers(players: RegisteredPlayerOption[]): void {
+    if (typeof localStorage === 'undefined' || this.shouldUseSupabase()) {
+      return;
+    }
+
+    localStorage.setItem(localRegisteredPlayersStorageKey, JSON.stringify(players));
+  }
+
+  private saveLocalDeletedRegisteredPlayerIds(ids: string[]): void {
+    if (typeof localStorage === 'undefined' || this.shouldUseSupabase()) {
+      return;
+    }
+
+    localStorage.setItem(localDeletedRegisteredPlayersStorageKey, JSON.stringify(ids));
   }
 }

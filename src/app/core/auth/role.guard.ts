@@ -18,11 +18,28 @@ export const hostGuard: CanMatchFn = async (_route, segments) => {
     return redirectToLogin(router, segments);
   }
 
-  if (authState.role() === 'HOST') {
+  if (authState.isTableOperator()) {
     return true;
   }
 
   return router.createUrlTree(['/player/dashboard']);
+};
+
+export const hostAdminGuard: CanMatchFn = async (_route, segments) => {
+  const router = inject(Router);
+  const authState = inject(AuthStateService);
+
+  await authState.initialize();
+
+  if (!authState.isAuthenticated()) {
+    return redirectToLogin(router, segments);
+  }
+
+  if (authState.isHostAdmin()) {
+    return true;
+  }
+
+  return router.createUrlTree(['/host/dashboard']);
 };
 
 export const playerGuard: CanMatchFn = async (_route, segments) => {

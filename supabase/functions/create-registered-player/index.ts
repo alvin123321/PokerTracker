@@ -9,6 +9,7 @@ interface UserProfileRow {
   id: string;
   username: string | null;
   display_name: string | null;
+  role?: string | null;
 }
 
 interface AuthAdminUserResponse {
@@ -203,8 +204,8 @@ Deno.serve(async (req) => {
     .eq('id', user.id)
     .single();
 
-  if (hostError || hostProfile?.role !== 'HOST') {
-    return json({ error: 'Host privileges required.' }, 403);
+  if (hostError || !['HOST', 'MANAGER'].includes(hostProfile?.role)) {
+    return json({ error: 'Host or manager privileges required.' }, 403);
   }
 
   const usernameWasRequested = Boolean(payload.username?.trim());
