@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { PokerStoreService, PokerTransaction } from '../data/poker-store.service';
@@ -88,10 +88,21 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
           </div>
           <div class="space-y-3 p-3 sm:p-4">
           @for (player of sortedPlayers(); track player.id) {
-            <article class="rounded-lg border border-white/10 bg-neutral-950 p-3 sm:p-4">
-              <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <article class="overflow-hidden rounded-lg border border-white/10 bg-neutral-950">
+              <button
+                type="button"
+                class="grid w-full gap-3 p-3 text-left transition hover:bg-white/[0.035] sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center"
+                [attr.aria-expanded]="isPlayerExpanded(player.id)"
+                (click)="togglePlayer(player.id)"
+              >
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2">
+                    <span
+                      class="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400"
+                      aria-hidden="true"
+                    >
+                      {{ isPlayerExpanded(player.id) ? 'v' : '>' }}
+                    </span>
                     <h3 class="truncate font-semibold text-white">{{ player.name }}</h3>
                     @if (player.status === 'ACTIVE') {
                       <span class="rounded-full bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
@@ -137,35 +148,48 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
                     }
                   </span>
                 </div>
-              </div>
+              </button>
 
-              <div class="mt-3 space-y-2">
-                @for (transaction of transactionsForPlayer(player.id); track transaction.id) {
-                  <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                    <span
-                      class="h-3 w-3 rounded-full"
-                      [class.bg-emerald-300]="transaction.type === 'BUYIN'"
-                      [class.bg-sky-300]="transaction.type === 'REBUY'"
-                      [class.bg-amber-300]="transaction.type === 'CASHOUT'"
-                    ></span>
-                    <span class="min-w-0">
-                      <span
-                        class="text-sm font-semibold uppercase"
-                        [class.text-emerald-200]="transaction.type === 'BUYIN'"
-                        [class.text-sky-200]="transaction.type === 'REBUY'"
-                        [class.text-amber-200]="transaction.type === 'CASHOUT'"
-                      >
-                        {{ transaction.type }}
-                      </span>
-                      <span class="mt-1 block text-xs text-neutral-500">
-                        {{ transaction.createdAt | date: 'short' }}
-                      </span>
-                    </span>
-                    <span class="text-center text-lg font-semibold text-white">
-                      {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
-                    </span>
+              <div
+                class="summary-detail-panel"
+                [class.summary-detail-panel-open]="isPlayerExpanded(player.id)"
+                [attr.aria-hidden]="!isPlayerExpanded(player.id)"
+                [attr.inert]="isPlayerExpanded(player.id) ? null : ''"
+              >
+                <div class="summary-detail-panel-inner border-t border-white/10 bg-white/[0.02] p-3 sm:p-4">
+                  <div class="space-y-2">
+                    @for (transaction of transactionsForPlayer(player.id); track transaction.id) {
+                      <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-neutral-950 p-3">
+                        <span
+                          class="h-3 w-3 rounded-full"
+                          [class.bg-emerald-300]="transaction.type === 'BUYIN'"
+                          [class.bg-sky-300]="transaction.type === 'REBUY'"
+                          [class.bg-amber-300]="transaction.type === 'CASHOUT'"
+                        ></span>
+                        <span class="min-w-0">
+                          <span
+                            class="text-sm font-semibold uppercase"
+                            [class.text-emerald-200]="transaction.type === 'BUYIN'"
+                            [class.text-sky-200]="transaction.type === 'REBUY'"
+                            [class.text-amber-200]="transaction.type === 'CASHOUT'"
+                          >
+                            {{ transaction.type }}
+                          </span>
+                          <span class="mt-1 block text-xs text-neutral-500">
+                            {{ transaction.createdAt | date: 'short' }}
+                          </span>
+                        </span>
+                        <span class="text-center text-lg font-semibold text-white">
+                          {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        </span>
+                      </div>
+                    } @empty {
+                      <div class="rounded-lg border border-dashed border-white/10 p-4 text-sm text-neutral-500">
+                        No buy-in, rebuy, or cash-out records for this player.
+                      </div>
+                    }
                   </div>
-                }
+                </div>
               </div>
             </article>
           } @empty {
@@ -187,15 +211,72 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
         </a>
       </section>
     }
-  `
+  `,
+  styles: [
+    `
+      .summary-detail-panel {
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+          grid-template-rows 260ms ease-in-out,
+          opacity 220ms ease-in-out,
+          visibility 0ms linear 260ms;
+      }
+
+      .summary-detail-panel-open {
+        grid-template-rows: 1fr;
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition:
+          grid-template-rows 260ms ease-in-out,
+          opacity 220ms ease-in-out;
+      }
+
+      .summary-detail-panel-inner {
+        min-height: 0;
+        overflow: hidden;
+        transform: translateY(-0.25rem);
+        transition:
+          padding 240ms ease-in-out,
+          transform 240ms ease-in-out,
+          border-color 240ms ease-in-out;
+      }
+
+      .summary-detail-panel-open .summary-detail-panel-inner {
+        transform: translateY(0);
+      }
+
+      .summary-detail-panel:not(.summary-detail-panel-open) .summary-detail-panel-inner {
+        border-width: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+    `
+  ]
 })
 export class SessionSummaryPage {
   protected readonly store = inject(PokerStoreService);
   private readonly route = inject(ActivatedRoute);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
+  protected readonly expandedPlayerId = signal<string | null>(null);
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly sortedPlayers = computed(() => this.store.sortedPlayersByNet(this.session()));
+
+  protected togglePlayer(playerId: string): void {
+    this.expandedPlayerId.update((currentPlayerId) =>
+      currentPlayerId === playerId ? null : playerId
+    );
+  }
+
+  protected isPlayerExpanded(playerId: string): boolean {
+    return this.expandedPlayerId() === playerId;
+  }
 
   protected transactionsForPlayer(playerId: string): PokerTransaction[] {
     return (
