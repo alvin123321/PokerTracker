@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     .eq('id', payload.userId)
     .single();
 
-  if (playerError || playerProfile?.role !== 'PLAYER') {
+  if (playerError || !['PLAYER', 'MANAGER'].includes(playerProfile?.role)) {
     return json({ error: 'Registered player not found.' }, 404);
   }
 

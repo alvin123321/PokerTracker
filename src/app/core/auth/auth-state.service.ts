@@ -10,6 +10,7 @@ interface UserProfileRow {
   id: string;
   display_name: string | null;
   role: UserRole;
+  manager_host_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,8 +36,50 @@ const developmentUsers: Record<string, { password: string; profile: UserProfile 
       updatedAt: nowIso()
     }
   },
+  admin1223: {
+    password: 'admin1223',
+    profile: {
+      id: 'dev-host-admin',
+      displayName: 'Admin',
+      role: 'HOST',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  manager: {
+    password: 'manager',
+    profile: {
+      id: 'dev-manager',
+      displayName: 'Manager',
+      role: 'MANAGER',
+      managerHostId: 'dev-host-admin',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  manager123: {
+    password: 'manager123',
+    profile: {
+      id: 'dev-manager',
+      displayName: 'Manager',
+      role: 'MANAGER',
+      managerHostId: 'dev-host-admin',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
   player: {
     password: 'player',
+    profile: {
+      id: 'dev-player',
+      displayName: 'Player',
+      role: 'PLAYER',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  player123: {
+    password: 'player123',
     profile: {
       id: 'dev-player',
       displayName: 'Player',
@@ -68,6 +111,8 @@ export class AuthStateService {
   readonly error = this.errorSignal.asReadonly();
   readonly isAuthenticated = computed(() => this.userSignal() !== null);
   readonly role = computed(() => this.profileSignal()?.role ?? null);
+  readonly isHostAdmin = computed(() => this.role() === 'HOST');
+  readonly isTableOperator = computed(() => this.role() === 'HOST' || this.role() === 'MANAGER');
   readonly isConfigured = this.supabaseService.isConfigured;
   readonly isDevelopmentAuthEnabled = !environment.production;
 
@@ -140,7 +185,9 @@ export class AuthStateService {
   }
 
   redirectPathForProfile(profile = this.profileSignal()): string {
-    return profile?.role === 'HOST' ? '/host/dashboard' : '/player/dashboard';
+    return profile?.role === 'HOST' || profile?.role === 'MANAGER'
+      ? '/host/dashboard'
+      : '/player/dashboard';
   }
 
   private async loadInitialState(): Promise<void> {
@@ -205,7 +252,7 @@ export class AuthStateService {
     const { data, error } = await this.supabaseService
       .requireClient()
       .from('users')
-      .select('id,display_name,role,created_at,updated_at')
+      .select('id,display_name,role,manager_host_id,created_at,updated_at')
       .eq('id', userId)
       .single<UserProfileRow>();
 
@@ -221,6 +268,7 @@ export class AuthStateService {
       id: row.id,
       displayName: row.display_name,
       role: row.role,
+      managerHostId: row.manager_host_id ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

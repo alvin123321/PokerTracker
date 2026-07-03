@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { loginGuard } from './core/auth/auth.guard';
-import { hostGuard, playerGuard } from './core/auth/role.guard';
+import { hostAdminGuard, hostGuard, playerGuard } from './core/auth/role.guard';
 
 export const routes: Routes = [
   {
@@ -34,16 +34,19 @@ export const routes: Routes = [
       },
       {
         path: 'sessions/new',
+        canMatch: [hostAdminGuard],
         loadComponent: () =>
           import('./features/host/sessions/new-session.page').then((m) => m.NewSessionPage)
       },
       {
         path: 'players',
+        canMatch: [hostAdminGuard],
         loadComponent: () =>
           import('./features/host/players/players-admin.page').then((m) => m.PlayersAdminPage)
       },
       {
         path: 'sessions/history',
+        canMatch: [hostAdminGuard],
         loadComponent: () =>
           import('./features/host/sessions/session-history.page').then(
             (m) => m.SessionHistoryPage
