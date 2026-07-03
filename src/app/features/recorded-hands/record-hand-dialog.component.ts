@@ -21,6 +21,7 @@ export interface RecordHandDialogData {
 type DraftAction = SaveRecordedHandInput['actions'][number] & {
   id: string;
   playerName: string;
+  actionOrder: number;
 };
 
 const tags = ['Huge Bluff', 'Bad Beat', 'Hero Call', 'Funny Moment', 'Big Pot', 'Sick River'];
@@ -82,8 +83,8 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         </header>
 
         <div class="setup-page">
-          <div class="grid gap-5 xl:grid-cols-[0.9fr_1.05fr_0.9fr]">
-            <div class="xl:col-span-3">
+          <div class="grid gap-5 xl:grid-cols-[0.95fr_1.25fr]">
+            <div class="xl:col-span-2">
               <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <div class="flex items-center gap-4">
@@ -194,49 +195,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
               </div>
             </article>
 
-            <article class="setup-card">
-              <div class="setup-card-heading">
-                <span class="setup-card-icon" aria-hidden="true">▣</span>
-                <span>
-                  <span class="block text-xl font-bold text-white">Privacy & Session</span>
-                  <span class="mt-1 block text-sm text-neutral-400">
-                    This hand will be linked to the current session.
-                  </span>
-                </span>
-              </div>
-
-              <div class="mt-6 overflow-hidden rounded-xl border border-white/10">
-                <div class="setup-info-row">
-                  <span class="setup-info-icon">◉</span>
-                  <span>Session</span>
-                  <strong>{{ data.session.name }}</strong>
-                </div>
-                <div class="setup-info-row">
-                  <span class="setup-info-icon">♙</span>
-                  <span>Created by</span>
-                  <strong>{{ creatorName() }}</strong>
-                </div>
-                <div class="setup-info-row">
-                  <span class="setup-info-icon">♧</span>
-                  <span>Visibility</span>
-                  <strong>Session Members</strong>
-                </div>
-                <div class="setup-info-row">
-                  <span class="setup-info-icon">▣</span>
-                  <span>Privacy</span>
-                  <strong>Public in Session</strong>
-                </div>
-              </div>
-
-              <div class="mt-4 flex gap-3 rounded-xl border border-white/10 bg-emerald-400/10 p-4">
-                <span class="text-3xl text-emerald-300" aria-hidden="true">◎</span>
-                <p class="text-sm leading-6 text-neutral-300">
-                  This hand and its details will be visible to all members of this session.
-                </p>
-              </div>
-            </article>
-
-            <article class="setup-comment-card xl:col-span-3">
+            <article class="setup-comment-card xl:col-span-2">
               <div class="min-w-0 flex-1">
                 <div class="setup-card-heading">
                   <span class="setup-card-icon" aria-hidden="true">☵</span>
@@ -268,283 +227,376 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
           </div>
         </div>
       } @else {
-        <header class="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              {{ data.session.name }}
-            </p>
-            <h2 class="mt-1 text-2xl font-semibold text-white">Record Hand</h2>
-            <p class="mt-1 text-sm text-neutral-400">
-              Session members can see saved hands. Drafts stay tied to this table.
-            </p>
+        <header class="flow-topbar">
+          <div class="min-w-0">
+            <div class="flex min-w-0 items-center gap-3">
+              <span class="brand-spade flow-brand" aria-hidden="true">â™ </span>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                  {{ data.session.name }}
+                </p>
+                <h2 class="mt-0.5 text-2xl font-black text-white">Record Hand</h2>
+              </div>
+            </div>
           </div>
-          <div class="flex gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-1">
-          @for (label of stepLabels; track label; let index = $index) {
-            <span
-              class="rounded-md px-3 py-2 text-xs font-bold"
-              [class.bg-emerald-400]="step() === index + 1 && accent() === 'emerald'"
-              [class.bg-sky-300]="step() === index + 1 && accent() === 'sky'"
-              [class.text-neutral-950]="step() === index + 1"
-              [class.text-neutral-500]="step() !== index + 1"
-            >
-              {{ index + 1 }} {{ label }}
-            </span>
-          }
+
+          <div class="flow-stepper" aria-label="Record hand steps">
+            @for (label of stepLabels; track label; let index = $index) {
+              <button
+                type="button"
+                class="flow-step"
+                [class.flow-step-active]="step() === index + 1"
+                [class.flow-step-complete]="step() > index + 1"
+                [disabled]="index + 1 > step()"
+                (click)="goToStep(index + 1)"
+              >
+                <span>{{ step() > index + 1 ? '✓' : index + 1 }}</span>
+                <strong>{{ label }}</strong>
+              </button>
+              @if (index < stepLabels.length - 1) {
+                <span class="flow-step-line" [class.flow-step-line-active]="step() > index + 1"></span>
+              }
+            }
+          </div>
+
+          <div class="flow-actions">
+            <button type="button" class="setup-cancel-button" (click)="closeDialog()">Cancel</button>
+            @if (step() < 3) {
+              <button type="button" class="setup-next-button" (click)="goNext()">
+                Next: {{ stepLabels[step()] }}
+                <span aria-hidden="true">-&gt;</span>
+              </button>
+            }
           </div>
         </header>
       }
 
       @if (step() === 2) {
-        <div class="grid gap-5 py-5 xl:grid-cols-[0.9fr_1.1fr]">
-          <div class="space-y-5">
-            <div>
-              <h3 class="text-sm font-semibold uppercase text-neutral-500">Board</h3>
-              <div class="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                <div class="mb-3 flex flex-wrap gap-2">
+        <div class="build-page">
+          <nav class="street-tabs" aria-label="Hand streets">
+            @for (street of streetOptions; track street) {
+              <button
+                type="button"
+                class="street-tab"
+                [class.street-tab-active]="selectedStreet() === street"
+                (click)="selectedStreet.set(street)"
+              >
+                <span class="street-tab-name">{{ streetLabel(street) }}</span>
+                <span class="street-tab-count">{{ streetActionCount(street) }} actions</span>
+              </button>
+            }
+          </nav>
+
+          <div class="build-clean-grid">
+            <section class="build-card build-board-card board-workbench-card">
+              <div class="build-section-heading">
+                <div>
+                  <p class="build-kicker">Cards</p>
+                  <h3>Board Overview</h3>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="build-small-button"
+                    [disabled]="boardCards().length === 0"
+                    (click)="removeLastBoardCard()"
+                  >
+                    Undo Card
+                  </button>
+                  <button
+                    type="button"
+                    class="build-small-button"
+                    [disabled]="boardCards().length === 0"
+                    (click)="clearBoard()"
+                  >
+                    Clear Board
+                  </button>
+                </div>
+              </div>
+
+              <div class="board-stage">
+                <div class="board-stage-felt">
                   @for (card of boardCards(); track card.rank + card.suit) {
-                    <span class="playing-card">
-                      {{ card.rank }}{{ suitSymbol(card.suit) }}
+                    <span class="build-playing-card" [class.card-red]="isRedSuit(card.suit)">
+                      <span>{{ card.rank }}</span>
+                      <span>{{ suitSymbol(card.suit) }}</span>
                     </span>
-                  } @empty {
-                    <span class="text-sm text-neutral-500">No board cards yet</span>
+                  }
+                  @for (slot of emptyBoardSlots(); track slot) {
+                    <span class="board-empty-slot">
+                      {{ slot <= 3 ? 'Flop' : slot === 4 ? 'Turn' : 'River' }}
+                    </span>
                   }
                 </div>
-                <div class="grid grid-cols-7 gap-1.5 sm:grid-cols-[repeat(13,minmax(0,1fr))]">
-                  @for (rank of rankOptions; track rank) {
-                    <button
-                      type="button"
-                      class="rounded-md border px-2 py-2 text-sm font-bold transition"
-                      [class.border-white]="selectedRank() === rank"
-                      [class.bg-white]="selectedRank() === rank"
-                      [class.text-neutral-950]="selectedRank() === rank"
-                      [class.border-white/10]="selectedRank() !== rank"
-                      [class.text-neutral-200]="selectedRank() !== rank"
-                      (click)="selectedRank.set(rank)"
-                    >
-                      {{ rank }}
-                    </button>
-                  }
+                <div class="board-street-helper">
+                  <span>Flop</span>
+                  <span>Turn</span>
+                  <span>River</span>
                 </div>
-                <div class="mt-2 grid grid-cols-4 gap-2">
-                  @for (suit of suitOptions; track suit) {
-                    <button
-                      type="button"
-                      class="rounded-md border px-3 py-2 text-lg font-black transition"
-                      [class.border-white]="selectedSuit() === suit"
-                      [class.bg-white]="selectedSuit() === suit"
-                      [class.text-neutral-950]="selectedSuit() === suit"
-                      [class.border-white/10]="selectedSuit() !== suit"
-                      [class.text-red-300]="selectedSuit() !== suit && isRedSuit(suit)"
-                      [class.text-neutral-200]="selectedSuit() !== suit && !isRedSuit(suit)"
-                      (click)="selectedSuit.set(suit)"
-                    >
-                      {{ suitSymbol(suit) }}
-                    </button>
-                  }
-                </div>
-                <button
-                  type="button"
-                  [disabled]="boardCards().length >= 5"
-                  class="mt-3 w-full rounded-lg border border-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-600"
-                  (click)="addBoardCard()"
-                >
-                  Add Board Card
-                </button>
-              </div>
-            </div>
-
-            <div class="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-              <h3 class="text-sm font-semibold uppercase text-neutral-500">Action Builder</h3>
-              <div class="mt-3 grid grid-cols-4 gap-2">
-                @for (street of streetOptions; track street) {
-                  <button
-                    type="button"
-                    class="rounded-md px-2 py-2 text-xs font-bold transition"
-                    [class.bg-emerald-400]="selectedStreet() === street && accent() === 'emerald'"
-                    [class.bg-sky-300]="selectedStreet() === street && accent() === 'sky'"
-                    [class.text-neutral-950]="selectedStreet() === street"
-                    [class.bg-neutral-900]="selectedStreet() !== street"
-                    [class.text-neutral-300]="selectedStreet() !== street"
-                    (click)="selectedStreet.set(street)"
-                  >
-                    {{ streetLabel(street) }}
-                  </button>
-                }
               </div>
 
-              <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                @for (player of selectedPlayers(); track player.id) {
-                  <button
-                    type="button"
-                    class="rounded-md border px-3 py-2 text-left text-sm font-semibold transition"
-                    [class.border-emerald-300]="selectedActionPlayerId() === player.id && accent() === 'emerald'"
-                    [class.bg-emerald-300]="selectedActionPlayerId() === player.id && accent() === 'emerald'"
-                    [class.border-sky-300]="selectedActionPlayerId() === player.id && accent() === 'sky'"
-                    [class.bg-sky-300]="selectedActionPlayerId() === player.id && accent() === 'sky'"
-                    [class.text-neutral-950]="selectedActionPlayerId() === player.id"
-                    [class.border-white/10]="selectedActionPlayerId() !== player.id"
-                    [class.text-neutral-200]="selectedActionPlayerId() !== player.id"
-                    (click)="selectedActionPlayerId.set(player.id)"
-                  >
-                    {{ player.name }}
-                  </button>
-                } @empty {
-                  <p class="rounded-lg border border-amber-300/20 bg-amber-300/10 p-3 text-sm text-amber-50">
-                    Select players in step 1 first.
-                  </p>
-                }
-              </div>
-
-              <div class="mt-3 grid grid-cols-3 gap-2">
-                @for (action of actionOptions; track action) {
-                  <button
-                    type="button"
-                    class="rounded-md border px-3 py-2 text-xs font-black uppercase transition"
-                    [class.border-emerald-300]="selectedActionType() === action && accent() === 'emerald'"
-                    [class.bg-emerald-300]="selectedActionType() === action && accent() === 'emerald'"
-                    [class.border-sky-300]="selectedActionType() === action && accent() === 'sky'"
-                    [class.bg-sky-300]="selectedActionType() === action && accent() === 'sky'"
-                    [class.text-neutral-950]="selectedActionType() === action"
-                    [class.border-white/10]="selectedActionType() !== action"
-                    [class.text-neutral-200]="selectedActionType() !== action"
-                    (click)="selectedActionType.set(action)"
-                  >
-                    {{ actionLabel(action) }}
-                  </button>
-                }
-              </div>
-
-              @if (actionNeedsAmount()) {
-                <div class="mt-3">
-                  <div class="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                    @for (amount of chips; track amount) {
+              <div class="board-picker">
+                <div class="rank-picker-panel">
+                  <p class="build-kicker">Select Rank</p>
+                  <div class="rank-grid">
+                    @for (rank of rankOptions; track rank) {
                       <button
                         type="button"
-                        class="rounded-md bg-neutral-900 px-2 py-2 text-sm font-bold text-neutral-100 transition hover:bg-white hover:text-neutral-950"
-                        (click)="setAmount(amount)"
+                        class="rank-button"
+                        [class.rank-button-active]="selectedRank() === rank"
+                        (click)="selectedRank.set(rank)"
                       >
-                        {{ amount }}
+                        {{ rank }}
                       </button>
                     }
                   </div>
-                  <div class="mt-2 flex gap-2">
-                    <button type="button" class="amount-stepper" (click)="stepAmount(-25)">-</button>
+                </div>
+                <div class="suit-picker-panel">
+                  <p class="build-kicker">Select Suit</p>
+                  <div class="suit-grid">
+                    @for (suit of suitOptions; track suit) {
+                      <button
+                        type="button"
+                        class="suit-button"
+                        [class.suit-button-active]="selectedSuit() === suit"
+                        [class.suit-button-red]="isRedSuit(suit)"
+                        (click)="selectedSuit.set(suit)"
+                      >
+                        {{ suitSymbol(suit) }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                [disabled]="boardCards().length >= 5"
+                class="build-primary-button board-add-button"
+                (click)="addBoardCard()"
+              >
+                Add {{ selectedRank() }}{{ suitSymbol(selectedSuit()) }} to Board
+              </button>
+            </section>
+
+            <section class="build-card action-workbench">
+              <div class="build-section-heading">
+                <div>
+                  <p class="build-kicker">Build Action</p>
+                  <h3>{{ streetLabel(selectedStreet()) }}</h3>
+                </div>
+                <span class="street-badge">{{ selectedActionPlayerName() || 'Choose player' }}</span>
+              </div>
+
+              <div class="action-panel-section">
+                <p class="build-kicker">Select Player</p>
+                <div class="action-player-grid">
+                  @for (player of selectedPlayers(); track player.id) {
+                    <button
+                      type="button"
+                      class="action-player-button"
+                      [class.action-player-button-active]="selectedActionPlayerId() === player.id"
+                      (click)="selectedActionPlayerId.set(player.id)"
+                    >
+                      <span>{{ playerInitials(player.name) }}</span>
+                      <strong>{{ player.name }}</strong>
+                    </button>
+                  } @empty {
+                    <p class="rounded-lg border border-amber-300/20 bg-amber-300/10 p-4 text-base text-amber-50">
+                      Go back and select at least one player.
+                    </p>
+                  }
+                </div>
+              </div>
+
+              @if (actionNeedsAmount()) {
+                <div class="action-panel-section amount-panel">
+                  <div class="flex items-center justify-between gap-3">
+                    <p class="build-kicker">Amount</p>
+                    <span class="amount-hint">Set amount before choosing the action.</span>
+                  </div>
+                  <div class="amount-row">
+                    <button type="button" class="amount-stepper build-stepper" (click)="stepAmount(-25)">-</button>
                     <input
                       type="number"
                       min="0"
                       step="25"
                       inputmode="decimal"
                       [formControl]="amount"
-                      class="min-w-0 flex-1 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 text-center text-lg font-bold outline-none focus:border-emerald-300"
+                      class="build-amount-input"
                       (focus)="clearAmount()"
                     />
-                    <button type="button" class="amount-stepper" (click)="stepAmount(25)">+</button>
+                    <button type="button" class="amount-stepper build-stepper" (click)="stepAmount(25)">+</button>
                   </div>
-                </div>
-              }
-
-              <button
-                type="button"
-                [disabled]="!canAddAction()"
-                class="mt-3 w-full rounded-lg bg-white px-4 py-3 text-sm font-black text-neutral-950 transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-                (click)="addAction()"
-              >
-                Add Action
-              </button>
-            </div>
-          </div>
-
-          <div class="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-            <div class="flex items-center justify-between gap-3">
-              <h3 class="text-sm font-semibold uppercase text-neutral-500">Live Timeline</h3>
-              <button
-                type="button"
-                [disabled]="actions().length === 0"
-                class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-600"
-                (click)="undoAction()"
-              >
-                Undo Last
-              </button>
-            </div>
-            <div class="mt-3 space-y-3">
-              @for (street of streetOptions; track street) {
-                <div>
-                  <p class="mb-2 text-xs font-bold uppercase text-neutral-500">{{ streetLabel(street) }}</p>
-                  <div class="space-y-2">
-                    @for (action of actionsForStreet(street); track action.id) {
-                      <div class="grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-white/10 bg-neutral-950 p-3">
-                        <span>
-                          <span class="font-semibold text-white">{{ action.playerName }}</span>
-                          <span class="ml-2 text-sm text-neutral-400">{{ actionLabel(action.actionType) }}</span>
-                        </span>
-                        @if (action.amount !== null) {
-                          <span class="font-bold text-white">
-                            {{ action.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
-                          </span>
-                        }
-                      </div>
-                    } @empty {
-                      <p class="rounded-lg border border-dashed border-white/10 p-3 text-sm text-neutral-600">
-                        No action
-                      </p>
+                  <div class="chip-grid">
+                    @for (chip of chips; track chip) {
+                      <button
+                        type="button"
+                        class="chip-button"
+                        [class.chip-button-active]="amount.value === chip"
+                        (click)="setAmount(chip)"
+                      >
+                        {{ chip | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </button>
                     }
                   </div>
                 </div>
               }
-            </div>
+
+              <div class="action-panel-section">
+                <p class="build-kicker">Select Action</p>
+                <div class="action-type-grid">
+                  @for (action of actionOptions; track action) {
+                    <button
+                      type="button"
+                      class="action-type-button"
+                      [class.action-type-button-active]="selectedActionType() === action"
+                      [attr.data-action]="action"
+                      (click)="selectActionType(action)"
+                    >
+                      <span>{{ actionIcon(action) }}</span>
+                      <strong>{{ actionLabel(action) }}</strong>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <button
+                type="button"
+                [disabled]="!canAddAction()"
+                class="build-primary-button action-add-row"
+                (click)="addAction()"
+              >
+                Add {{ actionLabel(selectedActionType()) }} to {{ streetLabel(selectedStreet()) }}
+              </button>
+            </section>
+
+            <section class="build-card timeline-card">
+              <div class="build-section-heading">
+                <div>
+                  <p class="build-kicker">Action Timeline</p>
+                  <h3>{{ streetLabel(selectedStreet()) }}</h3>
+                </div>
+                <button
+                  type="button"
+                  [disabled]="actions().length === 0"
+                  class="build-small-button"
+                  (click)="undoAction()"
+                >
+                  Undo Last
+                </button>
+              </div>
+
+              <div class="timeline-list">
+                @for (action of activeStreetActions(); track action.id) {
+                  <article class="timeline-action" [attr.data-action]="action.actionType">
+                    <span class="timeline-order">{{ action.actionOrder }}</span>
+                    <span class="timeline-player">{{ action.playerName }}</span>
+                    <span class="timeline-action-text">
+                      {{ actionLabel(action.actionType) }}
+                      @if (action.amount !== null) {
+                        <strong>{{ action.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                      }
+                    </span>
+                  </article>
+                } @empty {
+                  <div class="timeline-empty">
+                    No {{ streetLabel(selectedStreet()).toLowerCase() }} action yet.
+                  </div>
+                }
+              </div>
+
+              <div class="street-summary-grid">
+                @for (street of streetOptions; track street) {
+                  <button
+                    type="button"
+                    class="street-summary-button"
+                    [class.street-summary-button-active]="selectedStreet() === street"
+                    (click)="selectedStreet.set(street)"
+                  >
+                    <span>{{ streetLabel(street) }}</span>
+                    <strong>{{ streetActionCount(street) }}</strong>
+                  </button>
+                }
+              </div>
+            </section>
           </div>
         </div>
       }
 
       @if (step() === 3) {
-        <div class="grid gap-4 py-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <div class="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-4">
-            <h3 class="text-sm font-semibold uppercase text-neutral-500">Recap</h3>
-            <div class="flex flex-wrap gap-2">
-              @for (tag of selectedTags(); track tag) {
-                <span class="rounded-full bg-white px-3 py-1 text-xs font-bold text-neutral-950">{{ tag }}</span>
-              } @empty {
-                <span class="text-sm text-neutral-500">No tags selected</span>
-              }
+        <div class="review-page">
+          <section class="review-board-card">
+            <div class="review-board-meta">
+              <div>
+                <p class="build-kicker">Recorded Hand</p>
+                <h3>{{ selectedTags()[0] || 'Hand Review' }}</h3>
+              </div>
+              <div class="review-tags">
+                @for (tag of selectedTags(); track tag) {
+                  <span>{{ tag }}</span>
+                } @empty {
+                  <span>Recorded hand</span>
+                }
+              </div>
             </div>
-            <p class="text-sm text-neutral-300">
-              Players:
-              <span class="font-semibold text-white">{{ selectedPlayersLabel() }}</span>
-            </p>
-            <p class="text-sm text-neutral-300">
-              Board:
-              <span class="font-semibold text-white">{{ boardLabel() }}</span>
-            </p>
-            @if (comment.value.trim()) {
-              <p class="rounded-lg border border-white/10 bg-neutral-950 p-3 text-sm text-neutral-300">
-                {{ comment.value.trim() }}
-              </p>
-            }
-          </div>
 
-          <div class="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-            <h3 class="text-sm font-semibold uppercase text-neutral-500">Actions</h3>
-            <div class="mt-3 space-y-2">
-              @for (action of actions(); track action.id) {
-                <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-neutral-950 p-3">
-                  <span class="rounded-md bg-white/[0.08] px-2 py-1 text-xs font-bold text-neutral-300">
-                    {{ streetLabel(action.street) }}
-                  </span>
-                  <span>
-                    <span class="font-semibold text-white">{{ action.playerName }}</span>
-                    <span class="ml-2 text-sm text-neutral-400">{{ actionLabel(action.actionType) }}</span>
-                  </span>
-                  @if (action.amount !== null) {
-                    <span class="font-bold text-white">{{ action.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+            <div class="review-board-diagram">
+              <div class="review-table">
+                <div class="review-board-row">
+                  @for (card of boardCards(); track card.rank + card.suit) {
+                    <span class="build-playing-card review-card" [class.card-red]="isRedSuit(card.suit)">
+                      <span>{{ card.rank }}</span>
+                      <span>{{ suitSymbol(card.suit) }}</span>
+                    </span>
+                  }
+                  @for (slot of emptyBoardSlots(); track slot) {
+                    <span class="board-empty-slot review-empty-card">
+                      {{ slot <= 3 ? 'Flop' : slot === 4 ? 'Turn' : 'River' }}
+                    </span>
                   }
                 </div>
-              } @empty {
-                <p class="rounded-lg border border-amber-300/20 bg-amber-300/10 p-3 text-sm text-amber-50">
-                  No actions yet. Saved hands can be light, but adding actions makes history easier to replay.
-                </p>
-              }
+                <div class="review-table-footer">
+                  <span>{{ selectedPlayers().length }} players</span>
+                  <span>{{ actions().length }} actions</span>
+                  <span>{{ boardCards().length }} cards</span>
+                </div>
+              </div>
             </div>
-          </div>
+
+            @if (comment.value.trim()) {
+              <p class="review-comment">{{ comment.value.trim() }}</p>
+            }
+          </section>
+
+          <section class="review-action-board">
+            @for (street of streetOptions; track street) {
+              <article class="review-street-column">
+                <div class="review-street-heading">
+                  <span>{{ streetLabel(street) }}</span>
+                  <strong>{{ streetActionCount(street) }}</strong>
+                </div>
+                <div class="review-action-list">
+                  @for (action of actionsForStreet(street); track action.id) {
+                    <div class="review-action-row" [attr.data-action]="action.actionType">
+                      <span class="review-action-icon">{{ actionIcon(action.actionType) }}</span>
+                      <span class="review-action-copy">
+                        <strong>{{ action.playerName }}</strong>
+                        <small>{{ actionLabel(action.actionType) }}</small>
+                      </span>
+                      @if (action.amount !== null) {
+                        <span class="review-action-amount">
+                          {{ action.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        </span>
+                      }
+                    </div>
+                  } @empty {
+                    <p class="review-empty-action">No action recorded</p>
+                  }
+                </div>
+              </article>
+            }
+          </section>
         </div>
       }
 
@@ -978,6 +1030,501 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         font-weight: 900;
       }
 
+      .build-page {
+        padding: 1.35rem;
+      }
+
+      .street-tabs {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .street-tab {
+        display: flex;
+        min-height: 4.35rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.7rem;
+        background: rgb(255 255 255 / 0.035);
+        padding: 0.85rem 1rem;
+        color: rgb(229 229 229);
+        transition:
+          border-color 180ms ease,
+          background-color 180ms ease,
+          transform 180ms ease;
+      }
+
+      .street-tab:hover,
+      .street-tab-active {
+        border-color: rgb(34 197 94);
+        background: rgb(34 197 94 / 0.14);
+        transform: translateY(-1px);
+      }
+
+      .street-tab-name {
+        font-size: 1.2rem;
+        font-weight: 900;
+      }
+
+      .street-tab-count {
+        border-radius: 9999px;
+        background: rgb(0 0 0 / 0.28);
+        padding: 0.35rem 0.65rem;
+        color: rgb(163 163 163);
+        font-size: 0.8rem;
+        font-weight: 800;
+      }
+
+      .build-overview,
+      .build-bottom {
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(22rem, 0.92fr);
+        gap: 1rem;
+      }
+
+      .build-bottom {
+        margin-top: 1rem;
+        align-items: start;
+      }
+
+      .build-card {
+        border: 1px solid rgb(255 255 255 / 0.13);
+        border-radius: 0.75rem;
+        background:
+          radial-gradient(circle at 90% 5%, rgb(34 197 94 / 0.08), transparent 15rem),
+          rgb(255 255 255 / 0.04);
+        padding: 1.1rem;
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+      }
+
+      .build-section-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .build-section-heading h3 {
+        color: white;
+        font-size: 1.45rem;
+        font-weight: 900;
+      }
+
+      .build-kicker {
+        margin-bottom: 0.25rem;
+        color: rgb(34 197 94);
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .build-small-button {
+        min-height: 2.45rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.55rem;
+        background: rgb(255 255 255 / 0.04);
+        padding: 0 0.85rem;
+        color: rgb(229 229 229);
+        font-size: 0.9rem;
+        font-weight: 800;
+        transition:
+          background-color 180ms ease,
+          border-color 180ms ease;
+      }
+
+      .build-small-button:hover:not(:disabled) {
+        border-color: rgb(34 197 94 / 0.6);
+        background: rgb(34 197 94 / 0.1);
+      }
+
+      .build-small-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+
+      .board-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 1.1rem;
+      }
+
+      .build-playing-card,
+      .board-empty-slot {
+        display: grid;
+        width: 4.9rem;
+        height: 6.7rem;
+        place-items: center;
+        border-radius: 0.55rem;
+        font-weight: 900;
+      }
+
+      .build-playing-card {
+        grid-template-rows: 1fr 1fr;
+        background: linear-gradient(150deg, white, rgb(229 229 229));
+        color: rgb(23 23 23);
+        font-size: 2rem;
+        box-shadow: 0 1rem 1.75rem rgb(0 0 0 / 0.28);
+      }
+
+      .build-playing-card.card-red {
+        color: rgb(220 38 38);
+      }
+
+      .board-empty-slot {
+        border: 1px dashed rgb(255 255 255 / 0.24);
+        background: rgb(0 0 0 / 0.2);
+        color: rgb(115 115 115);
+        font-size: 0.85rem;
+      }
+
+      .rank-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.55rem;
+      }
+
+      .rank-button,
+      .suit-button {
+        min-height: 3.2rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.55rem;
+        background: rgb(255 255 255 / 0.04);
+        color: white;
+        font-size: 1.25rem;
+        font-weight: 900;
+        transition:
+          border-color 180ms ease,
+          background-color 180ms ease,
+          transform 180ms ease;
+      }
+
+      .rank-button:hover,
+      .rank-button-active,
+      .suit-button:hover,
+      .suit-button-active {
+        border-color: rgb(34 197 94);
+        background: rgb(34 197 94 / 0.15);
+        transform: translateY(-1px);
+      }
+
+      .suit-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.55rem;
+      }
+
+      .suit-button {
+        min-height: 4rem;
+        font-size: 2rem;
+      }
+
+      .suit-button-red {
+        color: rgb(248 113 113);
+      }
+
+      .build-primary-button {
+        min-height: 3.8rem;
+        border-radius: 0.65rem;
+        background: linear-gradient(135deg, rgb(34 197 94), rgb(21 128 61));
+        color: white;
+        font-size: 1.15rem;
+        font-weight: 900;
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
+      }
+
+      .build-primary-button:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+
+      .build-primary-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+
+      .street-badge {
+        border-radius: 9999px;
+        background: rgb(34 197 94 / 0.14);
+        padding: 0.55rem 0.85rem;
+        color: rgb(134 239 172);
+        font-size: 0.9rem;
+        font-weight: 900;
+      }
+
+      .overview-board-strip,
+      .overview-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        margin-top: 1.15rem;
+      }
+
+      .overview-board-strip span {
+        border-radius: 0.5rem;
+        background: rgb(255 255 255 / 0.08);
+        padding: 0.65rem 0.8rem;
+        color: white;
+        font-size: 1.2rem;
+        font-weight: 900;
+      }
+
+      .selected-player-strip,
+      .action-player-grid,
+      .action-type-grid,
+      .chip-grid {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .selected-player-strip {
+        grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+      }
+
+      .overview-player-pill,
+      .action-player-button {
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.6rem;
+        background: rgb(255 255 255 / 0.04);
+        color: white;
+        transition:
+          border-color 180ms ease,
+          background-color 180ms ease;
+      }
+
+      .overview-player-pill {
+        display: flex;
+        min-height: 3.3rem;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.55rem 0.7rem;
+        font-weight: 800;
+      }
+
+      .overview-player-pill span,
+      .action-player-button span {
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        place-items: center;
+        border-radius: 9999px;
+        border: 1px solid rgb(34 197 94 / 0.55);
+        color: rgb(134 239 172);
+        font-size: 0.8rem;
+        font-weight: 900;
+      }
+
+      .overview-player-pill-active,
+      .action-player-button-active {
+        border-color: rgb(34 197 94);
+        background: rgb(34 197 94 / 0.13);
+      }
+
+      .overview-stats span {
+        display: grid;
+        min-width: 7rem;
+        border-radius: 0.6rem;
+        background: rgb(0 0 0 / 0.2);
+        padding: 0.85rem;
+        color: rgb(163 163 163);
+        font-size: 0.9rem;
+      }
+
+      .overview-stats strong {
+        color: white;
+        font-size: 1.55rem;
+      }
+
+      .action-player-grid {
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+      }
+
+      .action-player-button {
+        display: flex;
+        min-height: 4.2rem;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.8rem;
+        text-align: left;
+      }
+
+      .action-type-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .action-type-button {
+        display: grid;
+        min-height: 5rem;
+        place-items: center;
+        gap: 0.3rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.65rem;
+        background: rgb(255 255 255 / 0.04);
+        color: white;
+        font-size: 1.05rem;
+        font-weight: 900;
+        transition:
+          border-color 180ms ease,
+          background-color 180ms ease,
+          transform 180ms ease;
+      }
+
+      .action-type-button span {
+        color: rgb(34 197 94);
+        font-size: 1.6rem;
+      }
+
+      .action-type-button:hover,
+      .action-type-button-active {
+        border-color: rgb(34 197 94);
+        background: rgb(34 197 94 / 0.13);
+        transform: translateY(-1px);
+      }
+
+      .chip-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .chip-button {
+        min-height: 3.2rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.55rem;
+        background: rgb(255 255 255 / 0.04);
+        color: white;
+        font-size: 1rem;
+        font-weight: 900;
+      }
+
+      .chip-button-active,
+      .chip-button:hover {
+        border-color: rgb(34 197 94);
+        background: rgb(34 197 94 / 0.15);
+      }
+
+      .amount-row {
+        display: grid;
+        grid-template-columns: 4rem 1fr 4rem;
+        gap: 0.65rem;
+        margin-top: 0.7rem;
+      }
+
+      .build-stepper {
+        width: 100%;
+        height: 3.65rem;
+      }
+
+      .build-amount-input {
+        min-width: 0;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.55rem;
+        background: rgb(0 0 0 / 0.25);
+        color: white;
+        text-align: center;
+        font-size: 1.45rem;
+        font-weight: 900;
+        outline: none;
+      }
+
+      .timeline-list {
+        display: grid;
+        gap: 0.65rem;
+        margin-top: 1rem;
+        min-height: 12rem;
+      }
+
+      .timeline-action {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.8rem;
+        border: 1px solid rgb(255 255 255 / 0.1);
+        border-radius: 0.65rem;
+        background: rgb(0 0 0 / 0.22);
+        padding: 0.8rem;
+      }
+
+      .timeline-order {
+        display: grid;
+        width: 2.1rem;
+        height: 2.1rem;
+        place-items: center;
+        border-radius: 9999px;
+        border: 1px solid rgb(34 197 94 / 0.55);
+        color: rgb(134 239 172);
+        font-weight: 900;
+      }
+
+      .timeline-player,
+      .timeline-action-text {
+        color: white;
+        font-size: 1rem;
+        font-weight: 800;
+      }
+
+      .timeline-action-text {
+        color: rgb(212 212 212);
+        text-align: right;
+      }
+
+      .timeline-action-text strong {
+        color: rgb(134 239 172);
+      }
+
+      .timeline-empty {
+        display: grid;
+        min-height: 10rem;
+        place-items: center;
+        border: 1px dashed rgb(255 255 255 / 0.16);
+        border-radius: 0.7rem;
+        color: rgb(115 115 115);
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      .street-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin-top: 1rem;
+      }
+
+      .street-summary-button {
+        display: flex;
+        min-height: 3rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.55rem;
+        background: rgb(255 255 255 / 0.04);
+        padding: 0 0.7rem;
+        color: rgb(212 212 212);
+        font-size: 0.9rem;
+        font-weight: 800;
+      }
+
+      .street-summary-button-active {
+        border-color: rgb(34 197 94);
+        color: rgb(134 239 172);
+      }
+
+      @media (max-width: 1100px) {
+        .build-overview,
+        .build-bottom {
+          grid-template-columns: 1fr;
+        }
+
+        .chip-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
       .playing-card {
         display: inline-grid;
         min-width: 2.35rem;
@@ -1017,6 +1564,576 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       .footer-button:hover {
         background: rgb(255 255 255 / 0.1);
       }
+
+      .flow-topbar {
+        display: grid;
+        grid-template-columns: minmax(14rem, 1fr) minmax(24rem, 1.25fr) auto;
+        align-items: center;
+        gap: 1.25rem;
+        border-bottom: 1px solid rgb(255 255 255 / 0.1);
+        background: rgb(0 0 0 / 0.34);
+        padding: 1rem 1.35rem;
+      }
+
+      .flow-brand {
+        width: 2.35rem;
+        height: 2.35rem;
+        font-size: 2rem;
+      }
+
+      .flow-stepper {
+        display: grid;
+        grid-template-columns: auto minmax(2.5rem, 1fr) auto minmax(2.5rem, 1fr) auto;
+        align-items: center;
+        gap: 0.65rem;
+      }
+
+      .flow-step {
+        display: grid;
+        justify-items: center;
+        gap: 0.35rem;
+        border: 0;
+        background: transparent;
+        color: rgb(163 163 163);
+        transition:
+          color 240ms ease-in-out,
+          transform 240ms ease-in-out,
+          opacity 240ms ease-in-out;
+      }
+
+      .flow-step:not(:disabled):hover {
+        color: rgb(229 229 229);
+        transform: translateY(-1px);
+      }
+
+      .flow-step span {
+        display: grid;
+        width: 2.55rem;
+        height: 2.55rem;
+        place-items: center;
+        border: 2px solid rgb(82 82 82);
+        border-radius: 9999px;
+        background: rgb(23 23 23);
+        font-size: 1rem;
+        font-weight: 900;
+        transition:
+          border-color 240ms ease-in-out,
+          background-color 240ms ease-in-out,
+          box-shadow 240ms ease-in-out,
+          transform 240ms ease-in-out;
+      }
+
+      .flow-step strong {
+        font-size: 0.85rem;
+      }
+
+      .flow-step-active,
+      .flow-step-complete {
+        color: rgb(134 239 172);
+      }
+
+      .flow-step-active span,
+      .flow-step-complete span {
+        border-color: rgb(34 197 94);
+        background: rgb(34 197 94 / 0.22);
+        color: white;
+        box-shadow: 0 0 1.25rem rgb(34 197 94 / 0.2);
+      }
+
+      .flow-step-active span {
+        transform: scale(1.06);
+      }
+
+      .flow-step-line {
+        height: 2px;
+        border-radius: 9999px;
+        background: rgb(255 255 255 / 0.14);
+        transition: background-color 240ms ease-in-out;
+      }
+
+      .flow-step-line-active {
+        background: rgb(34 197 94 / 0.75);
+      }
+
+      .flow-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.65rem;
+      }
+
+      button,
+      .setup-tag-card,
+      .setup-player-token,
+      .street-tab,
+      .rank-button,
+      .suit-button,
+      .chip-button,
+      .action-player-button,
+      .action-type-button,
+      .street-summary-button {
+        transition:
+          background-color 240ms ease-in-out,
+          border-color 240ms ease-in-out,
+          color 240ms ease-in-out,
+          box-shadow 240ms ease-in-out,
+          transform 240ms ease-in-out,
+          opacity 240ms ease-in-out;
+      }
+
+      button:active:not(:disabled),
+      .setup-tag-card:active,
+      .setup-player-token:active,
+      .street-tab:active,
+      .rank-button:active,
+      .suit-button:active,
+      .chip-button:active,
+      .action-player-button:active,
+      .action-type-button:active {
+        transform: translateY(0) scale(0.985);
+      }
+
+      .build-clean-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(22rem, 0.95fr);
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .timeline-card {
+        grid-column: 1 / -1;
+      }
+
+      .board-workbench-card {
+        overflow: hidden;
+      }
+
+      .board-stage {
+        margin-top: 1rem;
+        border: 1px solid rgb(34 197 94 / 0.18);
+        border-radius: 0.9rem;
+        background:
+          radial-gradient(circle at 50% 35%, rgb(34 197 94 / 0.12), transparent 17rem),
+          rgb(0 0 0 / 0.22);
+        padding: 1rem;
+      }
+
+      .board-stage-felt {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(4.4rem, 1fr));
+        gap: 0.8rem;
+      }
+
+      .board-stage-felt .build-playing-card,
+      .board-stage-felt .board-empty-slot {
+        width: 100%;
+        min-width: 0;
+        height: 7.4rem;
+      }
+
+      .board-street-helper {
+        display: grid;
+        grid-template-columns: 3fr 1fr 1fr;
+        gap: 0.8rem;
+        margin-top: 0.75rem;
+        color: rgb(115 115 115);
+        font-size: 0.8rem;
+        font-weight: 900;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .board-picker {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.45fr);
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .rank-picker-panel,
+      .suit-picker-panel,
+      .action-panel-section {
+        border: 1px solid rgb(255 255 255 / 0.08);
+        border-radius: 0.75rem;
+        background: rgb(0 0 0 / 0.16);
+        padding: 0.85rem;
+      }
+
+      .rank-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+      }
+
+      .rank-button {
+        min-height: 3.45rem;
+      }
+
+      .suit-button {
+        min-height: 3.45rem;
+        font-size: 2.15rem;
+      }
+
+      .board-add-button,
+      .action-add-row {
+        width: 100%;
+        margin-top: 1rem;
+      }
+
+      .action-panel-section {
+        margin-top: 1rem;
+      }
+
+      .action-workbench .action-panel-section:first-of-type {
+        margin-top: 1.1rem;
+      }
+
+      .amount-panel {
+        border-color: rgb(34 197 94 / 0.18);
+        background: rgb(34 197 94 / 0.045);
+      }
+
+      .amount-hint {
+        color: rgb(163 163 163);
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+
+      .amount-row {
+        grid-template-columns: 3.5rem 1fr 3.5rem;
+        margin-top: 0.35rem;
+      }
+
+      .build-amount-input {
+        height: 4rem;
+        font-size: 1.7rem;
+      }
+
+      .chip-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 0.65rem;
+      }
+
+      .action-type-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .action-type-button {
+        min-height: 5.65rem;
+        align-content: center;
+        gap: 0.45rem;
+        font-size: 1.15rem;
+      }
+
+      .action-type-button span,
+      .review-action-icon {
+        font-size: 2.05rem;
+        line-height: 1;
+      }
+
+      .action-type-button[data-action='RAISE'],
+      .timeline-action[data-action='RAISE'],
+      .review-action-row[data-action='RAISE'] {
+        --action-color: 34 197 94;
+      }
+
+      .action-type-button[data-action='CALL'],
+      .timeline-action[data-action='CALL'],
+      .review-action-row[data-action='CALL'] {
+        --action-color: 59 130 246;
+      }
+
+      .action-type-button[data-action='CHECK'],
+      .timeline-action[data-action='CHECK'],
+      .review-action-row[data-action='CHECK'] {
+        --action-color: 20 184 166;
+      }
+
+      .action-type-button[data-action='FOLD'],
+      .timeline-action[data-action='FOLD'],
+      .review-action-row[data-action='FOLD'] {
+        --action-color: 239 68 68;
+      }
+
+      .action-type-button[data-action='BET'],
+      .timeline-action[data-action='BET'],
+      .review-action-row[data-action='BET'] {
+        --action-color: 234 179 8;
+      }
+
+      .action-type-button[data-action='ALL_IN'],
+      .timeline-action[data-action='ALL_IN'],
+      .review-action-row[data-action='ALL_IN'] {
+        --action-color: 168 85 247;
+      }
+
+      .action-type-button {
+        border-color: rgb(var(--action-color, 255 255 255) / 0.22);
+        background:
+          linear-gradient(145deg, rgb(var(--action-color, 34 197 94) / 0.08), transparent),
+          rgb(255 255 255 / 0.035);
+      }
+
+      .action-type-button span {
+        color: rgb(var(--action-color, 34 197 94));
+      }
+
+      .action-type-button:hover,
+      .action-type-button-active {
+        border-color: rgb(var(--action-color, 34 197 94) / 0.75);
+        background: rgb(var(--action-color, 34 197 94) / 0.16);
+        box-shadow: 0 0 0 1px rgb(var(--action-color, 34 197 94) / 0.16);
+      }
+
+      .timeline-list {
+        grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+        min-height: 0;
+      }
+
+      .timeline-action {
+        border-color: rgb(var(--action-color, 34 197 94) / 0.24);
+        background: rgb(var(--action-color, 34 197 94) / 0.075);
+      }
+
+      .timeline-order {
+        border-color: rgb(var(--action-color, 34 197 94) / 0.68);
+        color: rgb(var(--action-color, 34 197 94));
+      }
+
+      .timeline-action-text strong {
+        color: rgb(var(--action-color, 34 197 94));
+      }
+
+      .review-page {
+        display: grid;
+        gap: 1rem;
+        padding: 1.2rem;
+      }
+
+      .review-board-card,
+      .review-action-board {
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.85rem;
+        background: rgb(255 255 255 / 0.04);
+        padding: 1rem;
+      }
+
+      .review-board-meta {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .review-board-meta h3 {
+        color: white;
+        font-size: 1.8rem;
+        font-weight: 950;
+      }
+
+      .review-tags {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.5rem;
+      }
+
+      .review-tags span {
+        border-radius: 9999px;
+        background: rgb(34 197 94 / 0.16);
+        padding: 0.5rem 0.75rem;
+        color: rgb(134 239 172);
+        font-size: 0.8rem;
+        font-weight: 900;
+      }
+
+      .review-board-diagram {
+        margin-top: 1rem;
+        border-radius: 1rem;
+        background:
+          radial-gradient(ellipse at center, rgb(34 197 94 / 0.18), transparent 65%),
+          linear-gradient(135deg, rgb(2 6 8), rgb(10 20 16));
+        padding: 1rem;
+      }
+
+      .review-table {
+        border: 1px solid rgb(34 197 94 / 0.24);
+        border-radius: 1.25rem;
+        background: rgb(0 0 0 / 0.22);
+        padding: 1rem;
+      }
+
+      .review-board-row {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(4.5rem, 1fr));
+        gap: 0.9rem;
+      }
+
+      .review-card,
+      .review-empty-card {
+        width: 100%;
+        height: 7.6rem;
+      }
+
+      .review-table-footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        justify-content: center;
+        margin-top: 1rem;
+      }
+
+      .review-table-footer span {
+        border-radius: 9999px;
+        background: rgb(255 255 255 / 0.08);
+        padding: 0.5rem 0.75rem;
+        color: rgb(212 212 212);
+        font-size: 0.85rem;
+        font-weight: 800;
+      }
+
+      .review-comment {
+        margin-top: 1rem;
+        border: 1px solid rgb(255 255 255 / 0.1);
+        border-radius: 0.75rem;
+        background: rgb(0 0 0 / 0.2);
+        padding: 0.9rem 1rem;
+        color: rgb(229 229 229);
+      }
+
+      .review-action-board {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.8rem;
+      }
+
+      .review-street-column {
+        min-width: 0;
+        border: 1px solid rgb(255 255 255 / 0.1);
+        border-radius: 0.75rem;
+        background: rgb(0 0 0 / 0.18);
+        padding: 0.8rem;
+      }
+
+      .review-street-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        border-bottom: 1px solid rgb(255 255 255 / 0.08);
+        padding-bottom: 0.65rem;
+        color: rgb(134 239 172);
+        font-size: 1rem;
+        font-weight: 950;
+        text-transform: uppercase;
+      }
+
+      .review-street-heading strong {
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        place-items: center;
+        border-radius: 9999px;
+        background: rgb(34 197 94 / 0.14);
+      }
+
+      .review-action-list {
+        display: grid;
+        gap: 0.6rem;
+        margin-top: 0.7rem;
+      }
+
+      .review-action-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.65rem;
+        border: 1px solid rgb(var(--action-color, 255 255 255) / 0.18);
+        border-radius: 0.65rem;
+        background: rgb(var(--action-color, 34 197 94) / 0.075);
+        padding: 0.7rem;
+      }
+
+      .review-action-icon {
+        color: rgb(var(--action-color, 34 197 94));
+      }
+
+      .review-action-copy {
+        display: grid;
+        min-width: 0;
+      }
+
+      .review-action-copy strong {
+        overflow: hidden;
+        color: white;
+        font-size: 0.95rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .review-action-copy small {
+        color: rgb(163 163 163);
+        font-weight: 800;
+      }
+
+      .review-action-amount {
+        color: rgb(var(--action-color, 34 197 94));
+        font-size: 0.95rem;
+        font-weight: 950;
+      }
+
+      .review-empty-action {
+        border: 1px dashed rgb(255 255 255 / 0.12);
+        border-radius: 0.65rem;
+        padding: 1rem;
+        color: rgb(115 115 115);
+        font-size: 0.9rem;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      @media (max-width: 1180px) {
+        .flow-topbar,
+        .build-clean-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-actions {
+          justify-content: stretch;
+        }
+
+        .flow-actions > * {
+          flex: 1;
+        }
+
+        .review-action-board {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .street-tabs,
+        .review-action-board,
+        .board-picker,
+        .review-board-row,
+        .board-stage-felt {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-stepper {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-step-line {
+          display: none;
+        }
+
+        .action-type-grid,
+        .chip-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .board-street-helper {
+          display: none;
+        }
+      }
     `
   ]
 })
@@ -1052,6 +2169,9 @@ export class RecordHandDialogComponent {
   });
   protected readonly selectedPlayers = computed(() =>
     this.data.session.players.filter((player) => this.selectedPlayerIds().includes(player.id))
+  );
+  protected readonly activeStreetActions = computed(() =>
+    this.actionsForStreet(this.selectedStreet())
   );
 
   protected closeDialog(): void {
@@ -1133,6 +2253,20 @@ export class RecordHandDialogComponent {
     });
   }
 
+  protected removeLastBoardCard(): void {
+    this.boardCards.update((cards) => cards.slice(0, -1));
+  }
+
+  protected clearBoard(): void {
+    this.boardCards.set([]);
+  }
+
+  protected emptyBoardSlots(): number[] {
+    return Array.from({ length: Math.max(0, 5 - this.boardCards().length) }, (_, index) =>
+      this.boardCards().length + index + 1
+    );
+  }
+
   protected actionNeedsAmount(action = this.selectedActionType()): boolean {
     return action === 'RAISE' || action === 'BET' || action === 'ALL_IN';
   }
@@ -1156,17 +2290,21 @@ export class RecordHandDialogComponent {
 
     const amount = this.actionNeedsAmount() ? Math.max(0, Number(this.amount.value) || 0) : null;
 
-    this.actions.update((current) => [
-      ...current,
-      {
+    this.actions.update((current) => {
+      const nextAction: DraftAction = {
         id: `draft-action-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         street: this.selectedStreet(),
         sessionPlayerId: player.id,
         playerName: player.name,
         actionType: this.selectedActionType(),
-        amount
-      }
-    ]);
+        amount,
+        actionOrder: current.length + 1
+      };
+
+      return [...current, nextAction];
+    });
+
+    this.amount.setValue(0);
   }
 
   protected undoAction(): void {
@@ -1175,6 +2313,24 @@ export class RecordHandDialogComponent {
 
   protected actionsForStreet(street: RecordedHandStreet): DraftAction[] {
     return this.actions().filter((action) => action.street === street);
+  }
+
+  protected streetActionCount(street: RecordedHandStreet): number {
+    return this.actionsForStreet(street).length;
+  }
+
+  protected selectedActionPlayerName(): string {
+    const playerId = this.selectedActionPlayerId();
+
+    return this.selectedPlayers().find((player) => player.id === playerId)?.name ?? '';
+  }
+
+  protected selectActionType(action: RecordedHandActionType): void {
+    this.selectedActionType.set(action);
+
+    if (!this.actionNeedsAmount(action)) {
+      this.amount.setValue(0);
+    }
   }
 
   protected setAmount(value: number): void {
@@ -1193,6 +2349,14 @@ export class RecordHandDialogComponent {
 
   protected goBack(): void {
     this.step.update((value) => Math.max(1, value - 1));
+  }
+
+  protected goToStep(step: number): void {
+    if (step > this.step()) {
+      return;
+    }
+
+    this.step.set(Math.max(1, Math.min(3, step)));
   }
 
   protected goNext(): void {
@@ -1241,6 +2405,17 @@ export class RecordHandDialogComponent {
 
   protected actionLabel(action: RecordedHandActionType): string {
     return action === 'ALL_IN' ? 'All In' : action.charAt(0) + action.slice(1).toLowerCase();
+  }
+
+  protected actionIcon(action: RecordedHandActionType): string {
+    return {
+      RAISE: '↑',
+      CALL: '↪',
+      CHECK: '✓',
+      FOLD: '⚑',
+      BET: '●',
+      ALL_IN: '!'
+    }[action];
   }
 
   protected suitSymbol(suit: RecordedHandBoardCard['suit']): string {

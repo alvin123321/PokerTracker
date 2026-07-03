@@ -204,7 +204,15 @@ import {
               </div>
               <div class="grid gap-3 p-3 lg:grid-cols-2">
                 @for (hand of recordedHands(); track hand.id) {
-                  <article class="rounded-lg border border-white/10 bg-neutral-950 p-4">
+                  <article
+                    class="rounded-lg border border-white/10 bg-neutral-950 p-4 transition duration-300 ease-in-out hover:border-emerald-300/45"
+                    [class.lg:col-span-2]="expandedRecordedHandId() === hand.id"
+                    role="button"
+                    tabindex="0"
+                    (click)="toggleRecordedHand(hand.id)"
+                    (keydown.enter)="toggleRecordedHand(hand.id)"
+                    (keydown.space)="toggleRecordedHand(hand.id)"
+                  >
                     <div class="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div class="flex flex-wrap gap-2">
@@ -241,6 +249,86 @@ import {
                       <p class="mt-3 text-xs font-semibold uppercase text-neutral-500">
                         {{ handActionsPreview(hand) }}
                       </p>
+                    }
+                    @if (expandedRecordedHandId() === hand.id) {
+                      <div class="mt-4 grid gap-3 border-t border-white/10 pt-4">
+                        <div class="rounded-xl border border-emerald-300/20 bg-emerald-950/10 p-4">
+                          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-300">Board</p>
+                              <p class="mt-1 text-sm text-neutral-400">{{ handBoardLabel(hand.board) }}</p>
+                            </div>
+                            <span class="rounded-full bg-white/[0.07] px-3 py-1 text-xs font-bold text-neutral-300">
+                              {{ hand.playerIds.length }} players
+                            </span>
+                          </div>
+                          <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                            @for (card of hand.board; track card.rank + card.suit) {
+                              <span
+                                class="grid h-24 place-items-center rounded-lg bg-white text-3xl font-black text-neutral-950 shadow-lg shadow-black/30"
+                                [class.text-red-600]="isRedSuit(card.suit)"
+                              >
+                                <span>{{ card.rank }}{{ suitSymbol(card.suit) }}</span>
+                              </span>
+                            } @empty {
+                              <span class="col-span-full rounded-lg border border-dashed border-white/15 p-6 text-center text-sm font-semibold text-neutral-500">
+                                No board cards recorded.
+                              </span>
+                            }
+                          </div>
+                        </div>
+
+                        <div class="grid gap-3 xl:grid-cols-4">
+                          @for (street of streetOptions; track street) {
+                            <section class="rounded-lg border border-white/10 bg-black/20 p-3">
+                              <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+                                <h3 class="text-sm font-black uppercase tracking-wide text-emerald-300">
+                                  {{ streetLabel(street) }}
+                                </h3>
+                                <span class="rounded-full bg-white/[0.07] px-2 py-0.5 text-xs font-bold text-neutral-300">
+                                  {{ actionsForHandStreet(hand, street).length }}
+                                </span>
+                              </div>
+                              <div class="mt-3 grid gap-2">
+                                @for (action of actionsForHandStreet(hand, street); track action.id) {
+                                  <div
+                                    class="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg border p-2 text-sm"
+                                    [class.border-emerald-300/25]="action.actionType === 'RAISE'"
+                                    [class.bg-emerald-300/10]="action.actionType === 'RAISE'"
+                                    [class.border-sky-300/25]="action.actionType === 'CALL'"
+                                    [class.bg-sky-300/10]="action.actionType === 'CALL'"
+                                    [class.border-teal-300/25]="action.actionType === 'CHECK'"
+                                    [class.bg-teal-300/10]="action.actionType === 'CHECK'"
+                                    [class.border-red-300/25]="action.actionType === 'FOLD'"
+                                    [class.bg-red-300/10]="action.actionType === 'FOLD'"
+                                    [class.border-yellow-300/25]="action.actionType === 'BET'"
+                                    [class.bg-yellow-300/10]="action.actionType === 'BET'"
+                                    [class.border-purple-300/25]="action.actionType === 'ALL_IN'"
+                                    [class.bg-purple-300/10]="action.actionType === 'ALL_IN'"
+                                  >
+                                    <span class="text-lg font-black">{{ actionIcon(action.actionType) }}</span>
+                                    <span class="min-w-0">
+                                      <span class="block truncate font-bold text-white">{{ action.playerName }}</span>
+                                      <span class="text-xs font-semibold text-neutral-400">
+                                        {{ actionLabel(action.actionType) }}
+                                      </span>
+                                    </span>
+                                    @if (action.amount !== null) {
+                                      <span class="font-black text-white">
+                                        {{ action.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                                      </span>
+                                    }
+                                  </div>
+                                } @empty {
+                                  <p class="rounded-lg border border-dashed border-white/10 p-3 text-center text-xs font-semibold text-neutral-500">
+                                    No action
+                                  </p>
+                                }
+                              </div>
+                            </section>
+                          }
+                        </div>
+                      </div>
                     }
                   </article>
                 }
@@ -752,7 +840,9 @@ export class ActiveSessionPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
   private readonly expandedPlayerId = signal<string | null>(null);
+  protected readonly expandedRecordedHandId = signal<string | null>(null);
   protected readonly recentRebuyPlayerId = signal<string | null>(null);
+  protected readonly streetOptions: RecordedHandStreet[] = ['PREFLOP', 'FLOP', 'TURN', 'RIVER'];
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private rebuyGlowTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly pendingAction = signal<string | null>(null);
@@ -1060,12 +1150,36 @@ export class ActiveSessionPage implements OnDestroy {
       .join(' · ');
   }
 
+  protected toggleRecordedHand(handId: string): void {
+    this.expandedRecordedHandId.update((currentHandId) =>
+      currentHandId === handId ? null : handId
+    );
+  }
+
+  protected actionsForHandStreet(
+    hand: RecordedHand,
+    street: RecordedHandStreet
+  ): RecordedHand['actions'] {
+    return hand.actions.filter((action) => action.street === street);
+  }
+
   protected streetLabel(street: RecordedHandStreet): string {
     return street.charAt(0) + street.slice(1).toLowerCase();
   }
 
   protected actionLabel(action: RecordedHandActionType): string {
     return action === 'ALL_IN' ? 'All In' : action.charAt(0) + action.slice(1).toLowerCase();
+  }
+
+  protected actionIcon(action: RecordedHandActionType): string {
+    return {
+      RAISE: 'R',
+      CALL: 'C',
+      CHECK: 'K',
+      FOLD: 'F',
+      BET: 'B',
+      ALL_IN: '!'
+    }[action];
   }
 
   protected suitSymbol(suit: RecordedHandBoardCard['suit']): string {
@@ -1075,6 +1189,10 @@ export class ActiveSessionPage implements OnDestroy {
       CLUB: '♣',
       SPADE: '♠'
     }[suit];
+  }
+
+  protected isRedSuit(suit: RecordedHandBoardCard['suit']): boolean {
+    return suit === 'HEART' || suit === 'DIAMOND';
   }
 
   protected togglePlayer(playerId: string): void {
