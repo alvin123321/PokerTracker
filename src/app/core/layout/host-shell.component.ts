@@ -10,7 +10,14 @@ import { AuthStateService } from '../auth/auth-state.service';
     <main class="min-h-dvh bg-neutral-950 text-neutral-100">
       <header class="border-b border-white/10 bg-neutral-950/90 backdrop-blur">
         <nav class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-5 sm:py-4">
-          <a routerLink="/host/dashboard" class="shrink-0 text-lg font-semibold text-white">PokerTrack</a>
+          <a routerLink="/host/dashboard" class="pokertrack-brand shrink-0" aria-label="Poker Tracker dashboard">
+            <span class="pokertrack-brand-mark" aria-hidden="true">
+              <span class="pokertrack-brand-suit">♠</span>
+            </span>
+            <span class="pokertrack-brand-name">
+              <span>Poker</span><span>Tracker</span>
+            </span>
+          </a>
           <div class="flex min-w-0 items-center gap-1 overflow-x-auto text-sm sm:gap-2">
             <a
               routerLink="/host/dashboard"
