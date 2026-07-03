@@ -878,6 +878,9 @@ export class ActiveSessionPage implements OnDestroy {
     >(RecordHandDialogComponent, {
       autoFocus: false,
       data: { session: currentSession, accent: 'emerald' },
+      width: '96vw',
+      maxWidth: '98vw',
+      maxHeight: '96vh',
       panelClass: 'pokertrack-dialog-panel'
     });
 

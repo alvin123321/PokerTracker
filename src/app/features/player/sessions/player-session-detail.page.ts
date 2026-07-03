@@ -354,6 +354,9 @@ export class PlayerSessionDetailPage implements OnInit {
     >(RecordHandDialogComponent, {
       autoFocus: false,
       data: { session: currentSession, accent: 'sky' },
+      width: '96vw',
+      maxWidth: '98vw',
+      maxHeight: '96vh',
       panelClass: 'pokertrack-dialog-panel'
     });
 
