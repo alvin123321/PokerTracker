@@ -14,28 +14,30 @@ import { AuthStateService } from '../auth/auth-state.service';
           <div class="flex min-w-0 items-center gap-1 overflow-x-auto text-sm sm:gap-2">
             <a
               routerLink="/host/dashboard"
-              routerLinkActive="bg-white/10 text-white"
-              class="shrink-0 rounded-md px-2.5 py-2 text-neutral-300 transition hover:text-white sm:px-3"
+              routerLinkActive="pokertrack-nav-link-active"
+              class="pokertrack-nav-link shrink-0 rounded-md px-2.5 py-2 text-neutral-300 sm:px-3"
             >
               Dashboard
             </a>
-            <a
-              routerLink="/host/sessions/history"
-              routerLinkActive="bg-white/10 text-white"
-              class="shrink-0 rounded-md px-2.5 py-2 text-neutral-300 transition hover:text-white sm:px-3"
-            >
-              History
-            </a>
-            <a
-              routerLink="/host/players"
-              routerLinkActive="bg-white/10 text-white"
-              class="shrink-0 rounded-md px-2.5 py-2 text-neutral-300 transition hover:text-white sm:px-3"
-            >
-              Players
-            </a>
+            @if (authState.isHostAdmin()) {
+              <a
+                routerLink="/host/sessions/history"
+                routerLinkActive="pokertrack-nav-link-active"
+                class="pokertrack-nav-link shrink-0 rounded-md px-2.5 py-2 text-neutral-300 sm:px-3"
+              >
+                History
+              </a>
+              <a
+                routerLink="/host/players"
+                routerLinkActive="pokertrack-nav-link-active"
+                class="pokertrack-nav-link shrink-0 rounded-md px-2.5 py-2 text-neutral-300 sm:px-3"
+              >
+                Players
+              </a>
+            }
             <button
               type="button"
-              class="shrink-0 rounded-md border border-white/10 px-2.5 py-2 text-neutral-300 transition hover:bg-white/10 hover:text-white sm:px-3"
+              class="pokertrack-nav-link shrink-0 rounded-md border border-white/10 px-2.5 py-2 text-neutral-300 sm:px-3"
               (click)="signOut()"
             >
               Sign out
@@ -51,7 +53,7 @@ import { AuthStateService } from '../auth/auth-state.service';
   `
 })
 export class HostShellComponent {
-  private readonly authState = inject(AuthStateService);
+  protected readonly authState = inject(AuthStateService);
   private readonly router = inject(Router);
 
   protected async signOut(): Promise<void> {

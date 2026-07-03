@@ -89,10 +89,13 @@ import { UserProfile } from '../../core/models/user.model';
 
           <button
             type="submit"
-            [disabled]="form.invalid || authState.loading() || isLeaving()"
+            [disabled]="form.invalid || authState.loading() || welcomeName() || isLeaving()"
             class="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 shadow-lg shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-emerald-300 hover:shadow-emerald-900/40 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 disabled:shadow-none"
           >
-            @if (isLeaving()) {
+            @if (welcomeName()) {
+              <span class="login-spinner border-neutral-400 border-t-transparent" aria-hidden="true"></span>
+              Welcome...
+            } @else if (isLeaving()) {
               <span class="login-spinner border-neutral-400 border-t-transparent" aria-hidden="true"></span>
               Opening dashboard...
             } @else if (authState.loading()) {
@@ -104,6 +107,24 @@ import { UserProfile } from '../../core/models/user.model';
           </button>
         </form>
       </section>
+
+      @if (loginLoadingMessage(); as message) {
+        <div
+          class="login-loading-overlay fixed inset-0 z-50 grid place-items-center bg-neutral-950/70 px-6 backdrop-blur-sm"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div class="rounded-xl border border-emerald-300/20 bg-neutral-950/95 px-6 py-5 text-center shadow-2xl shadow-black/50">
+            <div class="login-deck-shuffle mx-auto mb-4" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p class="text-base font-semibold text-white">{{ message }}</p>
+            <p class="mt-1 text-sm text-neutral-400">Getting your seat ready.</p>
+          </div>
+        </div>
+      }
     </main>
   `,
   styles: [
@@ -134,9 +155,70 @@ import { UserProfile } from '../../core/models/user.model';
         animation: login-spinner 700ms linear infinite;
       }
 
+      .login-loading-overlay {
+        animation: login-loading-fade 180ms ease-out both;
+      }
+
+      .login-deck-shuffle {
+        position: relative;
+        width: 4.5rem;
+        height: 3.25rem;
+      }
+
+      .login-deck-shuffle span {
+        position: absolute;
+        left: 1.15rem;
+        top: 0.35rem;
+        width: 2.25rem;
+        height: 2.9rem;
+        border: 1px solid rgb(110 231 183 / 0.8);
+        border-radius: 0.35rem;
+        background:
+          linear-gradient(135deg, rgb(110 231 183) 0 20%, transparent 20% 100%),
+          linear-gradient(315deg, rgb(255 255 255 / 0.12), rgb(10 10 10));
+        box-shadow: 0 0.75rem 1.5rem rgb(0 0 0 / 0.35);
+        animation: login-deck-shuffle 980ms ease-in-out infinite;
+      }
+
+      .login-deck-shuffle span:nth-child(2) {
+        animation-delay: 120ms;
+      }
+
+      .login-deck-shuffle span:nth-child(3) {
+        animation-delay: 240ms;
+      }
+
       @keyframes login-spinner {
         to {
           transform: rotate(360deg);
+        }
+      }
+
+      @keyframes login-deck-shuffle {
+        0%,
+        100% {
+          transform: translateX(-0.55rem) rotate(-10deg);
+          z-index: 1;
+        }
+
+        45% {
+          transform: translateX(0.65rem) rotate(9deg);
+          z-index: 3;
+        }
+
+        70% {
+          transform: translateX(0) rotate(0deg);
+          z-index: 2;
+        }
+      }
+
+      @keyframes login-loading-fade {
+        from {
+          opacity: 0;
+        }
+
+        to {
+          opacity: 1;
         }
       }
 
@@ -182,6 +264,16 @@ export class LoginPage {
   private readonly route = inject(ActivatedRoute);
   protected readonly errorMessage = computed(() => this.authState.error());
   protected readonly isLeaving = signal(false);
+  protected readonly welcomeName = signal<string | null>(null);
+  protected readonly loginLoadingMessage = computed(() => {
+    const name = this.welcomeName();
+
+    if (name) {
+      return `Welcome to join the game ${name}`;
+    }
+
+    return this.authState.loading() ? 'Joining the game...' : null;
+  });
 
   protected readonly form = new FormGroup({
     username: new FormControl('', {
@@ -203,12 +295,16 @@ export class LoginPage {
     const { username, password } = this.form.getRawValue();
 
     try {
+      this.welcomeName.set(null);
       const profile = await this.authState.signIn(username, password);
+      this.welcomeName.set(this.playerNameForWelcome(profile, username));
+      await this.waitForWelcomeAnimation();
       this.isLeaving.set(true);
       await this.waitForExitAnimation();
       await this.router.navigateByUrl(this.destinationFor(profile));
     } catch {
       this.isLeaving.set(false);
+      this.welcomeName.set(null);
       this.form.controls.password.reset();
     }
   }
@@ -221,7 +317,7 @@ export class LoginPage {
       return fallback;
     }
 
-    if (profile.role === 'HOST' && returnUrl.startsWith('/host')) {
+    if ((profile.role === 'HOST' || profile.role === 'MANAGER') && returnUrl.startsWith('/host')) {
       return returnUrl;
     }
 
@@ -232,7 +328,15 @@ export class LoginPage {
     return fallback;
   }
 
+  private playerNameForWelcome(profile: UserProfile, username: string): string {
+    return profile.displayName?.trim() || username.trim() || 'Player';
+  }
+
   private waitForExitAnimation(): Promise<void> {
     return new Promise((resolve) => window.setTimeout(resolve, 260));
+  }
+
+  private waitForWelcomeAnimation(): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, 1500));
   }
 }
