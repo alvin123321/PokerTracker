@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { PokerStoreService } from '../data/poker-store.service';
+import { PokerStoreService, PokerTransaction } from '../data/poker-store.service';
 
 @Component({
   selector: 'app-session-summary-page',
@@ -82,56 +82,99 @@ import { PokerStoreService } from '../data/poker-store.service';
           </div>
         }
 
-        <div class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-          <div class="hidden grid-cols-[1.4fr_1fr_1fr_1fr] gap-3 border-b border-white/10 px-4 py-3 text-sm font-semibold text-neutral-300 md:grid">
-            <span>Player</span>
-            <span>Buy In</span>
-            <span>Cash Out</span>
-            <span>Net</span>
+        <section class="rounded-lg border border-white/10 bg-white/[0.04]">
+          <div class="border-b border-white/10 px-4 py-3">
+            <h2 class="text-sm font-semibold uppercase text-neutral-500">Player detail</h2>
           </div>
+          <div class="space-y-3 p-3 sm:p-4">
           @for (player of sortedPlayers(); track player.id) {
-            <div class="grid gap-3 border-b border-white/5 px-3 py-4 text-sm last:border-b-0 sm:px-4 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:items-center">
-              <div>
-                <span class="font-semibold text-white">{{ player.name }}</span>
-                @if (player.status === 'ACTIVE') {
-                  <span class="ml-2 rounded-full bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
-                    Pending
+            <article class="rounded-lg border border-white/10 bg-neutral-950 p-3 sm:p-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="truncate font-semibold text-white">{{ player.name }}</h3>
+                    @if (player.status === 'ACTIVE') {
+                      <span class="rounded-full bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
+                        Pending
+                      </span>
+                    } @else {
+                      <span class="rounded-full bg-white px-2 py-1 text-xs font-semibold text-neutral-950">
+                        Cashed out
+                      </span>
+                    }
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center text-sm lg:min-w-96">
+                  <span class="rounded-lg bg-white/[0.03] px-3 py-2">
+                    <span class="block text-xs text-neutral-500">Buy-in</span>
+                    <span class="mt-1 block text-base font-semibold text-white">
+                      {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                    </span>
                   </span>
-                }
-              </div>
-              <div class="grid grid-cols-2 gap-3 md:block">
-                <span class="text-neutral-500 md:hidden">Buy In</span>
-                <span class="text-neutral-200">{{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
-              </div>
-              <div class="hidden grid-cols-2 gap-3 sm:grid md:block">
-                <span class="text-neutral-500 md:hidden">Cash Out</span>
-                @if (player.status === 'COMPLETED') {
-                  <span class="text-neutral-200">{{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
-                } @else {
-                  <span class="text-neutral-500">Pending</span>
-                }
-              </div>
-              <div class="grid grid-cols-2 gap-3 md:block">
-                <span class="text-neutral-500 md:hidden">Net</span>
-                @if (player.status === 'COMPLETED') {
-                  <span
-                    class="font-semibold"
-                    [class.text-emerald-300]="player.net >= 0"
-                    [class.text-red-300]="player.net < 0"
-                  >
-                    {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                  <span class="rounded-lg bg-white/[0.03] px-3 py-2">
+                    <span class="block text-xs text-neutral-500">Cash</span>
+                    @if (player.status === 'COMPLETED') {
+                      <span class="mt-1 block text-base font-semibold text-white">
+                        {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </span>
+                    } @else {
+                      <span class="mt-1 block text-base font-semibold text-neutral-500">Pending</span>
+                    }
                   </span>
-                } @else {
-                  <span class="font-semibold text-neutral-500">Pending</span>
+                  <span class="rounded-lg bg-white/[0.03] px-3 py-2">
+                    <span class="block text-xs text-neutral-500">Net</span>
+                    @if (player.status === 'COMPLETED') {
+                      <span
+                        class="mt-1 block text-base font-semibold"
+                        [class.text-emerald-300]="player.net >= 0"
+                        [class.text-red-300]="player.net < 0"
+                      >
+                        {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </span>
+                    } @else {
+                      <span class="mt-1 block text-base font-semibold text-neutral-500">Pending</span>
+                    }
+                  </span>
+                </div>
+              </div>
+
+              <div class="mt-3 space-y-2">
+                @for (transaction of transactionsForPlayer(player.id); track transaction.id) {
+                  <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                    <span
+                      class="h-3 w-3 rounded-full"
+                      [class.bg-emerald-300]="transaction.type === 'BUYIN'"
+                      [class.bg-sky-300]="transaction.type === 'REBUY'"
+                      [class.bg-amber-300]="transaction.type === 'CASHOUT'"
+                    ></span>
+                    <span class="min-w-0">
+                      <span
+                        class="text-sm font-semibold uppercase"
+                        [class.text-emerald-200]="transaction.type === 'BUYIN'"
+                        [class.text-sky-200]="transaction.type === 'REBUY'"
+                        [class.text-amber-200]="transaction.type === 'CASHOUT'"
+                      >
+                        {{ transaction.type }}
+                      </span>
+                      <span class="mt-1 block text-xs text-neutral-500">
+                        {{ transaction.createdAt | date: 'short' }}
+                      </span>
+                    </span>
+                    <span class="text-center text-lg font-semibold text-white">
+                      {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                    </span>
+                  </div>
                 }
               </div>
-            </div>
+            </article>
           } @empty {
             <div class="px-4 py-8 text-center text-sm text-neutral-500">
               No players were added to this session.
             </div>
           }
-        </div>
+          </div>
+        </section>
       </section>
     } @else {
       <section class="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
@@ -153,4 +196,12 @@ export class SessionSummaryPage {
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly sortedPlayers = computed(() => this.store.sortedPlayersByNet(this.session()));
+
+  protected transactionsForPlayer(playerId: string): PokerTransaction[] {
+    return (
+      this.session()
+        ?.transactions.filter((transaction) => transaction.playerId === playerId && !transaction.deletedAt)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)) ?? []
+    );
+  }
 }

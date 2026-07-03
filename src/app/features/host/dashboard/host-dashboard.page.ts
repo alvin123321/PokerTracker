@@ -2,6 +2,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PokerStoreService } from '../data/poker-store.service';
 
 @Component({
@@ -15,12 +16,14 @@ import { PokerStoreService } from '../data/poker-store.service';
           <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Dashboard</h1>
         </div>
 
-        <a
-          routerLink="/host/sessions/new"
-          class="inline-flex items-center justify-center rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
-        >
-          New Session
-        </a>
+        @if (authState.isHostAdmin()) {
+          <a
+            routerLink="/host/sessions/new"
+            class="inline-flex items-center justify-center rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+          >
+            New Session
+          </a>
+        }
       </div>
 
       @if (store.error()) {
@@ -35,15 +38,7 @@ import { PokerStoreService } from '../data/poker-store.service';
         </div>
       }
 
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
-          <p class="text-sm text-neutral-400">Active sessions</p>
-          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ store.activeSessions().length }}</p>
-        </div>
-        <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5 md:block">
-          <p class="text-sm text-neutral-400">Total players today</p>
-          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ todaysPlayerCount() }}</p>
-        </div>
+      <div class="grid gap-3 md:grid-cols-3 md:gap-4">
         <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
           <p class="text-sm text-neutral-400">Open buy-ins</p>
           <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
@@ -53,23 +48,22 @@ import { PokerStoreService } from '../data/poker-store.service';
       </div>
 
       <section class="space-y-4">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center">
           <h2 class="text-xl font-semibold text-white">Active tables</h2>
-          <a routerLink="/host/sessions/history" class="text-sm font-semibold text-emerald-300">
-            History
-          </a>
         </div>
 
         @if (store.activeSessions().length === 0) {
           <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
             <p class="text-lg font-semibold text-white">No active session</p>
             <p class="mt-2 text-sm text-neutral-400">Start a table when the first player arrives.</p>
-            <a
-              routerLink="/host/sessions/new"
-              class="mt-5 inline-flex rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
-            >
-              Create session
-            </a>
+            @if (authState.isHostAdmin()) {
+              <a
+                routerLink="/host/sessions/new"
+                class="mt-5 inline-flex rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
+              >
+                Create session
+              </a>
+            }
           </div>
         } @else {
           <div class="grid gap-4 lg:grid-cols-2">
@@ -94,7 +88,12 @@ import { PokerStoreService } from '../data/poker-store.service';
                 <div class="mt-5 grid grid-cols-3 gap-3 text-sm">
                   <div>
                     <p class="text-neutral-500">Players</p>
-                    <p class="mt-1 font-semibold text-white">{{ totals.totalPlayers }}</p>
+                    <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <p class="font-semibold text-white">{{ totals.totalPlayers }}</p>
+                      <p class="text-xs font-semibold text-emerald-300">
+                        {{ totals.cashedOutPlayers }} Cashed-Out
+                      </p>
+                    </div>
                   </div>
                   <div>
                     <p class="text-neutral-500">Buy-in</p>
@@ -117,14 +116,7 @@ import { PokerStoreService } from '../data/poker-store.service';
 })
 export class HostDashboardPage {
   protected readonly store = inject(PokerStoreService);
-  protected readonly todaysPlayerCount = computed(() => {
-    const today = new Date().toISOString().slice(0, 10);
-
-    return this.store
-      .sessions()
-      .filter((session) => session.sessionDate === today)
-      .reduce((sum, session) => sum + session.players.length, 0);
-  });
+  protected readonly authState = inject(AuthStateService);
   protected readonly openBuyIns = computed(() =>
     this.store
       .activeSessions()

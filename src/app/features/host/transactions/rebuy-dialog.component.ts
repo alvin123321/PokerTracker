@@ -57,28 +57,22 @@ const presetAmounts = [200, 300, 400, 500, 1000];
             type="number"
             min="1"
             step="1"
+            inputmode="decimal"
             [formControl]="customAmount"
             class="min-w-0 flex-1 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
             placeholder="Amount"
+            (focus)="clearCustomAmount()"
           />
           <button
             type="button"
             [disabled]="customAmount.invalid"
             class="rounded-lg bg-white px-4 py-3 font-semibold text-neutral-950 transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-            (click)="selectAmount(customAmount.value)"
+            (click)="selectCustomAmount()"
           >
             Add
           </button>
         </div>
       </div>
-
-      <button
-        type="button"
-        class="w-full rounded-lg border border-white/10 px-4 py-3 font-semibold text-neutral-200 transition hover:bg-white/10"
-        (click)="dialogRef.close()"
-      >
-        Cancel
-      </button>
     </section>
   `
 })
@@ -86,8 +80,7 @@ export class RebuyDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<RebuyDialogComponent>);
   protected readonly data = inject<RebuyDialogData>(MAT_DIALOG_DATA);
   protected readonly presets = presetAmounts;
-  protected readonly customAmount = new FormControl(200, {
-    nonNullable: true,
+  protected readonly customAmount = new FormControl<number | null>(null, {
     validators: [Validators.required, Validators.min(1)]
   });
   protected readonly comment = new FormControl('', {
@@ -100,6 +93,20 @@ export class RebuyDialogComponent {
         amount,
         comment: this.comment.value.trim()
       } satisfies RebuyDialogResult);
+    }
+  }
+
+  protected selectCustomAmount(): void {
+    const amount = this.customAmount.value;
+
+    if (amount !== null) {
+      this.selectAmount(amount);
+    }
+  }
+
+  protected clearCustomAmount(): void {
+    if (this.customAmount.value === 0) {
+      this.customAmount.setValue(null);
     }
   }
 }
