@@ -7,6 +7,7 @@ import { SessionPlayer } from '../data/poker-store.service';
 
 export interface CashOutDialogData {
   player: SessionPlayer;
+  mode?: 'record' | 'edit';
 }
 
 @Component({
@@ -15,7 +16,7 @@ export interface CashOutDialogData {
   template: `
     <section class="w-[min(94vw,28rem)] space-y-4 bg-neutral-950 p-4 text-neutral-50 sm:space-y-5 sm:p-5">
       <div>
-        <h2 class="text-xl font-semibold">Cash out</h2>
+        <h2 class="text-xl font-semibold">{{ data.mode === 'edit' ? 'Edit cash out' : 'Cash out' }}</h2>
         <p class="mt-1 text-sm text-neutral-400">
           {{ data.player.name }} buy-in total is
           {{ data.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}.
@@ -28,9 +29,11 @@ export interface CashOutDialogData {
         type="number"
         min="0"
         step="1"
+        inputmode="decimal"
         [formControl]="cashOut"
         class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
         placeholder="0"
+        (focus)="clearDefaultCashOut()"
       />
 
       <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
@@ -40,21 +43,14 @@ export interface CashOutDialogData {
         </p>
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          class="rounded-lg border border-white/10 px-4 py-3 font-semibold text-neutral-200 transition hover:bg-white/10"
-          (click)="dialogRef.close()"
-        >
-          Cancel
-        </button>
+      <div>
         <button
           type="button"
           [disabled]="cashOut.invalid"
-          class="rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+          class="w-full rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
           (click)="submit()"
         >
-          Complete
+          {{ data.mode === 'edit' ? 'Save' : 'Complete' }}
         </button>
       </div>
     </section>
@@ -63,17 +59,25 @@ export interface CashOutDialogData {
 export class CashOutDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<CashOutDialogComponent>);
   protected readonly data = inject<CashOutDialogData>(MAT_DIALOG_DATA);
-  protected readonly cashOut = new FormControl(0, {
-    nonNullable: true,
+  protected readonly cashOut = new FormControl<number | null>(
+    this.data.mode === 'edit' ? this.data.player.cashOut : 0,
+    {
     validators: [Validators.required, Validators.min(0)]
-  });
+    }
+  );
 
   protected projectedNet(): number {
-    return this.cashOut.value - this.data.player.totalBuyIn;
+    return (this.cashOut.value ?? 0) - this.data.player.totalBuyIn;
+  }
+
+  protected clearDefaultCashOut(): void {
+    if (this.cashOut.value === 0) {
+      this.cashOut.setValue(null);
+    }
   }
 
   protected submit(): void {
-    if (this.cashOut.valid) {
+    if (this.cashOut.valid && this.cashOut.value !== null) {
       this.dialogRef.close(this.cashOut.value);
     }
   }

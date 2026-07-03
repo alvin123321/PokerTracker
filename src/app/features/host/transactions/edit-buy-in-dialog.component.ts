@@ -8,6 +8,7 @@ import { PokerTransaction } from '../data/poker-store.service';
 export interface EditBuyInDialogData {
   playerName: string;
   transaction: PokerTransaction;
+  canDelete: boolean;
 }
 
 export type EditBuyInDialogResult =
@@ -28,12 +29,12 @@ export type EditBuyInDialogResult =
       <div>
         <h2 class="text-xl font-semibold">Edit buy-in</h2>
         <p class="mt-1 text-sm text-neutral-400">
-          {{ data.playerName }} · {{ data.transaction.type }} ·
+          {{ data.playerName }} - {{ data.transaction.type }} -
           {{ data.transaction.createdAt | date: 'short' }}
         </p>
         @if (data.transaction.deletedAt) {
           <p class="mt-2 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-neutral-400">
-            Deleted entry · comment can still be edited
+            Deleted entry - comment can still be edited
           </p>
         }
       </div>
@@ -64,27 +65,23 @@ export type EditBuyInDialogResult =
         </span>
       </p>
 
-      <div class="grid gap-3 sm:grid-cols-3">
-        @if (!data.transaction.deletedAt) {
+      <div class="flex gap-3">
+        @if (data.canDelete && !data.transaction.deletedAt) {
           <button
             type="button"
-            class="rounded-lg border border-red-300/30 px-4 py-3 font-semibold text-red-100 transition hover:bg-red-400/10"
+            aria-label="Delete buy-in"
+            title="Delete buy-in"
+            class="pokertrack-icon-button"
             (click)="deleteTransaction()"
           >
-            Delete
+            <span class="trash-icon" aria-hidden="true"></span>
+            <span class="sr-only">Delete</span>
           </button>
         }
         <button
           type="button"
-          class="rounded-lg border border-white/10 px-4 py-3 font-semibold text-neutral-200 transition hover:bg-white/10"
-          (click)="dialogRef.close()"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
           [disabled]="amount.invalid"
-          class="rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+          class="min-w-0 flex-1 rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
           (click)="submit()"
         >
           Save
