@@ -28,14 +28,14 @@ export interface AddPlayerDialogResult {
       [formGroup]="form"
     >
       <div>
-        <h2 class="text-xl font-semibold">Add player</h2>
+        <h2 class="text-xl font-semibold">Add New Member</h2>
         <p class="mt-1 text-sm text-neutral-400">Select a player or create a login with password 123456.</p>
       </div>
 
-      <div class="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-neutral-900 p-1">
+      <div class="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-neutral-900 p-1.5">
         <button
           type="button"
-          class="rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+          class="rounded-md px-3 py-2.5 text-sm font-semibold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
           [class.bg-emerald-400]="mode.value === 'existing'"
           [class.text-neutral-950]="mode.value === 'existing'"
           [class.text-neutral-300]="mode.value !== 'existing'"
@@ -46,7 +46,7 @@ export interface AddPlayerDialogResult {
         </button>
         <button
           type="button"
-          class="rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-white/10"
+          class="rounded-md px-3 py-2.5 text-sm font-semibold transition hover:bg-white/10"
           [class.bg-emerald-400]="mode.value === 'new'"
           [class.text-neutral-950]="mode.value === 'new'"
           [class.text-neutral-300]="mode.value !== 'new'"
@@ -60,17 +60,29 @@ export interface AddPlayerDialogResult {
         <label class="block text-sm font-medium text-neutral-200" for="registeredPlayer">
           Registered player
         </label>
-        <select
+        <div
           id="registeredPlayer"
-          formControlName="playerUserId"
-          class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+          class="mt-2 max-h-64 space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2"
         >
           @for (player of registeredPlayers; track player.id) {
-            <option [value]="player.id">
-              {{ playerLabel(player) }}
-            </option>
+            <button
+              type="button"
+              class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10"
+              [class.member-option-selected]="form.controls.playerUserId.value === player.id"
+              (click)="selectRegisteredPlayer(player.id)"
+            >
+              <span>
+                <span class="block text-base font-semibold">{{ playerLabel(player) }}</span>
+                <span class="member-option-meta mt-1 block text-xs text-neutral-500">
+                  Registered member
+                </span>
+              </span>
+              @if (form.controls.playerUserId.value === player.id) {
+                <span class="text-xs font-black uppercase" aria-hidden="true">Selected</span>
+              }
+            </button>
           }
-        </select>
+        </div>
       } @else {
         <label class="block text-sm font-medium text-neutral-200" for="playerName">
           New player name
@@ -119,25 +131,31 @@ export interface AddPlayerDialogResult {
         placeholder="Optional note"
       ></textarea>
 
-      <div class="grid grid-cols-2 gap-3 pt-2">
-        <button
-          type="button"
-          class="rounded-lg border border-white/10 px-4 py-3 font-semibold text-neutral-200 transition hover:bg-white/10"
-          (click)="dialogRef.close()"
-        >
-          Cancel
-        </button>
+      <div class="pt-2">
         <button
           type="button"
           [disabled]="!canSubmit()"
-          class="rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+          class="w-full rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
           (click)="submit()"
         >
-          Add player
+          Add New Member
         </button>
       </div>
     </form>
-  `
+  `,
+  styles: [
+    `
+      .member-option-selected {
+        border-color: rgb(110 231 183);
+        background: rgb(110 231 183);
+        color: rgb(10 10 10);
+      }
+
+      .member-option-selected .member-option-meta {
+        color: rgb(38 38 38);
+      }
+    `
+  ]
 })
 export class AddPlayerDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<AddPlayerDialogComponent>);
@@ -211,6 +229,10 @@ export class AddPlayerDialogComponent {
     this.mode.setValue(mode);
   }
 
+  protected selectRegisteredPlayer(playerId: string): void {
+    this.form.controls.playerUserId.setValue(playerId);
+  }
+
   protected setBuyIn(amount: number): void {
     this.form.controls.buyIn.setValue(amount);
   }
@@ -241,6 +263,13 @@ export class AddPlayerDialogComponent {
   }
 
   protected playerLabel(player: RegisteredPlayerOption): string {
-    return player.displayName ?? player.username;
+    return this.titleCaseName(player.displayName ?? player.username);
+  }
+
+  private titleCaseName(name: string): string {
+    return name
+      .trim()
+      .toLocaleLowerCase()
+      .replace(/\b[\p{L}\p{N}]/gu, (letter) => letter.toLocaleUpperCase());
   }
 }
