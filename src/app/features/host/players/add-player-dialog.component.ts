@@ -181,7 +181,8 @@ export interface AddPlayerDialogResult {
       }
 
       .registered-player-list {
-        max-height: min(14rem, 34vh);
+        min-height: min(18rem, 42vh);
+        max-height: min(26rem, 54vh);
       }
 
       .member-option-selected {
@@ -214,7 +215,8 @@ export interface AddPlayerDialogResult {
         }
 
         .registered-player-list {
-          max-height: min(12rem, 30vh);
+          min-height: min(19rem, 48vh);
+          max-height: min(24rem, 52vh);
         }
       }
     `
