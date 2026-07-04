@@ -206,6 +206,14 @@ const localStorageKey = 'pokertrack.localPokerStore';
 const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
 const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers';
 const localDeletedRegisteredPlayersStorageKey = 'pokertrack.localDeletedRegisteredPlayers';
+const localProductionSnapshotMarkerStorageKey = 'pokertrack.localProductionSnapshotCopiedAt';
+const localProductionSnapshotPath = '/snapshots/production-copy.json';
+
+interface LocalProductionSnapshot {
+  copiedAt: string;
+  sessions: PokerSession[];
+  registeredPlayers: RegisteredPlayerOption[];
+}
 
 @Injectable({
   providedIn: 'root'
@@ -227,6 +235,7 @@ export class PokerStoreService implements OnDestroy {
   private realtimeChannel: RealtimeChannel | null = null;
   private realtimeUserKey: string | null = null;
   private loadedSupabaseUserId: string | null = null;
+  private localProductionSnapshotLoadPromise: Promise<void> | null = null;
 
   readonly sessions = this.sessionsSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
@@ -252,6 +261,7 @@ export class PokerStoreService implements OnDestroy {
 
       if (!initialized || !this.shouldUseSupabaseForUser(user?.id ?? null)) {
         this.teardownRealtimeChannel();
+        void this.loadLocalProductionSnapshotIfNeeded(user?.id ?? null);
         return;
       }
 
@@ -1484,6 +1494,60 @@ export class PokerStoreService implements OnDestroy {
       localStorage.removeItem(localDeletedRegisteredPlayersStorageKey);
       return [];
     }
+  }
+
+  private async loadLocalProductionSnapshotIfNeeded(userId: string | null): Promise<void> {
+    if (
+      userId !== 'dev-host-admin' ||
+      typeof localStorage === 'undefined' ||
+      typeof fetch === 'undefined' ||
+      this.shouldUseSupabaseForUser(userId)
+    ) {
+      return;
+    }
+
+    if (this.localProductionSnapshotLoadPromise) {
+      return this.localProductionSnapshotLoadPromise;
+    }
+
+    this.localProductionSnapshotLoadPromise = this.loadLocalProductionSnapshot();
+
+    try {
+      await this.localProductionSnapshotLoadPromise;
+    } finally {
+      this.localProductionSnapshotLoadPromise = null;
+    }
+  }
+
+  private async loadLocalProductionSnapshot(): Promise<void> {
+    const response = await fetch(localProductionSnapshotPath, { cache: 'no-store' });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const snapshot = (await response.json()) as Partial<LocalProductionSnapshot>;
+
+    if (
+      !snapshot.copiedAt ||
+      !Array.isArray(snapshot.sessions) ||
+      !Array.isArray(snapshot.registeredPlayers)
+    ) {
+      return;
+    }
+
+    if (localStorage.getItem(localProductionSnapshotMarkerStorageKey) === snapshot.copiedAt) {
+      return;
+    }
+
+    this.sessionsSignal.set(snapshot.sessions);
+    this.localRegisteredPlayersSignal.set(snapshot.registeredPlayers);
+    this.localDeletedRegisteredPlayerIdsSignal.set([]);
+
+    this.saveSessions(snapshot.sessions);
+    this.saveLocalRegisteredPlayers(snapshot.registeredPlayers);
+    this.saveLocalDeletedRegisteredPlayerIds([]);
+    localStorage.setItem(localProductionSnapshotMarkerStorageKey, snapshot.copiedAt);
   }
 
   private saveSessions(sessions: PokerSession[]): void {

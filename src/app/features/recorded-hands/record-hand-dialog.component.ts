@@ -82,7 +82,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
           </div>
         </header>
 
-        <div class="setup-page">
+        <div class="setup-page step-panel">
           <div class="grid gap-5 xl:grid-cols-[0.95fr_1.25fr]">
             <div class="xl:col-span-2">
               <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -119,7 +119,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
                 </span>
               </div>
 
-              <div class="mt-6 grid gap-3 sm:grid-cols-2">
+              <div class="setup-tag-grid mt-6 grid gap-3 sm:grid-cols-2">
                 @for (tag of tagOptions; track tag) {
                   <button
                     type="button"
@@ -179,7 +179,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
                 }
               </div>
 
-              <div class="mt-6 flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div class="setup-player-tools mt-6 flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p class="text-sm text-neutral-400">
                   <span class="font-bold text-emerald-300">{{ selectedPlayerIds().length }}</span>
                   of {{ data.session.players.length }} players selected
@@ -272,7 +272,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       }
 
       @if (step() === 2) {
-        <div class="build-page">
+        <div class="build-page step-panel">
           <nav class="street-tabs" aria-label="Hand streets">
             @for (street of streetOptions; track street) {
               <button
@@ -336,23 +336,8 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
               </div>
 
               <div class="board-picker">
-                <div class="rank-picker-panel">
-                  <p class="build-kicker">Select Rank</p>
-                  <div class="rank-grid">
-                    @for (rank of rankOptions; track rank) {
-                      <button
-                        type="button"
-                        class="rank-button"
-                        [class.rank-button-active]="selectedRank() === rank"
-                        (click)="selectedRank.set(rank)"
-                      >
-                        {{ rank }}
-                      </button>
-                    }
-                  </div>
-                </div>
                 <div class="suit-picker-panel">
-                  <p class="build-kicker">Select Suit</p>
+                  <p class="build-kicker">Suit</p>
                   <div class="suit-grid">
                     @for (suit of suitOptions; track suit) {
                       <button
@@ -363,6 +348,21 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
                         (click)="selectedSuit.set(suit)"
                       >
                         {{ suitSymbol(suit) }}
+                      </button>
+                    }
+                  </div>
+                </div>
+                <div class="rank-picker-panel">
+                  <p class="build-kicker">Card Value</p>
+                  <div class="rank-grid">
+                    @for (rank of rankOptions; track rank) {
+                      <button
+                        type="button"
+                        class="rank-button"
+                        [class.rank-button-active]="selectedRank() === rank"
+                        (click)="selectedRank.set(rank)"
+                      >
+                        {{ rank }}
                       </button>
                     }
                   </div>
@@ -409,11 +409,29 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
                 </div>
               </div>
 
+              <div class="action-panel-section">
+                <p class="build-kicker">Select Action</p>
+                <div class="action-type-grid">
+                  @for (action of actionOptions; track action) {
+                    <button
+                      type="button"
+                      class="action-type-button"
+                      [class.action-type-button-active]="selectedActionType() === action"
+                      [attr.data-action]="action"
+                      (click)="selectActionType(action)"
+                    >
+                      <span>{{ actionIcon(action) }}</span>
+                      <strong>{{ actionLabel(action) }}</strong>
+                    </button>
+                  }
+                </div>
+              </div>
+
               @if (actionNeedsAmount()) {
                 <div class="action-panel-section amount-panel">
                   <div class="flex items-center justify-between gap-3">
                     <p class="build-kicker">Amount</p>
-                    <span class="amount-hint">Set amount before choosing the action.</span>
+                    <span class="amount-hint">Required for {{ actionLabel(selectedActionType()) }}</span>
                   </div>
                   <div class="amount-row">
                     <button type="button" class="amount-stepper build-stepper" (click)="stepAmount(-25)">-</button>
@@ -442,24 +460,6 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
                   </div>
                 </div>
               }
-
-              <div class="action-panel-section">
-                <p class="build-kicker">Select Action</p>
-                <div class="action-type-grid">
-                  @for (action of actionOptions; track action) {
-                    <button
-                      type="button"
-                      class="action-type-button"
-                      [class.action-type-button-active]="selectedActionType() === action"
-                      [attr.data-action]="action"
-                      (click)="selectActionType(action)"
-                    >
-                      <span>{{ actionIcon(action) }}</span>
-                      <strong>{{ actionLabel(action) }}</strong>
-                    </button>
-                  }
-                </div>
-              </div>
 
               <button
                 type="button"
@@ -525,7 +525,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       }
 
       @if (step() === 3) {
-        <div class="review-page">
+        <div class="review-page step-panel">
           <section class="review-board-card">
             <div class="review-board-meta">
               <div>
@@ -600,30 +600,36 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         </div>
       }
 
-      @if (step() > 1) {
-        <footer class="flex flex-col gap-2 border-t border-white/10 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <footer class="record-flow-footer">
           <div class="text-xs text-neutral-500">
             Visible to table operators and players in this session.
           </div>
-          <div class="flex flex-wrap justify-end gap-2">
+          <div class="footer-actions">
+            @if (step() === 1) {
+              <button type="button" class="footer-button" (click)="closeDialog()">
+                Cancel
+              </button>
+            } @else {
               <button type="button" class="footer-button" (click)="goBack()">
-              Back
-            </button>
-            <button type="button" class="footer-button" (click)="save('DRAFT')">Save Draft</button>
+                Back
+              </button>
+              <button type="button" class="footer-button" (click)="save('DRAFT')">Save Draft</button>
+            }
             @if (step() < 3) {
               <button
                 type="button"
-                class="rounded-lg px-5 py-3 text-sm font-black text-neutral-950 transition hover:opacity-90"
+                class="footer-primary-button"
                 [class.bg-emerald-400]="accent() === 'emerald'"
                 [class.bg-sky-300]="accent() === 'sky'"
+                [disabled]="step() === 1 && selectedPlayerIds().length === 0"
                 (click)="goNext()"
               >
-                Next
+                Next: {{ stepLabels[step()] }}
               </button>
             } @else {
               <button
                 type="button"
-                class="rounded-lg bg-white px-5 py-3 text-sm font-black text-neutral-950 transition hover:bg-neutral-200"
+                class="footer-primary-button bg-white"
                 (click)="save('SAVED')"
               >
                 Save Hand
@@ -631,7 +637,6 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
             }
           </div>
         </footer>
-      }
     </section>
   `,
   styles: [
@@ -643,6 +648,100 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
           radial-gradient(circle at 78% 88%, rgb(34 197 94 / 0.12), transparent 22rem),
           linear-gradient(135deg, rgb(2 6 8), rgb(10 13 15) 52%, rgb(3 7 9));
         box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 0.55);
+      }
+
+      .step-panel {
+        animation: step-fade-rise 260ms ease-out both;
+      }
+
+      @keyframes step-fade-rise {
+        from {
+          opacity: 0;
+          transform: translateY(0.75rem);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes selected-glow {
+        0%,
+        100% {
+          box-shadow:
+            0 0 0 1px rgb(34 197 94 / 0.18),
+            0 0 0.75rem rgb(34 197 94 / 0.14);
+        }
+
+        50% {
+          box-shadow:
+            0 0 0 1px rgb(34 197 94 / 0.38),
+            0 0 1.45rem rgb(34 197 94 / 0.36);
+        }
+      }
+
+      @keyframes card-pop-in {
+        from {
+          opacity: 0;
+          transform: translateY(0.45rem) scale(0.92);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes action-slide-in {
+        from {
+          opacity: 0;
+          transform: translateX(-0.55rem);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .record-flow-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        border-top: 1px solid rgb(255 255 255 / 0.1);
+        background:
+          linear-gradient(180deg, rgb(10 10 10 / 0.92), rgb(10 10 10 / 0.98)),
+          rgb(10 10 10);
+        padding: 0.85rem 1rem;
+        backdrop-filter: blur(1rem);
+      }
+
+      .footer-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.55rem;
+      }
+
+      .footer-primary-button {
+        min-height: 3.1rem;
+        border-radius: 0.5rem;
+        padding: 0 1.1rem;
+        color: rgb(10 10 10);
+        font-size: 0.9rem;
+        font-weight: 950;
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
+      }
+
+      .footer-primary-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
       }
 
       .setup-topbar {
@@ -716,6 +815,13 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         padding: 0 1.4rem;
         color: white;
         box-shadow: 0 1rem 2rem rgb(34 197 94 / 0.18);
+      }
+
+      .setup-next-button:not(:disabled),
+      .footer-primary-button:not(:disabled) {
+        box-shadow:
+          0 0 0 1px rgb(34 197 94 / 0.18),
+          0 0.85rem 1.5rem rgb(34 197 94 / 0.2);
       }
 
       .setup-next-button:disabled {
@@ -835,8 +941,11 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       .setup-tag-card-selected {
         border-color: rgb(34 197 94);
         background: rgb(34 197 94 / 0.1);
-        box-shadow: 0 0 0 1px rgb(34 197 94 / 0.22);
         transform: translateY(-1px);
+      }
+
+      .setup-tag-card-selected {
+        animation: selected-glow 1.8s ease-in-out infinite;
       }
 
       .setup-tag-icon {
@@ -911,8 +1020,11 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       .setup-player-token:hover .setup-player-avatar,
       .setup-player-token-selected .setup-player-avatar {
         border-color: rgb(34 197 94);
-        box-shadow: 0 0 1.5rem rgb(34 197 94 / 0.18);
         transform: translateY(-1px);
+      }
+
+      .setup-player-token-selected .setup-player-avatar {
+        animation: selected-glow 1.8s ease-in-out infinite;
       }
 
       .setup-avatar-check {
@@ -1065,6 +1177,10 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         transform: translateY(-1px);
       }
 
+      .street-tab-active {
+        animation: selected-glow 1.9s ease-in-out infinite;
+      }
+
       .street-tab-name {
         font-size: 1.2rem;
         font-weight: 900;
@@ -1170,6 +1286,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         color: rgb(23 23 23);
         font-size: 2rem;
         box-shadow: 0 1rem 1.75rem rgb(0 0 0 / 0.28);
+        animation: card-pop-in 200ms ease-out both;
       }
 
       .build-playing-card.card-red {
@@ -1211,6 +1328,11 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         border-color: rgb(34 197 94);
         background: rgb(34 197 94 / 0.15);
         transform: translateY(-1px);
+      }
+
+      .rank-button-active,
+      .suit-button-active {
+        animation: selected-glow 1.8s ease-in-out infinite;
       }
 
       .suit-grid {
@@ -1324,6 +1446,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       .action-player-button-active {
         border-color: rgb(34 197 94);
         background: rgb(34 197 94 / 0.13);
+        animation: selected-glow 1.8s ease-in-out infinite;
       }
 
       .overview-stats span {
@@ -1407,6 +1530,10 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         background: rgb(34 197 94 / 0.15);
       }
 
+      .chip-button-active {
+        animation: selected-glow 1.8s ease-in-out infinite;
+      }
+
       .amount-row {
         display: grid;
         grid-template-columns: 4rem 1fr 4rem;
@@ -1447,6 +1574,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         border-radius: 0.65rem;
         background: rgb(0 0 0 / 0.22);
         padding: 0.8rem;
+        animation: action-slide-in 200ms ease-out both;
       }
 
       .timeline-order {
@@ -1642,6 +1770,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
 
       .flow-step-active span {
         transform: scale(1.06);
+        animation: selected-glow 1.9s ease-in-out infinite;
       }
 
       .flow-step-line {
@@ -1718,16 +1847,26 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       }
 
       .board-stage-felt {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(4.4rem, 1fr));
-        gap: 0.8rem;
+        display: flex;
+        align-items: stretch;
+        gap: 0.65rem;
       }
 
       .board-stage-felt .build-playing-card,
       .board-stage-felt .board-empty-slot {
-        width: 100%;
+        width: calc((100% - 3.9rem) / 5);
         min-width: 0;
         height: 7.4rem;
+      }
+
+      .board-stage-felt > :nth-child(4),
+      .review-board-row > :nth-child(4) {
+        margin-left: 0.7rem;
+      }
+
+      .board-stage-felt > :nth-child(5),
+      .review-board-row > :nth-child(5) {
+        margin-left: 0.35rem;
       }
 
       .board-street-helper {
@@ -1744,7 +1883,7 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
 
       .board-picker {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.45fr);
+        grid-template-columns: minmax(10rem, 0.34fr) minmax(0, 1fr);
         gap: 1rem;
         margin-top: 1rem;
       }
@@ -1882,6 +2021,10 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         box-shadow: 0 0 0 1px rgb(var(--action-color, 34 197 94) / 0.16);
       }
 
+      .action-type-button-active {
+        animation: selected-glow 1.8s ease-in-out infinite;
+      }
+
       .timeline-list {
         grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
         min-height: 0;
@@ -1961,14 +2104,14 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       }
 
       .review-board-row {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(4.5rem, 1fr));
-        gap: 0.9rem;
+        display: flex;
+        align-items: stretch;
+        gap: 0.65rem;
       }
 
       .review-card,
       .review-empty-card {
-        width: 100%;
+        width: calc((100% - 3.9rem) / 5);
         height: 7.6rem;
       }
 
@@ -2049,6 +2192,18 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
         border-radius: 0.65rem;
         background: rgb(var(--action-color, 34 197 94) / 0.075);
         padding: 0.7rem;
+        animation: action-slide-in 200ms ease-out both;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 1ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 1ms !important;
+        }
       }
 
       .review-action-icon {
@@ -2109,15 +2264,343 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
       }
 
       @media (max-width: 760px) {
-        .street-tabs,
-        .review-action-board,
-        .board-picker,
-        .review-board-row,
-        .board-stage-felt {
-          grid-template-columns: 1fr;
+        .record-hand {
+          width: 100vw;
+          max-height: 100vh;
+          border-radius: 0;
+        }
+
+        .setup-topbar,
+        .flow-actions {
+          display: none;
+        }
+
+        .setup-page,
+        .build-page,
+        .review-page {
+          padding: 0.75rem;
+        }
+
+        .setup-page .grid {
+          gap: 0.75rem;
+        }
+
+        .setup-card,
+        .setup-comment-card {
+          padding: 0.85rem;
+        }
+
+        .setup-card-heading {
+          gap: 0.55rem;
+        }
+
+        .setup-card-heading .text-xl {
+          font-size: 1rem;
+          line-height: 1.25rem;
+        }
+
+        .setup-card-heading .text-sm {
+          display: none;
+        }
+
+        .setup-card-icon {
+          font-size: 1.25rem;
+        }
+
+        .setup-tag-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.5rem;
+          margin-top: 0.75rem;
+        }
+
+        .setup-tag-card {
+          min-height: 3.25rem;
+          gap: 0.45rem;
+          border-radius: 0.5rem;
+          padding: 0.55rem;
+        }
+
+        .setup-tag-card .font-semibold {
+          font-size: 0.78rem;
+          line-height: 1rem;
+        }
+
+        .setup-tag-icon {
+          width: 1.45rem;
+          height: 1.45rem;
+          font-size: 1.05rem;
+        }
+
+        .setup-check {
+          width: 1rem;
+          height: 1rem;
+          font-size: 0.62rem;
+        }
+
+        .setup-player-tools {
+          display: none;
+        }
+
+        .setup-comment-card {
+          display: block;
+        }
+
+        .setup-comment-input {
+          min-height: 6.25rem;
+          border-radius: 0.5rem;
+          padding: 0.85rem 3.8rem 0.85rem 0.85rem;
+        }
+
+        .setup-card-art {
+          display: none;
+        }
+
+        .flow-topbar {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          gap: 0.65rem;
+          padding: 0.75rem;
         }
 
         .flow-stepper {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.4rem;
+        }
+
+        .flow-step {
+          min-height: 2.65rem;
+          border: 1px solid rgb(255 255 255 / 0.12);
+          border-radius: 0.55rem;
+          background: rgb(255 255 255 / 0.04);
+          padding: 0.3rem;
+        }
+
+        .flow-step span {
+          width: 1.45rem;
+          height: 1.45rem;
+          border-width: 1px;
+          font-size: 0.72rem;
+        }
+
+        .flow-step strong {
+          font-size: 0.72rem;
+        }
+
+        .street-tabs {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.35rem;
+          margin-bottom: 0.65rem;
+        }
+
+        .street-tab {
+          min-height: 3.1rem;
+          flex-direction: column;
+          justify-content: center;
+          gap: 0.2rem;
+          border-radius: 0.5rem;
+          padding: 0.35rem 0.25rem;
+        }
+
+        .street-tab-name {
+          font-size: clamp(0.72rem, 2.8vw, 0.86rem);
+          line-height: 1;
+        }
+
+        .street-tab-count {
+          padding: 0.15rem 0.35rem;
+          font-size: 0.62rem;
+        }
+
+        .build-card,
+        .review-board-card,
+        .review-action-board {
+          border-radius: 0.55rem;
+          padding: 0.75rem;
+        }
+
+        .build-section-heading {
+          align-items: center;
+          gap: 0.65rem;
+        }
+
+        .build-section-heading h3 {
+          font-size: 1.05rem;
+        }
+
+        .build-kicker {
+          font-size: 0.66rem;
+        }
+
+        .board-stage {
+          margin-top: 0.65rem;
+          border-radius: 0.65rem;
+          padding: 0.55rem;
+        }
+
+        .board-stage-felt,
+        .review-board-row {
+          gap: 0.28rem;
+        }
+
+        .board-stage-felt .build-playing-card,
+        .board-stage-felt .board-empty-slot,
+        .review-card,
+        .review-empty-card {
+          width: calc((100% - 2.1rem) / 5);
+          height: clamp(3.9rem, 17vw, 5.2rem);
+          border-radius: 0.38rem;
+          font-size: clamp(0.68rem, 3vw, 1.2rem);
+        }
+
+        .build-playing-card {
+          font-size: clamp(1.7rem, 8vw, 2.25rem);
+          line-height: 0.95;
+        }
+
+        .build-playing-card span {
+          display: grid;
+          place-items: center;
+        }
+
+        .board-stage-felt > :nth-child(4),
+        .review-board-row > :nth-child(4) {
+          margin-left: 0.5rem;
+        }
+
+        .board-stage-felt > :nth-child(5),
+        .review-board-row > :nth-child(5) {
+          margin-left: 0.25rem;
+        }
+
+        .board-street-helper {
+          display: grid;
+          gap: 0.28rem;
+          margin-top: 0.35rem;
+          font-size: 0.62rem;
+        }
+
+        .board-picker {
+          grid-template-columns: 1fr;
+          gap: 0.55rem;
+          margin-top: 0.65rem;
+        }
+
+        .suit-picker-panel {
+          order: 1;
+        }
+
+        .rank-picker-panel {
+          order: 2;
+        }
+
+        .rank-picker-panel,
+        .suit-picker-panel,
+        .action-panel-section {
+          border-radius: 0.55rem;
+          padding: 0.55rem;
+        }
+
+        .suit-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.4rem;
+        }
+
+        .suit-button {
+          min-height: 2.85rem;
+          font-size: 1.65rem;
+        }
+
+        .rank-grid {
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          gap: 0.32rem;
+        }
+
+        .rank-button {
+          min-height: 2.45rem;
+          border-radius: 0.42rem;
+          font-size: 0.96rem;
+        }
+
+        .board-add-button,
+        .action-add-row {
+          min-height: 3.1rem;
+          margin-top: 0.65rem;
+          font-size: 0.95rem;
+        }
+
+        .action-player-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.55rem;
+        }
+
+        .action-player-button {
+          display: grid;
+          width: 3.45rem;
+          min-height: 3.45rem;
+          place-items: center;
+          border-radius: 9999px;
+          padding: 0;
+        }
+
+        .action-player-button span {
+          width: 100%;
+          height: 100%;
+          border: 0;
+          font-size: 0.9rem;
+        }
+
+        .action-player-button strong {
+          display: none;
+        }
+
+        .action-type-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.4rem;
+        }
+
+        .action-type-button {
+          min-height: 3.65rem;
+          border-radius: 0.5rem;
+          gap: 0.2rem;
+          font-size: 0.72rem;
+        }
+
+        .action-type-button span,
+        .review-action-icon {
+          font-size: 1.35rem;
+        }
+
+        .chip-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.4rem;
+        }
+
+        .chip-button {
+          min-height: 2.55rem;
+          font-size: 0.82rem;
+        }
+
+        .amount-row {
+          grid-template-columns: 2.8rem 1fr 2.8rem;
+          gap: 0.4rem;
+        }
+
+        .build-stepper,
+        .build-amount-input {
+          height: 3.1rem;
+        }
+
+        .build-amount-input {
+          font-size: 1.15rem;
+        }
+
+        .timeline-card {
+          display: none;
+        }
+
+        .review-action-board {
           grid-template-columns: 1fr;
         }
 
@@ -2125,12 +2608,25 @@ const chipAmounts = [25, 50, 100, 200, 500, 1000];
           display: none;
         }
 
-        .action-type-grid,
-        .chip-grid {
-          grid-template-columns: 1fr;
+        .record-flow-footer {
+          padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
         }
 
-        .board-street-helper {
+        .footer-actions {
+          display: grid;
+          grid-template-columns: 1fr 1.35fr;
+          width: 100%;
+        }
+
+        .footer-button,
+        .footer-primary-button {
+          min-height: 3.2rem;
+          justify-content: center;
+          padding: 0 0.75rem;
+          font-size: 0.85rem;
+        }
+
+        .footer-actions .footer-button:nth-child(2) {
           display: none;
         }
       }
