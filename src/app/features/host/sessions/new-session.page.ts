@@ -9,8 +9,6 @@ import { PokerStoreService } from '../data/poker-store.service';
   imports: [ReactiveFormsModule, RouterLink],
   template: `
     <section class="mx-auto max-w-2xl space-y-5 sm:space-y-6">
-      <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">&larr; Dashboard</a>
-
       <div>
         <p class="text-sm font-medium uppercase text-emerald-300">Session</p>
         <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">New Session</h1>
@@ -42,18 +40,26 @@ import { PokerStoreService } from '../data/poker-store.service';
           class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-emerald-300"
         />
 
-        <button
-          type="button"
-          [disabled]="form.invalid || saving()"
-          class="mt-6 w-full rounded-lg bg-emerald-400 px-5 py-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-          (click)="createSession()"
-        >
-          @if (saving()) {
-            Starting...
-          } @else {
-            Start session
-          }
-        </button>
+        <div class="mt-6 grid grid-cols-2 gap-3">
+          <a
+            routerLink="/host/dashboard"
+            class="inline-flex items-center justify-center rounded-lg border border-white/10 px-5 py-4 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+          >
+            Cancel
+          </a>
+          <button
+            type="button"
+            [disabled]="form.invalid || saving()"
+            class="rounded-lg bg-emerald-400 px-5 py-4 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+            (click)="createSession()"
+          >
+            @if (saving()) {
+              Starting...
+            } @else {
+              Start session
+            }
+          </button>
+        </div>
       </form>
     </section>
   `

@@ -175,7 +175,7 @@ interface PlayerLedgerRow {
         <section class="space-y-4">
           <form class="grid gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4 md:grid-cols-[1fr_auto] md:items-end">
             <div>
-              <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add Player</label>
+              <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add Member</label>
               <input
                 id="newPlayerLogin"
                 [formControl]="newPlayerLogin"
@@ -193,7 +193,7 @@ interface PlayerLedgerRow {
                 <span class="action-spinner" aria-hidden="true"></span>
                 Adding...
               } @else {
-                Add Player
+                Add Member
               }
             </button>
           </form>

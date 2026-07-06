@@ -75,7 +75,7 @@ import {
       <section class="space-y-4 sm:space-y-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">&larr; Dashboard</a>
+            <a [routerLink]="backLink" class="text-sm font-semibold text-emerald-300">&larr; {{ backLabel }}</a>
             <div class="mt-3 flex flex-wrap items-center gap-3">
               <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
               <span class="rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-neutral-950">
@@ -175,13 +175,12 @@ import {
         } @else {
           <div class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
             <div
-              class="hidden grid-cols-[1.35fr_0.8fr_0.9fr_0.9fr_0.65fr_0.85fr_1.4fr] gap-3 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase text-neutral-500 lg:grid"
+              class="hidden grid-cols-[1.35fr_0.9fr_0.65fr_0.9fr_0.85fr_1.4fr] gap-3 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase text-neutral-500 lg:grid"
             >
               <span>Player</span>
-              <span>Status</span>
               <span>Buy-in</span>
-              <span>Cash out</span>
               <span>Rebuys</span>
+              <span>Cash out</span>
               <span>Net</span>
               <span class="text-right">Actions</span>
             </div>
@@ -254,7 +253,7 @@ import {
                 </div>
 
                 <div
-                  class="hidden cursor-pointer gap-3 px-4 py-2.5 lg:grid lg:grid-cols-[1.35fr_0.75fr_0.85fr_0.85fr_0.55fr_0.8fr_1.25fr] lg:items-center"
+                  class="hidden cursor-pointer gap-3 px-4 py-2.5 lg:grid lg:grid-cols-[1.35fr_0.85fr_0.55fr_0.85fr_0.8fr_1.25fr] lg:items-center"
                   (click)="togglePlayer(player.id)"
                 >
                   <button
@@ -275,20 +274,6 @@ import {
                     </span>
                   </button>
 
-                  <div>
-                    <span
-                      class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
-                      [class.border-emerald-300/40]="player.status === 'ACTIVE'"
-                      [class.bg-emerald-950]="player.status === 'ACTIVE'"
-                      [class.text-emerald-100]="player.status === 'ACTIVE'"
-                      [class.border-white/15]="player.status === 'COMPLETED'"
-                      [class.bg-neutral-200]="player.status === 'COMPLETED'"
-                      [class.text-neutral-950]="player.status === 'COMPLETED'"
-                    >
-                      {{ player.status }}
-                    </span>
-                  </div>
-
                   <div class="grid grid-cols-2 gap-3 rounded-lg bg-neutral-950 p-3 lg:block lg:bg-transparent lg:p-0">
                     <p class="text-xs text-neutral-500 lg:hidden">Buy-in</p>
                     <p class="font-semibold text-white">
@@ -297,19 +282,19 @@ import {
                   </div>
 
                   <div class="grid grid-cols-2 gap-3 rounded-lg bg-neutral-950 p-3 lg:block lg:bg-transparent lg:p-0">
-                    <p class="text-xs text-neutral-500 lg:hidden">Cash out</p>
-                    <p class="font-semibold text-white">
-                      @if (player.status === 'COMPLETED') {
-                        {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
-                      } @else {
-                        <span class="text-neutral-500">Pending</span>
-                      }
-                    </p>
+                    <p class="text-xs text-neutral-500 lg:hidden">Rebuys</p>
+                    <p class="font-semibold text-white">{{ rebuyCount(player.id) }}</p>
                   </div>
 
                   <div class="grid grid-cols-2 gap-3 rounded-lg bg-neutral-950 p-3 lg:block lg:bg-transparent lg:p-0">
-                    <p class="text-xs text-neutral-500 lg:hidden">Rebuys</p>
-                    <p class="font-semibold text-white">{{ rebuyCount(player.id) }}</p>
+                    <p class="text-xs text-neutral-500 lg:hidden">Cash out</p>
+                    @if (player.status === 'COMPLETED') {
+                      <p class="font-semibold text-white">
+                        {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </p>
+                    } @else {
+                      <span aria-hidden="true"></span>
+                    }
                   </div>
 
                   <div class="grid grid-cols-2 gap-3 rounded-lg bg-neutral-950 p-3 lg:block lg:bg-transparent lg:p-0">
@@ -323,7 +308,7 @@ import {
                         {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                       </p>
                     } @else {
-                      <p class="font-semibold text-neutral-500">Pending</p>
+                      <span aria-hidden="true"></span>
                     }
                   </div>
 
@@ -366,28 +351,16 @@ import {
                   [attr.inert]="isExpanded(player.id) ? null : ''"
                 >
                   <div class="player-detail-panel-inner border-t border-emerald-300/10 bg-neutral-950/80 px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-                    <div class="mb-3 grid grid-cols-2 gap-2 text-sm lg:hidden">
-                      <div class="rounded-lg bg-white/[0.03] p-3">
-                        <p class="text-xs text-neutral-500">Status</p>
-                        <p class="mt-1 font-semibold text-white">{{ player.status }}</p>
-                      </div>
-                      <div class="rounded-lg bg-white/[0.03] p-3">
-                        <p class="text-xs text-neutral-500">Rebuys</p>
-                        <p class="mt-1 font-semibold text-white">{{ rebuyCount(player.id) }}</p>
-                      </div>
-                      <div class="rounded-lg bg-white/[0.03] p-3">
-                        <p class="text-xs text-neutral-500">Cash out</p>
-                        <p class="mt-1 font-semibold text-white">
-                          @if (player.status === 'COMPLETED') {
+                    @if (player.status === 'COMPLETED') {
+                      <div class="mb-3 grid grid-cols-2 gap-2 text-sm lg:hidden">
+                        <div class="rounded-lg bg-white/[0.03] p-3">
+                          <p class="text-xs text-neutral-500">Cash out</p>
+                          <p class="mt-1 font-semibold text-white">
                             {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
-                          } @else {
-                            <span class="text-neutral-500">Pending</span>
-                          }
-                        </p>
-                      </div>
-                      <div class="rounded-lg bg-white/[0.03] p-3">
-                        <p class="text-xs text-neutral-500">Net</p>
-                        @if (player.status === 'COMPLETED') {
+                          </p>
+                        </div>
+                        <div class="rounded-lg bg-white/[0.03] p-3">
+                          <p class="text-xs text-neutral-500">Net</p>
                           <p
                             class="mt-1 font-semibold"
                             [class.text-emerald-300]="player.net >= 0"
@@ -395,15 +368,16 @@ import {
                           >
                             {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                           </p>
-                        } @else {
-                          <p class="mt-1 font-semibold text-neutral-500">Pending</p>
-                        }
+                        </div>
                       </div>
-                    </div>
+                    }
 
                     <div class="mb-3 flex items-center justify-between gap-3">
                       <p class="text-sm font-semibold text-white">Buy-in timeline</p>
-                      <p class="hidden text-xs text-neutral-500 sm:block">
+                      <p class="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-xs font-semibold text-emerald-100 lg:hidden">
+                        Total re-buys {{ activeBuyInCount(player.id) }}
+                      </p>
+                      <p class="hidden text-xs text-neutral-500 lg:block">
                         {{ canDelete() ? 'Host can edit or delete buy-ins' : 'Managers can edit buy-ins' }}
                       </p>
                     </div>
@@ -416,12 +390,16 @@ import {
                       } @else {
                         @for (transaction of buyInTransactions(player.id); track transaction.id) {
                           <div
-                            class="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-[0.75fr_0.9fr_0.7fr_1.2fr_auto] sm:items-center"
+                            class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-[0.75fr_0.9fr_0.7fr_1.2fr_auto] sm:gap-3"
+                            [class.transaction-row-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
+                            [class.transaction-row-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
                             [class.border-neutral-800]="transaction.deletedAt"
                             [class.opacity-60]="transaction.deletedAt"
                           >
                             <span
                               class="text-xs font-semibold uppercase text-emerald-300"
+                              [class.transaction-label-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
+                              [class.transaction-label-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
@@ -433,34 +411,36 @@ import {
                               }
                             </span>
                             <span
-                              class="text-sm text-neutral-300"
+                              class="col-start-1 row-start-2 text-sm text-neutral-300 sm:col-auto sm:row-auto"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
                               {{ transaction.createdAt | date: 'shortTime' }}
                             </span>
                             <span
-                              class="font-semibold text-white"
+                              class="col-start-2 row-start-1 self-center text-right text-lg font-semibold text-white sm:col-auto sm:row-auto sm:self-auto sm:text-left sm:text-base"
+                              [class.transaction-amount-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
+                              [class.transaction-amount-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
                               {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
                             </span>
-                            <span
-                              class="text-sm text-neutral-400"
-                              [class.line-through]="transaction.deletedAt"
-                              [class.text-neutral-500]="transaction.deletedAt"
-                            >
-                              @if (transaction.comment) {
+                            @if (transaction.comment) {
+                              <span
+                                class="col-span-3 text-sm text-neutral-400 sm:col-auto"
+                                [class.line-through]="transaction.deletedAt"
+                                [class.text-neutral-500]="transaction.deletedAt"
+                              >
                                 {{ transaction.comment }}
-                              } @else {
-                                <span class="text-neutral-600">No comment</span>
-                              }
-                            </span>
+                              </span>
+                            } @else {
+                              <span class="hidden sm:block"></span>
+                            }
                             <button
                               type="button"
                               [disabled]="isBusy()"
-                              class="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              class="col-start-3 row-start-1 inline-flex h-8 items-center justify-center gap-2 self-center rounded-lg border border-white/10 px-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:col-auto sm:row-auto sm:h-auto sm:px-3 sm:py-2"
                               (click)="openEditBuyInDialog(player, transaction)"
                             >
                               @if (
@@ -633,6 +613,30 @@ import {
         padding-bottom: 0;
       }
 
+      .transaction-row-buyin {
+        border-color: rgb(52 211 153 / 0.24);
+        background:
+          linear-gradient(135deg, rgb(16 185 129 / 0.12), transparent 62%),
+          rgb(255 255 255 / 0.03);
+      }
+
+      .transaction-row-rebuy {
+        border-color: rgb(56 189 248 / 0.28);
+        background:
+          linear-gradient(135deg, rgb(14 165 233 / 0.14), transparent 62%),
+          rgb(255 255 255 / 0.03);
+      }
+
+      .transaction-label-buyin,
+      .transaction-amount-buyin {
+        color: rgb(110 231 183);
+      }
+
+      .transaction-label-rebuy,
+      .transaction-amount-rebuy {
+        color: rgb(125 211 252);
+      }
+
       .player-row {
         position: relative;
       }
@@ -715,6 +719,12 @@ export class ActiveSessionPage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
+  protected readonly backLink =
+    this.route.snapshot.queryParamMap.get('from') === 'history'
+      ? '/host/sessions/history'
+      : '/host/dashboard';
+  protected readonly backLabel =
+    this.route.snapshot.queryParamMap.get('from') === 'history' ? 'History' : 'Dashboard';
   private readonly expandedPlayerId = signal<string | null>(null);
   protected readonly recentRebuyPlayerId = signal<string | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -955,6 +965,10 @@ export class ActiveSessionPage implements OnDestroy {
 
   protected buyInTransactions(playerId: string): PokerTransaction[] {
     return this.store.buyInTransactionsForPlayer(this.session(), playerId);
+  }
+
+  protected activeBuyInCount(playerId: string): number {
+    return this.buyInTransactions(playerId).filter((transaction) => !transaction.deletedAt).length;
   }
 
   protected togglePlayer(playerId: string): void {

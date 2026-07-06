@@ -11,8 +11,7 @@ import { PokerStoreService } from '../data/poker-store.service';
     <section class="space-y-5 sm:space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">&larr; Dashboard</a>
-          <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Session History</h1>
+          <h1 class="text-2xl font-semibold text-white sm:text-3xl">Session History</h1>
         </div>
       </div>
 
@@ -37,18 +36,22 @@ import { PokerStoreService } from '../data/poker-store.service';
                   ? ['/host/sessions', session.id, 'summary']
                   : ['/host/sessions', session.id]
               "
-              class="rounded-lg border border-white/10 bg-white/[0.04] p-4 transition hover:border-emerald-300/50 hover:bg-white/[0.07] sm:p-5"
+              [queryParams]="session.status === 'ACTIVE' ? { from: 'history' } : null"
+              class="session-history-card rounded-lg border bg-white/[0.04] p-4 transition hover:border-emerald-300/50 hover:bg-white/[0.07] sm:p-5"
+              [class.session-history-card-active]="session.status === 'ACTIVE'"
             >
               <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div class="flex flex-wrap items-center gap-3">
                     <h2 class="text-lg font-semibold text-white">{{ session.name }}</h2>
                     @if (session.status === 'ACTIVE') {
-                      <span class="session-state session-state-active" aria-label="Active session"></span>
-                    } @else {
-                      <span class="session-state session-state-complete" aria-label="Completed session">
-                        <span aria-hidden="true">&check;</span>
+                      <span
+                        class="rounded-md border border-emerald-300/40 px-2 py-1 text-xs font-semibold text-emerald-200 shadow-[0_0_14px_rgba(52,211,153,0.16)]"
+                      >
+                        Active
                       </span>
+                    } @else {
+                      <span class="text-lg font-bold leading-none text-emerald-300" aria-label="Completed session">&check;</span>
                     }
                   </div>
                   <p class="mt-1 text-sm text-neutral-400">
@@ -59,7 +62,12 @@ import { PokerStoreService } from '../data/poker-store.service';
                 <div class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3 md:min-w-96">
                   <div>
                     <p class="text-neutral-500">Players</p>
-                    <p class="mt-1 font-semibold text-white">{{ totals.totalPlayers }}</p>
+                    <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <p class="font-semibold text-white">{{ totals.totalPlayers }}</p>
+                      <p class="text-xs font-semibold text-emerald-300">
+                        {{ totals.cashedOutPlayers }} cashed out
+                      </p>
+                    </div>
                   </div>
                   <div>
                     <p class="text-neutral-500">Buy-in</p>
@@ -75,42 +83,21 @@ import { PokerStoreService } from '../data/poker-store.service';
                   </div>
                 </div>
               </div>
-              @if (totals.activePlayers > 0) {
-                <p class="mt-4 rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">
-                  {{ totals.activePlayers }} pending cash out
-                </p>
-              }
             </a>
           }
         </div>
       }
     </section>
-  `
-  ,
+  `,
   styles: [
     `
-      .session-state {
-        display: inline-grid;
-        width: 1.35rem;
-        height: 1.35rem;
-        flex: 0 0 auto;
-        place-items: center;
-        border-radius: 9999px;
+      .session-history-card {
+        border-color: rgb(255 255 255 / 0.1);
       }
 
-      .session-state-active {
-        background: rgb(52 211 153);
-        box-shadow:
-          0 0 0 0.28rem rgb(52 211 153 / 0.13),
-          0 0 1.1rem rgb(52 211 153 / 0.55);
-      }
-
-      .session-state-complete {
-        border: 1px solid rgb(255 255 255 / 0.16);
-        background: rgb(255 255 255 / 0.9);
-        color: rgb(10 10 10);
-        font-size: 0.78rem;
-        font-weight: 900;
+      .session-history-card-active {
+        border-color: rgb(52 211 153 / 0.45);
+        box-shadow: 0 0 24px rgb(52 211 153 / 0.12);
       }
     `
   ]

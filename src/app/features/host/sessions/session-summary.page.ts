@@ -17,11 +17,13 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
             <div class="mt-3 flex flex-wrap items-center gap-3">
               <h1 class="text-2xl font-semibold text-white sm:text-3xl">Session Summary</h1>
               <span
-                class="rounded-full px-3 py-1 text-xs font-semibold"
+                class="rounded-full border px-3 py-1 text-xs font-semibold"
                 [class.bg-emerald-300]="currentSession.status === 'ACTIVE'"
                 [class.text-neutral-950]="currentSession.status === 'ACTIVE'"
-                [class.bg-white]="currentSession.status === 'COMPLETED'"
-                [class.text-neutral-950]="currentSession.status === 'COMPLETED'"
+                [class.border-emerald-300/50]="currentSession.status === 'ACTIVE'"
+                [class.border-emerald-300/40]="currentSession.status === 'COMPLETED'"
+                [class.bg-transparent]="currentSession.status === 'COMPLETED'"
+                [class.text-emerald-300]="currentSession.status === 'COMPLETED'"
               >
                 {{ currentSession.status }}
               </span>
@@ -90,21 +92,29 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
                 (click)="togglePlayer(player.id)"
               >
                 <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span
-                      class="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400"
-                      aria-hidden="true"
-                    >
-                      {{ isPlayerExpanded(player.id) ? 'v' : '>' }}
-                    </span>
-                    <h3 class="truncate font-semibold text-white">{{ player.name }}</h3>
+                  <div class="relative grid min-h-8 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:min-h-0 sm:flex-wrap sm:items-center">
                     @if (player.status === 'ACTIVE') {
-                      <span class="rounded-full bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
-                        Pending
+                      <span
+                        class="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400"
+                        aria-hidden="true"
+                      >
+                        {{ isPlayerExpanded(player.id) ? 'v' : '>' }}
                       </span>
                     } @else {
-                      <span class="rounded-full bg-white px-2 py-1 text-xs font-semibold text-neutral-950">
-                        Cashed out
+                      <span class="h-7 w-7 sm:hidden" aria-hidden="true"></span>
+                      <span
+                        class="hidden h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400 sm:grid"
+                        aria-hidden="true"
+                      >
+                        {{ isPlayerExpanded(player.id) ? 'v' : '>' }}
+                      </span>
+                    }
+                    <h3 class="absolute left-1/2 max-w-[70%] -translate-x-1/2 truncate text-center font-semibold text-white sm:static sm:max-w-none sm:translate-x-0 sm:text-left">
+                      {{ player.name }}
+                    </h3>
+                    @if (player.status === 'ACTIVE') {
+                      <span class="justify-self-end rounded-full bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
+                        Pending
                       </span>
                     }
                   </div>
