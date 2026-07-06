@@ -25,19 +25,8 @@ import {
   imports: [CurrencyPipe, DatePipe, MatDialogModule, RouterLink],
   template: `
     <section class="space-y-6 sm:space-y-8">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 class="hidden text-2xl font-semibold text-white sm:block sm:text-3xl">Dashboard</h1>
-        </div>
-
-        @if (authState.isHostAdmin()) {
-          <a
-            routerLink="/host/sessions/new"
-            class="inline-flex items-center justify-center rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
-          >
-            New Session
-          </a>
-        }
+      <div>
+        <h1 class="hidden text-2xl font-semibold text-white sm:block sm:text-3xl">Dashboard</h1>
       </div>
 
       @if (actionError() || store.error()) {
@@ -61,22 +50,27 @@ import {
       }
 
       <section class="rounded-xl border border-white/10 bg-white/[0.025] p-4 shadow-2xl shadow-black/20 sm:p-5">
-        <div class="mb-4 flex items-center gap-3">
-          <span class="dashboard-table-icon" aria-hidden="true"></span>
-          <h2 class="text-xl font-semibold text-white">Active Tables</h2>
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="dashboard-table-icon" aria-hidden="true"></span>
+            <h2 class="truncate text-xl font-semibold text-white">Active Tables</h2>
+          </div>
+
+          @if (authState.isHostAdmin()) {
+            <a
+              routerLink="/host/sessions/new"
+              class="dashboard-new-session-icon"
+              aria-label="New session"
+              title="New session"
+            >
+              <span aria-hidden="true">+</span>
+            </a>
+          }
         </div>
         @if (store.activeSessions().length === 0) {
           <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
             <p class="text-lg font-semibold text-white">No active session</p>
             <p class="mt-2 text-sm text-neutral-400">Start a table when the first player arrives.</p>
-            @if (authState.isHostAdmin()) {
-              <a
-                routerLink="/host/sessions/new"
-                class="mt-5 inline-flex rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
-              >
-                Create session
-              </a>
-            }
           </div>
         } @else {
           <div class="grid gap-3">
