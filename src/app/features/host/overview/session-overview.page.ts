@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 
-import { PokerStoreService, ResolvedTimeCallStatus } from '../data/poker-store.service';
+import { PokerStoreService, ResolvedTimeCallStatus, TimeCall } from '../data/poker-store.service';
 
 @Component({
   selector: 'app-session-overview-page',
@@ -67,20 +67,12 @@ import { PokerStoreService, ResolvedTimeCallStatus } from '../data/poker-store.s
                   <div
                     class="call-time-stage-ring"
                     [class.call-time-stage-ring-active]="activeCall"
+                    [style.--clock-elapsed-angle]="clockElapsedAngle(activeCall)"
                   >
-                    <svg viewBox="0 0 220 220" aria-hidden="true">
-                      <circle class="call-time-ring-track" cx="110" cy="110" r="92"></circle>
-                      <circle
-                        class="call-time-ring-progress"
-                        [class.call-time-ring-progress-idle]="!activeCall"
-                        cx="110"
-                        cy="110"
-                        r="92"
-                        pathLength="1"
-                        [attr.stroke-dashoffset]="activeCall ? 1 - store.timeCallProgressFor(activeCall) : 0.08"
-                      ></circle>
-                    </svg>
-                    <div>
+                    <div class="call-time-ring-visual" aria-hidden="true">
+                      <span class="call-time-ring-sweep"></span>
+                    </div>
+                    <div class="call-time-ring-face">
                       <strong>{{ activeCall ? store.secondsRemainingFor(activeCall) : 30 }}</strong>
                       <span>seconds</span>
                     </div>
@@ -88,8 +80,8 @@ import { PokerStoreService, ResolvedTimeCallStatus } from '../data/poker-store.s
 
                   @if (activeCall) {
                     <div class="session-overview-clock-copy">
-                      <p>{{ store.playerNameForTimeCall(session, activeCall) }}</p>
-                      <strong>Called Time</strong>
+                      <p>Clock is live</p>
+                      <strong>Time Called</strong>
                       <span>
                         Calls left
                         {{ store.remainingTimeCallsForPlayer(session, activeCall.sessionPlayerId) }} / 3
@@ -131,10 +123,7 @@ import { PokerStoreService, ResolvedTimeCallStatus } from '../data/poker-store.s
 
                   <div class="grid gap-2.5">
                     @for (player of store.sortedPlayersForActiveSession(session); track player.id) {
-                      <div
-                        class="session-overview-player"
-                        [class.session-overview-player-calling]="activeCall?.sessionPlayerId === player.id"
-                      >
+                      <div class="session-overview-player">
                         <span class="session-overview-player-avatar" aria-hidden="true">
                           {{ initials(player.name) }}
                         </span>
@@ -193,6 +182,12 @@ export class SessionOverviewPage implements OnInit {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase() ?? '')
       .join('');
+  }
+
+  protected clockElapsedAngle(timeCall: TimeCall | undefined): string {
+    const elapsed = timeCall ? 1 - this.store.timeCallProgressFor(timeCall) : 0;
+
+    return `${Math.max(0, Math.min(1, elapsed)) * 360}deg`;
   }
 
   protected isResolving(): boolean {

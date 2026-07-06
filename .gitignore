@@ -39,6 +39,7 @@ supabase/.temp/
 /libpeerconnection.log
 testem.log
 angular-server*.log
+devserver.log
 /typings
 __screenshots__/
 

@@ -1,6 +1,12 @@
-create type public.time_call_status as enum ('RUNNING', 'FINISHED', 'EXPIRED', 'CANCELLED');
+do $$
+begin
+  create type public.time_call_status as enum ('RUNNING', 'FINISHED', 'EXPIRED', 'CANCELLED');
+exception
+  when duplicate_object then null;
+end
+$$;
 
-create table public.time_calls (
+create table if not exists public.time_calls (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references public.sessions(id) on delete cascade,
   session_player_id uuid not null references public.session_players(id) on delete cascade,
@@ -14,22 +20,26 @@ create table public.time_calls (
     check (status = 'RUNNING' or resolved_at is not null)
 );
 
-create unique index time_calls_one_running_per_session_idx
+create unique index if not exists time_calls_one_running_per_session_idx
 on public.time_calls(session_id)
 where status = 'RUNNING';
 
-create index time_calls_session_id_idx on public.time_calls(session_id);
-create index time_calls_session_player_id_idx on public.time_calls(session_player_id);
-create index time_calls_status_idx on public.time_calls(status);
-create index time_calls_expires_at_idx on public.time_calls(expires_at);
+create index if not exists time_calls_session_id_idx on public.time_calls(session_id);
+create index if not exists time_calls_session_player_id_idx on public.time_calls(session_player_id);
+create index if not exists time_calls_status_idx on public.time_calls(status);
+create index if not exists time_calls_expires_at_idx on public.time_calls(expires_at);
 
 alter table public.time_calls enable row level security;
+
+drop policy if exists "Operators can read managed time calls" on public.time_calls;
 
 create policy "Operators can read managed time calls"
 on public.time_calls
 for select
 to authenticated
 using (public.session_belongs_to_current_operator(session_id) and public.is_table_operator());
+
+drop policy if exists "Players can read their own time calls" on public.time_calls;
 
 create policy "Players can read their own time calls"
 on public.time_calls
