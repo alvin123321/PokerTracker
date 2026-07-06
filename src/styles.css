@@ -720,18 +720,18 @@ h3 {
   }
 
   18% {
-    border-color: rgb(74 222 128 / 0.95);
+    border-color: rgb(255 255 255 / 0.1);
     background: rgb(16 185 129 / 0.18);
     box-shadow:
-      0 0 0 1px rgb(74 222 128 / 0.24),
+      0 0 0 1px rgb(74 222 128 / 0.14),
       0 0 34px rgb(34 197 94 / 0.35);
   }
 
   58% {
-    border-color: rgb(52 211 153 / 0.78);
+    border-color: rgb(255 255 255 / 0.1);
     background: rgb(20 184 166 / 0.13);
     box-shadow:
-      0 0 0 1px rgb(52 211 153 / 0.18),
+      0 0 0 1px rgb(52 211 153 / 0.12),
       0 0 24px rgb(16 185 129 / 0.22);
   }
 
