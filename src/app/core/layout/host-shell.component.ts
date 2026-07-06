@@ -9,8 +9,9 @@ import { AuthStateService } from '../auth/auth-state.service';
   template: `
     <main class="min-h-dvh bg-neutral-950 text-neutral-100">
       <header class="border-b border-white/10 bg-neutral-950/90 backdrop-blur">
-        <nav class="mx-auto flex max-w-7xl flex-col items-stretch gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
-          <a routerLink="/host/dashboard" class="pokertrack-brand shrink-0" aria-label="Poker Tracker dashboard">
+        <nav class="host-shell-nav mx-auto grid max-w-7xl items-center gap-3 px-3 py-3 sm:px-5 sm:py-4">
+          <span aria-hidden="true" class="hidden sm:block"></span>
+          <a routerLink="/host/dashboard" class="pokertrack-brand justify-self-center" aria-label="Poker Tracker dashboard">
             <span class="pokertrack-brand-mark" aria-hidden="true">
               <span class="pokertrack-brand-suit">&spades;</span>
             </span>
@@ -18,7 +19,7 @@ import { AuthStateService } from '../auth/auth-state.service';
               <span>Poker</span><span>Tracker</span>
             </span>
           </a>
-          <div class="grid min-w-0 grid-cols-4 items-center gap-1 text-sm sm:flex sm:gap-2 sm:overflow-x-auto">
+          <div class="grid min-w-0 grid-cols-4 items-center gap-1 text-sm sm:flex sm:justify-self-end sm:gap-2 sm:overflow-x-auto">
             <a
               routerLink="/host/dashboard"
               routerLinkActive="pokertrack-nav-link-active"

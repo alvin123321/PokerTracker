@@ -56,6 +56,16 @@ a {
   text-decoration: none;
 }
 
+.host-shell-nav {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .host-shell-nav {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+
 .pokertrack-brand {
   display: inline-flex;
   align-items: center;
