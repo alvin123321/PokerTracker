@@ -42,7 +42,7 @@ interface PlayerLedgerRow {
       }
 
       @if (selectedPlayer(); as player) {
-        <section class="space-y-4">
+        <section class="member-view-enter space-y-4">
           <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
             <div class="flex flex-wrap items-center gap-3">
               <button
@@ -99,29 +99,33 @@ interface PlayerLedgerRow {
               <h3 class="text-sm font-semibold uppercase text-neutral-500">Session detail</h3>
             </div>
             <div class="space-y-3 p-3 sm:p-4">
-              @for (row of selectedRows(); track row.session.id + row.player.id) {
-                <div class="rounded-lg border border-white/10 bg-neutral-950 p-3 sm:p-4">
-                  <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <p class="font-semibold text-white">{{ row.session.name }}</p>
-                      <p class="mt-1 text-sm text-neutral-500">
-                        {{ row.session.sessionDate | date: 'mediumDate' }} - {{ row.player.status }}
-                      </p>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3 text-sm md:min-w-72">
-                      <span>
+              @for (row of selectedRows(); track ledgerRowKey(row)) {
+                <article class="overflow-hidden rounded-lg border border-white/10 bg-neutral-950">
+                  <button
+                    type="button"
+                    class="grid w-full gap-4 p-3 text-center transition hover:bg-white/[0.035] sm:p-4"
+                    [attr.aria-expanded]="isLedgerRowExpanded(row)"
+                    (click)="toggleLedgerRow(row)"
+                  >
+                    <span class="grid gap-1">
+                      <span class="truncate text-lg font-semibold text-white">{{ row.session.name }}</span>
+                      <span class="text-sm text-neutral-500">{{ row.session.sessionDate | date: 'mediumDate' }}</span>
+                    </span>
+
+                    <span class="grid grid-cols-3 gap-2 text-sm">
+                      <span class="rounded-lg bg-white/[0.03] px-3 py-2">
                         <span class="block text-neutral-500">Buy-in</span>
                         <span class="font-semibold text-white">
                           {{ row.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                         </span>
                       </span>
-                      <span>
+                      <span class="rounded-lg bg-white/[0.03] px-3 py-2">
                         <span class="block text-neutral-500">Cash</span>
                         <span class="font-semibold text-white">
                           {{ row.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                         </span>
                       </span>
-                      <span>
+                      <span class="rounded-lg bg-white/[0.03] px-3 py-2">
                         <span class="block text-neutral-500">Net</span>
                         <span
                           class="font-semibold"
@@ -131,38 +135,51 @@ interface PlayerLedgerRow {
                           {{ row.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                         </span>
                       </span>
+                    </span>
+                  </button>
+
+                  <div
+                    class="member-ledger-panel"
+                    [class.member-ledger-panel-open]="isLedgerRowExpanded(row)"
+                    [attr.aria-hidden]="!isLedgerRowExpanded(row)"
+                    [attr.inert]="isLedgerRowExpanded(row) ? null : ''"
+                  >
+                    <div class="member-ledger-panel-inner border-t border-white/10 bg-white/[0.02] p-3 sm:p-4">
+                      <div class="space-y-2">
+                        @for (transaction of row.transactions; track transaction.id) {
+                          <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                            <span
+                              class="h-3 w-3 rounded-full"
+                              [class.bg-emerald-300]="transaction.type === 'BUYIN'"
+                              [class.bg-sky-300]="transaction.type === 'REBUY'"
+                              [class.bg-amber-300]="transaction.type === 'CASHOUT'"
+                            ></span>
+                            <span class="min-w-0 text-left">
+                              <span
+                                class="text-sm font-semibold uppercase"
+                                [class.text-emerald-200]="transaction.type === 'BUYIN'"
+                                [class.text-sky-200]="transaction.type === 'REBUY'"
+                                [class.text-amber-200]="transaction.type === 'CASHOUT'"
+                              >
+                                {{ transaction.type }}
+                              </span>
+                              <span class="mt-1 block text-xs text-neutral-500">
+                                {{ transaction.createdAt | date: 'short' }}
+                              </span>
+                            </span>
+                            <span class="text-center text-lg font-semibold text-white">
+                              {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                            </span>
+                          </div>
+                        } @empty {
+                          <div class="rounded-lg border border-dashed border-white/10 p-4 text-sm text-neutral-500">
+                            No buy-in records for this session.
+                          </div>
+                        }
+                      </div>
                     </div>
                   </div>
-
-                  <div class="mt-4 space-y-2">
-                    @for (transaction of row.transactions; track transaction.id) {
-                      <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                        <span
-                          class="h-3 w-3 rounded-full"
-                          [class.bg-emerald-300]="transaction.type === 'BUYIN'"
-                          [class.bg-sky-300]="transaction.type === 'REBUY'"
-                          [class.bg-amber-300]="transaction.type === 'CASHOUT'"
-                        ></span>
-                        <span class="min-w-0">
-                          <span
-                            class="text-sm font-semibold uppercase"
-                            [class.text-emerald-200]="transaction.type === 'BUYIN'"
-                            [class.text-sky-200]="transaction.type === 'REBUY'"
-                            [class.text-amber-200]="transaction.type === 'CASHOUT'"
-                          >
-                            {{ transaction.type }}
-                          </span>
-                          <span class="mt-1 block text-xs text-neutral-500">
-                            {{ transaction.createdAt | date: 'short' }}
-                          </span>
-                        </span>
-                        <span class="text-center text-lg font-semibold text-white">
-                          {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
-                        </span>
-                      </div>
-                    }
-                  </div>
-                </div>
+                </article>
               } @empty {
                 <div class="rounded-lg border border-dashed border-white/10 p-6 text-sm text-neutral-500">
                   No linked session records for this player yet.
@@ -172,7 +189,7 @@ interface PlayerLedgerRow {
           </section>
         </section>
       } @else {
-        <section class="space-y-4">
+        <section class="member-view-enter space-y-4">
           <form class="grid gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4 md:grid-cols-[1fr_auto] md:items-end">
             <div>
               <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add Member</label>
@@ -263,6 +280,65 @@ interface PlayerLedgerRow {
         animation: action-spinner 700ms linear infinite;
       }
 
+      .member-view-enter {
+        animation: member-view-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .member-ledger-panel {
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+          grid-template-rows 280ms ease-in-out,
+          opacity 220ms ease-in-out,
+          visibility 0ms linear 280ms;
+      }
+
+      .member-ledger-panel-open {
+        grid-template-rows: 1fr;
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition:
+          grid-template-rows 280ms ease-in-out,
+          opacity 220ms ease-in-out;
+      }
+
+      .member-ledger-panel-inner {
+        min-height: 0;
+        overflow: hidden;
+        transform: translateY(-0.25rem);
+        transition:
+          padding 260ms ease-in-out,
+          transform 260ms ease-in-out,
+          border-color 260ms ease-in-out;
+      }
+
+      .member-ledger-panel-open .member-ledger-panel-inner {
+        transform: translateY(0);
+      }
+
+      .member-ledger-panel:not(.member-ledger-panel-open) .member-ledger-panel-inner {
+        border-width: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+
+      @keyframes member-view-enter {
+        from {
+          opacity: 0;
+          transform: translateY(0.5rem);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
       @keyframes action-spinner {
         to {
           transform: rotate(360deg);
@@ -281,6 +357,7 @@ export class PlayersAdminPage implements OnInit {
   protected readonly deletingPlayerId = signal<string | null>(null);
   protected readonly roleUpdatingPlayerId = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly expandedLedgerRowKey = signal<string | null | undefined>(undefined);
   protected readonly newPlayerLogin = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required, Validators.maxLength(80)]
@@ -400,11 +477,53 @@ export class PlayersAdminPage implements OnInit {
   }
 
   protected selectPlayer(playerId: string): void {
+    this.expandedLedgerRowKey.set(undefined);
     this.selectedPlayerId.set(playerId);
+    this.scrollToPageTop();
   }
 
   protected showPlayerList(): void {
+    this.expandedLedgerRowKey.set(undefined);
     this.selectedPlayerId.set(null);
+    this.scrollToPageTop();
+  }
+
+  protected ledgerRowKey(row: PlayerLedgerRow): string {
+    return `${row.session.id}:${row.player.id}`;
+  }
+
+  protected isLedgerRowExpanded(row: PlayerLedgerRow): boolean {
+    const expandedKey = this.expandedLedgerRowKey();
+
+    if (expandedKey === undefined) {
+      return this.firstLedgerRowKey() === this.ledgerRowKey(row);
+    }
+
+    return expandedKey === this.ledgerRowKey(row);
+  }
+
+  protected toggleLedgerRow(row: PlayerLedgerRow): void {
+    const key = this.ledgerRowKey(row);
+    const expandedKey = this.expandedLedgerRowKey();
+    const isDefaultOpen = expandedKey === undefined && this.firstLedgerRowKey() === key;
+    const isOpen = expandedKey === key || isDefaultOpen;
+
+    this.expandedLedgerRowKey.set(isOpen ? null : key);
+  }
+
+  private firstLedgerRowKey(): string | null {
+    const firstRow = this.selectedRows()[0];
+
+    return firstRow ? this.ledgerRowKey(firstRow) : null;
+  }
+
+  private scrollToPageTop(): void {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
   }
 
   protected playerLabel(player: RegisteredPlayerOption): string {

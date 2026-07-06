@@ -46,9 +46,17 @@ import {
         </div>
       }
 
-      @if (store.loading()) {
-        <div class="rounded-lg border border-emerald-300/20 bg-emerald-300/10 p-3 text-sm font-semibold text-emerald-50">
-          Loading latest sessions...
+      @if (pendingAction()) {
+        <div class="pokertrack-sync-overlay fixed inset-0 z-40 grid place-items-center bg-neutral-950/50 px-6 backdrop-blur-sm">
+          <div class="rounded-xl border border-emerald-300/20 bg-neutral-950/90 px-6 py-5 text-center shadow-2xl shadow-black/50">
+            <div class="deck-shuffle mx-auto mb-4" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p class="text-base font-semibold text-white">{{ loadingMessage() }}</p>
+            <p class="mt-1 text-sm text-neutral-400">Syncing the table before controls unlock.</p>
+          </div>
         </div>
       }
 
@@ -182,12 +190,12 @@ import {
                 >
                   <div class="min-h-0">
                     <div
-                      class="space-y-3 border-t border-white/10 px-4 py-4 opacity-0 transition-opacity duration-300 ease-in-out sm:px-5"
+                      class="border-t border-white/10 px-4 py-4 opacity-0 transition-opacity duration-300 ease-in-out sm:px-5"
                       [class.opacity-100]="isSessionExpanded(session)"
                     >
                       @for (player of store.sortedPlayersForActiveSession(session); track player.id) {
                         <div
-                          class="grid gap-3 rounded-lg border border-white/10 bg-black/20 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                          class="grid gap-3 border border-white/10 border-b-0 bg-black/20 p-3 first:rounded-t-lg last:rounded-b-lg last:border-b md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
                           [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
                         >
                           <div class="min-w-0">
@@ -457,6 +465,24 @@ export class HostDashboardPage implements OnDestroy {
     return this.pendingAction() === action;
   }
 
+  protected loadingMessage(): string {
+    const action = this.pendingAction();
+
+    if (action === 'add-player') {
+      return 'Adding player...';
+    }
+
+    if (action?.startsWith('rebuy:')) {
+      return 'Recording rebuy...';
+    }
+
+    if (action?.startsWith('cash-out:')) {
+      return 'Recording cash out...';
+    }
+
+    return 'Saving changes...';
+  }
+
   protected isRecentRebuyPlayer(playerId: string): boolean {
     return this.recentRebuyPlayerId() === playerId;
   }
@@ -476,6 +502,7 @@ export class HostDashboardPage implements OnDestroy {
 
     this.pendingAction.set(action);
     this.actionError.set(null);
+    const startedAt = Date.now();
     let succeeded = false;
 
     try {
@@ -484,6 +511,7 @@ export class HostDashboardPage implements OnDestroy {
     } catch (error) {
       this.actionError.set(this.toMessage(error));
     } finally {
+      await this.waitForMinimumActionDelay(startedAt);
       this.pendingAction.set(null);
     }
 
@@ -505,6 +533,16 @@ export class HostDashboardPage implements OnDestroy {
 
     this.recentRebuySessionId.set(null);
     this.recentRebuyPlayerId.set(null);
+  }
+
+  private waitForMinimumActionDelay(startedAt: number): Promise<void> {
+    const remainingMs = Math.max(0, 750 - (Date.now() - startedAt));
+
+    if (remainingMs === 0) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => window.setTimeout(resolve, remainingMs));
   }
 
   private toMessage(error: unknown): string {

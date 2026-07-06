@@ -58,7 +58,7 @@ import {
         </div>
       }
 
-      @if (isBusy()) {
+      @if (pendingAction()) {
         <div class="pokertrack-sync-overlay fixed inset-0 z-40 grid place-items-center bg-neutral-950/50 px-6 backdrop-blur-sm">
           <div class="rounded-xl border border-emerald-300/20 bg-neutral-950/90 px-6 py-5 text-center shadow-2xl shadow-black/50">
             <div class="deck-shuffle mx-auto mb-4" aria-hidden="true">
@@ -957,7 +957,7 @@ export class ActiveSessionPage implements OnDestroy {
       this.session()?.transactions.filter(
         (transaction) =>
           transaction.playerId === playerId &&
-          transaction.type === 'REBUY' &&
+          (transaction.type === 'BUYIN' || transaction.type === 'REBUY') &&
           !transaction.deletedAt
       ).length ?? 0
     );
