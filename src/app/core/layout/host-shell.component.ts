@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
+  LucideCalculator,
   LucideHistory,
   LucideHouse,
   LucideLogOut,
@@ -17,6 +18,7 @@ import {
 @Component({
   selector: 'app-host-shell',
   imports: [
+    LucideCalculator,
     LucideHistory,
     LucideHouse,
     LucideLogOut,
@@ -65,6 +67,13 @@ import {
             >
               Dashboard
             </a>
+            <a
+              routerLink="/host/pot-calculator"
+              routerLinkActive="pokertrack-nav-link-active"
+              class="pokertrack-nav-link min-w-0 rounded-md px-2 py-2 text-center text-neutral-300 sm:shrink-0 sm:px-3"
+            >
+              Calculator
+            </a>
             @if (authState.isHostAdmin()) {
               <a
                 routerLink="/host/sessions/history"
@@ -104,6 +113,21 @@ import {
                 aria-hidden="true"
               ></svg>
               <span class="sr-only">Dashboard</span>
+            </a>
+            <a
+              routerLink="/host/pot-calculator"
+              routerLinkActive="pokertrack-nav-link-active"
+              class="pokertrack-nav-link pokertrack-mobile-tab"
+              aria-label="Calculator"
+            >
+              <svg
+                lucideCalculator
+                class="pokertrack-nav-icon"
+                [strokeWidth]="3"
+                [absoluteStrokeWidth]="true"
+                aria-hidden="true"
+              ></svg>
+              <span class="sr-only">Calculator</span>
             </a>
             @if (authState.isHostAdmin()) {
               <a

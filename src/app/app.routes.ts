@@ -33,6 +33,11 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'pot-calculator',
+        loadComponent: () =>
+          import('./features/host/tools/pot-calculator.page').then((m) => m.PotCalculatorPage)
+      },
+      {
         path: 'sessions/new',
         canMatch: [hostAdminGuard],
         loadComponent: () =>
