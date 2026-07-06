@@ -10,6 +10,11 @@ export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
 export type PokerPlayerStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTransactionType = 'BUYIN' | 'REBUY' | 'CASHOUT';
+export type TimeCallStatus = 'RUNNING' | 'FINISHED' | 'EXPIRED' | 'CANCELLED';
+export type ResolvedTimeCallStatus = Exclude<TimeCallStatus, 'RUNNING'>;
+
+export const CALL_TIME_LIMIT = 3;
+export const CALL_TIME_DURATION_SECONDS = 30;
 
 export function defaultPokerTableName(tableNumber: number): string {
   if (tableNumber === 1) {
@@ -45,6 +50,17 @@ export interface PokerTable {
   closedAt: string | null;
 }
 
+export interface TimeCall {
+  id: string;
+  sessionId: string;
+  sessionPlayerId: string;
+  status: TimeCallStatus;
+  startedAt: string;
+  expiresAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+}
+
 export interface SessionPlayer {
   id: string;
   playerRecordId?: string;
@@ -69,6 +85,7 @@ export interface PokerSession {
   tables: PokerTable[];
   players: SessionPlayer[];
   transactions: PokerTransaction[];
+  timeCalls: TimeCall[];
 }
 
 export interface SessionTotals {
@@ -142,6 +159,17 @@ interface SessionTableRow {
   closed_at: string | null;
 }
 
+interface TimeCallRow {
+  id: string;
+  session_id: string;
+  session_player_id: string;
+  status: TimeCallStatus;
+  started_at: string;
+  expires_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+}
+
 interface RegisteredPlayerRow {
   id: string;
   username?: string | null;
@@ -192,11 +220,14 @@ export class PokerStoreService implements OnDestroy {
   );
   private readonly loadingSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
+  private readonly nowSignal = signal(Date.now());
   private readonly realtimeRefreshSignal = new Subject<void>();
   private readonly realtimeRefreshSubscription: Subscription;
   private realtimeChannel: RealtimeChannel | null = null;
   private realtimeUserKey: string | null = null;
   private loadedSupabaseUserId: string | null = null;
+  private countdownTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly expiringTimeCallIds = new Set<string>();
 
   readonly sessions = this.sessionsSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
@@ -234,12 +265,24 @@ export class PokerStoreService implements OnDestroy {
       this.loadedSupabaseUserId = user?.id ?? null;
       void this.refreshSessions();
     });
+
+    if (typeof window !== 'undefined') {
+      this.countdownTimer = window.setInterval(() => {
+        this.nowSignal.set(Date.now());
+        this.expireDueTimeCalls();
+      }, 250);
+    }
   }
 
   ngOnDestroy(): void {
     this.teardownRealtimeChannel();
     this.realtimeRefreshSubscription.unsubscribe();
     this.realtimeRefreshSignal.complete();
+
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
   }
 
   async refreshSessions(): Promise<void> {
@@ -274,7 +317,7 @@ export class PokerStoreService implements OnDestroy {
         return;
       }
 
-      const [tablesResult, sessionPlayersResult, transactionsResult] = await Promise.all([
+      const [tablesResult, sessionPlayersResult, transactionsResult, timeCallsResult] = await Promise.all([
         client
           .from('session_tables')
           .select('id,session_id,name,status,table_number,created_at,closed_at')
@@ -291,7 +334,12 @@ export class PokerStoreService implements OnDestroy {
           .from('transactions')
           .select('id,session_id,table_id,player_id,session_player_id,type,amount,created_at,comment,deleted_at')
           .in('session_id', sessionIds)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: true }),
+        client
+          .from('time_calls')
+          .select('id,session_id,session_player_id,status,started_at,expires_at,resolved_at,resolved_by')
+          .in('session_id', sessionIds)
+          .order('started_at', { ascending: true })
       ]);
 
       if (tablesResult.error) {
@@ -306,15 +354,20 @@ export class PokerStoreService implements OnDestroy {
         throw transactionsResult.error;
       }
 
+      if (timeCallsResult.error) {
+        throw timeCallsResult.error;
+      }
+
       const sessionPlayers = (sessionPlayersResult.data ?? []) as SessionPlayerRow[];
       const playerIds = [...new Set(sessionPlayers.map((player) => player.player_id))];
       const playersById = await this.loadPlayersById(playerIds);
       const tables = (tablesResult.data ?? []) as SessionTableRow[];
       const transactions = (transactionsResult.data ?? []) as TransactionRow[];
+      const timeCalls = (timeCallsResult.data ?? []) as TimeCallRow[];
 
       this.sessionsSignal.set(
         sessions.map((session) =>
-          this.mapSession(session, tables, sessionPlayers, playersById, transactions)
+          this.mapSession(session, tables, sessionPlayers, playersById, transactions, timeCalls)
         )
       );
     } catch (error) {
@@ -338,7 +391,7 @@ export class PokerStoreService implements OnDestroy {
         throw error;
       }
 
-      const createdSession = this.mapSession(data as SessionRow, [], [], new Map(), []);
+      const createdSession = this.mapSession(data as SessionRow, [], [], new Map(), [], []);
       await this.refreshHostSessions();
 
       return this.getSession(createdSession.id) ?? createdSession;
@@ -353,7 +406,8 @@ export class PokerStoreService implements OnDestroy {
       closedAt: null,
       tables: [],
       players: [],
-      transactions: []
+      transactions: [],
+      timeCalls: []
     };
 
     this.updateSessions((sessions) => [session, ...sessions]);
@@ -943,12 +997,195 @@ export class PokerStoreService implements OnDestroy {
     await this.refreshHostSessions();
   }
 
+  async requestTimeCall(sessionId: string, sessionPlayerId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService.requireClient().rpc('request_time_call', {
+        p_session_id: sessionId,
+        p_session_player_id: sessionPlayerId
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const expiresAt = new Date(now.getTime() + CALL_TIME_DURATION_SECONDS * 1000).toISOString();
+
+    this.updateSession(sessionId, (session) => {
+      const timeCalls = this.expireTimeCalls(session.timeCalls ?? []);
+      const player = session.players.find((item) => item.id === sessionPlayerId);
+
+      if (session.status !== 'ACTIVE') {
+        throw new Error('Cannot call time in a completed session.');
+      }
+
+      if (!player) {
+        throw new Error('Player is not in this session.');
+      }
+
+      if (player.status !== 'ACTIVE') {
+        throw new Error('Cashed-out players cannot call time.');
+      }
+
+      if (!this.isCurrentPlayer(player)) {
+        throw new Error('You can only call time for your own seat.');
+      }
+
+      if (this.activeTimeCallFrom(timeCalls)) {
+        throw new Error('A call-time clock is already running.');
+      }
+
+      if (this.usedTimeCallCountFrom(timeCalls, player.id) >= CALL_TIME_LIMIT) {
+        throw new Error('No call times remaining.');
+      }
+
+      return {
+        ...session,
+        timeCalls: [
+          ...timeCalls,
+          {
+            id: this.createId('time-call'),
+            sessionId,
+            sessionPlayerId,
+            status: 'RUNNING',
+            startedAt: nowIso,
+            expiresAt,
+            resolvedAt: null,
+            resolvedBy: null
+          }
+        ]
+      };
+    });
+  }
+
+  async resolveTimeCall(timeCallId: string, status: ResolvedTimeCallStatus): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService.requireClient().rpc('resolve_time_call', {
+        p_time_call_id: timeCallId,
+        p_status: status
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    const resolvedAt = new Date().toISOString();
+    const resolvedBy = this.authState.user()?.id ?? null;
+
+    this.updateSessions((sessions) =>
+      sessions.map((session) => ({
+        ...session,
+        timeCalls: (session.timeCalls ?? []).map((timeCall) => {
+          if (timeCall.id !== timeCallId || timeCall.status !== 'RUNNING') {
+            return timeCall;
+          }
+
+          if (status === 'EXPIRED' && new Date(timeCall.expiresAt).getTime() > Date.now()) {
+            return timeCall;
+          }
+
+          return {
+            ...timeCall,
+            status,
+            resolvedAt,
+            resolvedBy
+          };
+        })
+      }))
+    );
+  }
+
+  timeCallsForSession(session: PokerSession | undefined): TimeCall[] {
+    return session?.timeCalls ?? [];
+  }
+
+  activeTimeCallForSession(session: PokerSession | undefined): TimeCall | undefined {
+    this.nowSignal();
+    return this.activeTimeCallFrom(session?.timeCalls ?? []);
+  }
+
+  timeCallsForPlayer(session: PokerSession | undefined, sessionPlayerId: string): TimeCall[] {
+    return (session?.timeCalls ?? []).filter((timeCall) => timeCall.sessionPlayerId === sessionPlayerId);
+  }
+
+  remainingTimeCallsForPlayer(session: PokerSession | undefined, sessionPlayerId: string): number {
+    return Math.max(
+      0,
+      CALL_TIME_LIMIT -
+        this.usedTimeCallCountFrom(session?.timeCalls ?? [], sessionPlayerId)
+    );
+  }
+
+  canRequestTimeCall(session: PokerSession | undefined, player: SessionPlayer | undefined): boolean {
+    if (!session || !player) {
+      return false;
+    }
+
+    return (
+      session.status === 'ACTIVE' &&
+      player.status === 'ACTIVE' &&
+      this.isCurrentPlayer(player) &&
+      !this.activeTimeCallForSession(session) &&
+      this.remainingTimeCallsForPlayer(session, player.id) > 0
+    );
+  }
+
+  isTimeCallRunningForPlayer(session: PokerSession | undefined, sessionPlayerId: string): boolean {
+    return this.activeTimeCallForSession(session)?.sessionPlayerId === sessionPlayerId;
+  }
+
+  secondsRemainingFor(timeCall: TimeCall | undefined): number {
+    this.nowSignal();
+
+    if (!timeCall || timeCall.status !== 'RUNNING') {
+      return 0;
+    }
+
+    return Math.max(0, Math.ceil((new Date(timeCall.expiresAt).getTime() - Date.now()) / 1000));
+  }
+
+  timeCallProgressFor(timeCall: TimeCall | undefined): number {
+    this.nowSignal();
+
+    if (!timeCall) {
+      return 0;
+    }
+
+    const startedAt = new Date(timeCall.startedAt).getTime();
+    const expiresAt = new Date(timeCall.expiresAt).getTime();
+    const duration = Math.max(1, expiresAt - startedAt);
+    const remaining = Math.max(0, expiresAt - Date.now());
+
+    return Math.max(0, Math.min(1, remaining / duration));
+  }
+
+  playerNameForTimeCall(session: PokerSession | undefined, timeCall: TimeCall | undefined): string {
+    if (!session || !timeCall) {
+      return 'No player';
+    }
+
+    return (
+      session.players.find((player) => player.id === timeCall.sessionPlayerId)?.name ??
+      'Unknown player'
+    );
+  }
+
   private mapSession(
     session: SessionRow,
     tables: SessionTableRow[],
     sessionPlayers: SessionPlayerRow[],
     playersById: Map<string, PlayerRow>,
-    transactions: TransactionRow[]
+    transactions: TransactionRow[],
+    timeCalls: TimeCallRow[] = []
   ): PokerSession {
     const currentSessionPlayers = sessionPlayers.filter((player) => player.session_id === session.id);
     const currentTables = tables.filter((table) => table.session_id === session.id);
@@ -966,7 +1203,10 @@ export class PokerStoreService implements OnDestroy {
       ),
       transactions: transactions
         .filter((transaction) => transaction.session_id === session.id)
-        .map((transaction) => this.mapTransaction(transaction))
+        .map((transaction) => this.mapTransaction(transaction)),
+      timeCalls: timeCalls
+        .filter((timeCall) => timeCall.session_id === session.id)
+        .map((timeCall) => this.mapTimeCall(timeCall))
     };
   }
 
@@ -1013,6 +1253,93 @@ export class PokerStoreService implements OnDestroy {
       createdAt: table.created_at,
       closedAt: table.closed_at
     };
+  }
+
+  private mapTimeCall(timeCall: TimeCallRow): TimeCall {
+    return {
+      id: timeCall.id,
+      sessionId: timeCall.session_id,
+      sessionPlayerId: timeCall.session_player_id,
+      status: timeCall.status,
+      startedAt: timeCall.started_at,
+      expiresAt: timeCall.expires_at,
+      resolvedAt: timeCall.resolved_at,
+      resolvedBy: timeCall.resolved_by
+    };
+  }
+
+  private activeTimeCallFrom(timeCalls: TimeCall[]): TimeCall | undefined {
+    return timeCalls.find((timeCall) => timeCall.status === 'RUNNING');
+  }
+
+  private usedTimeCallCountFrom(timeCalls: TimeCall[], sessionPlayerId: string): number {
+    return timeCalls.filter(
+      (timeCall) =>
+        timeCall.sessionPlayerId === sessionPlayerId &&
+        (timeCall.status === 'RUNNING' ||
+          timeCall.status === 'FINISHED' ||
+          timeCall.status === 'EXPIRED')
+    ).length;
+  }
+
+  private isCurrentPlayer(player: SessionPlayer): boolean {
+    const userId = this.authState.user()?.id ?? null;
+    const playerName = this.authState.profile()?.displayName?.trim().toLocaleLowerCase() ?? '';
+
+    return Boolean(
+      (userId && player.userId === userId) ||
+        (!player.userId && playerName && player.name.trim().toLocaleLowerCase() === playerName)
+    );
+  }
+
+  private expireDueTimeCalls(): void {
+    const dueCalls = this.sessionsSignal()
+      .flatMap((session) => session.timeCalls ?? [])
+      .filter(
+        (timeCall) =>
+          timeCall.status === 'RUNNING' &&
+          new Date(timeCall.expiresAt).getTime() <= Date.now()
+      );
+
+    if (dueCalls.length === 0) {
+      return;
+    }
+
+    if (!this.shouldUseSupabase()) {
+      this.updateSessions((sessions) =>
+        sessions.map((session) => ({
+          ...session,
+          timeCalls: this.expireTimeCalls(session.timeCalls ?? [])
+        }))
+      );
+      return;
+    }
+
+    for (const timeCall of dueCalls) {
+      if (this.expiringTimeCallIds.has(timeCall.id)) {
+        continue;
+      }
+
+      this.expiringTimeCallIds.add(timeCall.id);
+      void this.resolveTimeCall(timeCall.id, 'EXPIRED').finally(() => {
+        this.expiringTimeCallIds.delete(timeCall.id);
+      });
+    }
+  }
+
+  private expireTimeCalls(timeCalls: TimeCall[]): TimeCall[] {
+    const now = Date.now();
+    const resolvedAt = new Date().toISOString();
+
+    return timeCalls.map((timeCall) =>
+      timeCall.status === 'RUNNING' && new Date(timeCall.expiresAt).getTime() <= now
+        ? {
+            ...timeCall,
+            status: 'EXPIRED',
+            resolvedAt
+          }
+        : timeCall
+    );
   }
 
   private updateSession(
@@ -1072,7 +1399,8 @@ export class PokerStoreService implements OnDestroy {
       closedAt: null,
       tables: [],
       players: [],
-      transactions: []
+      transactions: [],
+      timeCalls: []
     };
   }
 
@@ -1121,7 +1449,7 @@ export class PokerStoreService implements OnDestroy {
     const channel = client.channel(`pokertrack-session-sync:${userKey}`);
     const handleChange = () => this.queueRealtimeRefresh();
 
-    for (const table of ['sessions', 'players', 'session_players', 'transactions']) {
+    for (const table of ['sessions', 'players', 'session_players', 'transactions', 'time_calls']) {
       channel.on(
         'postgres_changes',
         {
@@ -1564,7 +1892,8 @@ export class PokerStoreService implements OnDestroy {
             amount: 720,
             createdAt: '2026-07-07T20:15:00.000Z'
           }
-        ]
+        ],
+        timeCalls: []
       },
       {
         id: completedSessionId,
@@ -1627,7 +1956,8 @@ export class PokerStoreService implements OnDestroy {
             amount: 650,
             createdAt: '2026-06-30T22:42:00.000Z'
           }
-        ]
+        ],
+        timeCalls: []
       }
     ];
   }

@@ -5,6 +5,7 @@ import {
   LucideHistory,
   LucideHouse,
   LucideLogOut,
+  LucidePresentation,
   LucideUsersRound
 } from '@lucide/angular';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -23,6 +24,7 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
     LucideHistory,
     LucideHouse,
     LucideLogOut,
+    LucidePresentation,
     LucideUsersRound,
     MatDialogModule,
     RouterLink,
@@ -70,6 +72,13 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
               class="pokertrack-nav-link min-w-0 rounded-md px-2 py-2 text-center text-neutral-300 sm:shrink-0 sm:px-3"
             >
               Dashboard
+            </a>
+            <a
+              routerLink="/host/session-overview"
+              routerLinkActive="pokertrack-nav-link-active"
+              class="pokertrack-nav-link min-w-0 rounded-md px-2 py-2 text-center text-neutral-300 sm:shrink-0 sm:px-3"
+            >
+              Session Overview
             </a>
             <a
               routerLink="/host/pot-calculator"

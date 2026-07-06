@@ -37,6 +37,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/profile/profile.page').then((m) => m.ProfilePage)
       },
       {
+        path: 'session-overview',
+        loadComponent: () =>
+          import('./features/host/overview/session-overview.page').then(
+            (m) => m.SessionOverviewPage
+          )
+      },
+      {
         path: 'pot-calculator',
         loadComponent: () =>
           import('./features/host/tools/pot-calculator.page').then((m) => m.PotCalculatorPage)
