@@ -39,7 +39,7 @@ import { AuthStateService } from '../auth/auth-state.service';
                 routerLinkActive="pokertrack-nav-link-active"
                 class="pokertrack-nav-link shrink-0 rounded-md px-2 py-2 text-center text-neutral-300 sm:px-3"
               >
-                Players
+                Member
               </a>
             }
             <button

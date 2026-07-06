@@ -3,7 +3,6 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { RouterLink } from '@angular/router';
 
 import {
   PokerSession,
@@ -23,32 +22,17 @@ interface PlayerLedgerRow {
   transactions: PokerTransaction[];
 }
 
-interface PlayerTotals {
-  sessions: number;
-  activeSessions: number;
-  totalBuyIn: number;
-  totalCashOut: number;
-  net: number;
-}
-
 @Component({
   selector: 'app-players-admin-page',
-  imports: [CurrencyPipe, DatePipe, MatDialogModule, ReactiveFormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, MatDialogModule, ReactiveFormsModule],
   template: `
     <section class="space-y-5 sm:space-y-6">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p class="text-sm font-medium uppercase text-emerald-300">Admin</p>
           <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">
-            {{ selectedPlayer() ? playerLabel(selectedPlayer()!) : 'Players' }}
+            {{ selectedPlayer() ? playerLabel(selectedPlayer()!) : 'Member' }}
           </h1>
         </div>
-        <a
-          routerLink="/host/dashboard"
-          class="rounded-lg border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-        >
-          Dashboard
-        </a>
       </div>
 
       @if (errorMessage()) {
@@ -58,22 +42,21 @@ interface PlayerTotals {
       }
 
       @if (selectedPlayer(); as player) {
-        @let totals = selectedTotals();
         <section class="space-y-4">
-          <button
-            type="button"
-            aria-label="Back to players"
-            title="Back to players"
-            class="pokertrack-icon-button pokertrack-icon-button-neutral"
-            (click)="showPlayerList()"
-          >
-            <span aria-hidden="true" class="text-2xl leading-none">&larr;</span>
-            <span class="sr-only">Back to players</span>
-          </button>
+          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                aria-label="Back to member list"
+                title="Back to member list"
+                class="pokertrack-icon-button pokertrack-icon-button-neutral"
+                (click)="showPlayerList()"
+              >
+                <span aria-hidden="true" class="text-2xl leading-none">&larr;</span>
+                <span class="sr-only">Back to member list</span>
+              </button>
 
-          <div class="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-4 md:flex-row md:items-center md:justify-between">
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 <h2 class="text-xl font-semibold text-white">{{ playerLabel(player) }}</h2>
                 <span
                   class="rounded-full border px-2.5 py-1 text-xs font-semibold"
@@ -85,74 +68,40 @@ interface PlayerTotals {
                   {{ player.role === 'MANAGER' ? 'Manager' : 'Player' }}
                 </span>
               </div>
-            </div>
 
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                [disabled]="roleUpdatingPlayerId() === player.id || isDeletingAnyPlayer()"
-                class="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                (click)="toggleManagerRole(player)"
-              >
-                @if (roleUpdatingPlayerId() === player.id) {
-                  <span class="action-spinner" aria-hidden="true"></span>
-                  Saving...
-                } @else if (player.role === 'MANAGER') {
-                  Make Player
-                } @else {
-                  Make Manager
-                }
-              </button>
-              <button
-                type="button"
-                [disabled]="isDeletingAnyPlayer()"
-                aria-label="Delete player"
-                title="Delete player"
-                class="pokertrack-icon-button"
-                (click)="confirmDeletePlayer(player)"
-              >
-                @if (isDeletingPlayer(player.id)) {
-                  <span class="action-spinner" aria-hidden="true"></span>
-                  <span class="sr-only">Deleting player</span>
-                } @else {
-                  <span class="trash-icon" aria-hidden="true"></span>
-                  <span class="sr-only">Delete player</span>
-                }
-              </button>
-            </div>
-          </div>
-
-          <div class="grid gap-2 sm:grid-cols-3 sm:gap-3">
-            <div class="grid min-h-28 place-items-center rounded-lg border border-emerald-300/15 bg-emerald-400/[0.06] p-4 text-center shadow-lg shadow-emerald-950/10">
-              <p class="flex items-center justify-center gap-2 text-sm font-semibold text-emerald-100">
-                <span aria-hidden="true">🎟️</span>
-                Buy-in
-              </p>
-              <p class="mt-2 text-3xl font-semibold text-white">
-                {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-              </p>
-            </div>
-            <div class="grid min-h-28 place-items-center rounded-lg border border-amber-300/15 bg-amber-400/[0.06] p-4 text-center shadow-lg shadow-amber-950/10">
-              <p class="flex items-center justify-center gap-2 text-sm font-semibold text-amber-100">
-                <span aria-hidden="true">💵</span>
-                Cash
-              </p>
-              <p class="mt-2 text-3xl font-semibold text-white">
-                {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
-              </p>
-            </div>
-            <div class="grid min-h-28 place-items-center rounded-lg border border-sky-300/15 bg-sky-400/[0.06] p-4 text-center shadow-lg shadow-sky-950/10">
-              <p class="flex items-center justify-center gap-2 text-sm font-semibold text-sky-100">
-                <span aria-hidden="true">{{ totals.net >= 0 ? '📈' : '📉' }}</span>
-                Net
-              </p>
-              <p
-                class="mt-2 text-3xl font-semibold"
-                [class.text-emerald-300]="totals.net >= 0"
-                [class.text-red-300]="totals.net < 0"
-              >
-                {{ totals.net | currency: 'USD' : 'symbol' : '1.0-0' }}
-              </p>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  [disabled]="roleUpdatingPlayerId() === player.id || isDeletingAnyPlayer()"
+                  class="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  (click)="toggleManagerRole(player)"
+                >
+                  @if (roleUpdatingPlayerId() === player.id) {
+                    <span class="action-spinner" aria-hidden="true"></span>
+                    Saving...
+                  } @else if (player.role === 'MANAGER') {
+                    Make Player
+                  } @else {
+                    Make Manager
+                  }
+                </button>
+                <button
+                  type="button"
+                  [disabled]="isDeletingAnyPlayer()"
+                  aria-label="Delete player"
+                  title="Delete player"
+                  class="pokertrack-icon-button"
+                  (click)="confirmDeletePlayer(player)"
+                >
+                  @if (isDeletingPlayer(player.id)) {
+                    <span class="action-spinner" aria-hidden="true"></span>
+                    <span class="sr-only">Deleting player</span>
+                  } @else {
+                    <span class="trash-icon" aria-hidden="true"></span>
+                    <span class="sr-only">Delete player</span>
+                  }
+                </button>
+              </div>
             </div>
           </div>
 
@@ -263,11 +212,11 @@ interface PlayerTotals {
           <section class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
             <div class="grid gap-3 border-b border-white/10 p-3 sm:p-4 md:grid-cols-[1fr_auto] md:items-center">
               <div>
-                <h2 class="text-lg font-semibold text-white">Player list</h2>
-                <p class="mt-1 text-sm text-neutral-500">{{ filteredPlayers().length }} players</p>
+                <h2 class="text-lg font-semibold text-white">Member list</h2>
+                <p class="mt-1 text-sm text-neutral-500">{{ filteredPlayers().length }} members</p>
               </div>
               <label class="block md:w-80" for="playerSearch">
-                <span class="sr-only">Search players</span>
+                <span class="sr-only">Search members</span>
                 <input
                   id="playerSearch"
                   [formControl]="searchControl"
@@ -278,9 +227,9 @@ interface PlayerTotals {
             </div>
 
             @if (loadingPlayers()) {
-              <div class="p-6 text-sm text-neutral-400">Loading players...</div>
+              <div class="p-6 text-sm text-neutral-400">Loading members...</div>
             } @else if (filteredPlayers().length === 0) {
-              <div class="p-6 text-sm text-neutral-400">No players match your search.</div>
+              <div class="p-6 text-sm text-neutral-400">No members match your search.</div>
             } @else {
               <div class="grid gap-2 p-3 [grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))] sm:gap-3 sm:p-4">
                 @for (player of filteredPlayers(); track player.id) {
@@ -375,7 +324,6 @@ export class PlayersAdminPage implements OnInit {
     this.players().find((player) => player.id === this.selectedPlayerId()) ?? null
   );
   protected readonly selectedRows = computed(() => this.rowsForPlayer(this.selectedPlayerId()));
-  protected readonly selectedTotals = computed(() => this.totalsFromRows(this.selectedRows()));
 
   async ngOnInit(): Promise<void> {
     await this.loadPlayers();
@@ -525,16 +473,6 @@ export class PlayersAdminPage implements OnInit {
           }))
       )
       .sort((a, b) => b.session.sessionDate.localeCompare(a.session.sessionDate));
-  }
-
-  private totalsFromRows(rows: PlayerLedgerRow[]): PlayerTotals {
-    return {
-      sessions: rows.length,
-      activeSessions: rows.filter((row) => row.player.status === 'ACTIVE').length,
-      totalBuyIn: rows.reduce((sum, row) => sum + row.player.totalBuyIn, 0),
-      totalCashOut: rows.reduce((sum, row) => sum + row.player.cashOut, 0),
-      net: rows.reduce((sum, row) => sum + row.player.net, 0)
-    };
   }
 
   private localRegisteredPlayerId(name: string): string {
