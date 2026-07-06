@@ -110,12 +110,12 @@ import { UserProfile } from '../../core/models/user.model';
 
       @if (loginLoadingMessage(); as message) {
         <div
-          class="login-loading-overlay fixed inset-0 z-50 grid place-items-center bg-neutral-950/70 px-6 backdrop-blur-sm"
+          class="pokertrack-sync-overlay fixed inset-0 z-50 grid place-items-center bg-neutral-950/70 px-6 backdrop-blur-sm"
           aria-live="polite"
           aria-busy="true"
         >
           <div class="rounded-xl border border-emerald-300/20 bg-neutral-950/95 px-6 py-5 text-center shadow-2xl shadow-black/50">
-            <div class="login-deck-shuffle mx-auto mb-4" aria-hidden="true">
+            <div class="deck-shuffle mx-auto mb-4" aria-hidden="true">
               <span></span>
               <span></span>
               <span></span>
@@ -155,70 +155,9 @@ import { UserProfile } from '../../core/models/user.model';
         animation: login-spinner 700ms linear infinite;
       }
 
-      .login-loading-overlay {
-        animation: login-loading-fade 180ms ease-out both;
-      }
-
-      .login-deck-shuffle {
-        position: relative;
-        width: 4.5rem;
-        height: 3.25rem;
-      }
-
-      .login-deck-shuffle span {
-        position: absolute;
-        left: 1.15rem;
-        top: 0.35rem;
-        width: 2.25rem;
-        height: 2.9rem;
-        border: 1px solid rgb(110 231 183 / 0.8);
-        border-radius: 0.35rem;
-        background:
-          linear-gradient(135deg, rgb(110 231 183) 0 20%, transparent 20% 100%),
-          linear-gradient(315deg, rgb(255 255 255 / 0.12), rgb(10 10 10));
-        box-shadow: 0 0.75rem 1.5rem rgb(0 0 0 / 0.35);
-        animation: login-deck-shuffle 980ms ease-in-out infinite;
-      }
-
-      .login-deck-shuffle span:nth-child(2) {
-        animation-delay: 120ms;
-      }
-
-      .login-deck-shuffle span:nth-child(3) {
-        animation-delay: 240ms;
-      }
-
       @keyframes login-spinner {
         to {
           transform: rotate(360deg);
-        }
-      }
-
-      @keyframes login-deck-shuffle {
-        0%,
-        100% {
-          transform: translateX(-0.55rem) rotate(-10deg);
-          z-index: 1;
-        }
-
-        45% {
-          transform: translateX(0.65rem) rotate(9deg);
-          z-index: 3;
-        }
-
-        70% {
-          transform: translateX(0) rotate(0deg);
-          z-index: 2;
-        }
-      }
-
-      @keyframes login-loading-fade {
-        from {
-          opacity: 0;
-        }
-
-        to {
-          opacity: 1;
         }
       }
 
