@@ -1069,10 +1069,13 @@ export class ActiveSessionPage implements OnDestroy {
         return;
       }
 
-      await this.runAction('delete-session', async () => {
+      const deleted = await this.runAction('delete-session', async () => {
         await this.store.deleteSession(this.sessionId);
-        await this.router.navigate(['/host/dashboard']);
       });
+
+      if (deleted) {
+        await this.router.navigateByUrl('/host/dashboard', { replaceUrl: true });
+      }
     });
   }
 
