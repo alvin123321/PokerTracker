@@ -12,7 +12,6 @@ import { PokerStoreService } from '../data/poker-store.service';
       <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">&larr; Dashboard</a>
-          <p class="text-sm font-medium uppercase text-emerald-300">History</p>
           <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Session History</h1>
         </div>
       </div>
@@ -44,15 +43,13 @@ import { PokerStoreService } from '../data/poker-store.service';
                 <div>
                   <div class="flex flex-wrap items-center gap-3">
                     <h2 class="text-lg font-semibold text-white">{{ session.name }}</h2>
-                    <span
-                      class="rounded-full px-3 py-1 text-xs font-semibold"
-                      [class.bg-emerald-300]="session.status === 'ACTIVE'"
-                      [class.text-neutral-950]="session.status === 'ACTIVE'"
-                      [class.bg-white]="session.status === 'COMPLETED'"
-                      [class.text-neutral-950]="session.status === 'COMPLETED'"
-                    >
-                      {{ session.status }}
-                    </span>
+                    @if (session.status === 'ACTIVE') {
+                      <span class="session-state session-state-active" aria-label="Active session"></span>
+                    } @else {
+                      <span class="session-state session-state-complete" aria-label="Completed session">
+                        <span aria-hidden="true">&check;</span>
+                      </span>
+                    }
                   </div>
                   <p class="mt-1 text-sm text-neutral-400">
                     {{ session.sessionDate | date: 'mediumDate' }}
@@ -89,6 +86,34 @@ import { PokerStoreService } from '../data/poker-store.service';
       }
     </section>
   `
+  ,
+  styles: [
+    `
+      .session-state {
+        display: inline-grid;
+        width: 1.35rem;
+        height: 1.35rem;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 9999px;
+      }
+
+      .session-state-active {
+        background: rgb(52 211 153);
+        box-shadow:
+          0 0 0 0.28rem rgb(52 211 153 / 0.13),
+          0 0 1.1rem rgb(52 211 153 / 0.55);
+      }
+
+      .session-state-complete {
+        border: 1px solid rgb(255 255 255 / 0.16);
+        background: rgb(255 255 255 / 0.9);
+        color: rgb(10 10 10);
+        font-size: 0.78rem;
+        font-weight: 900;
+      }
+    `
+  ]
 })
 export class SessionHistoryPage {
   protected readonly store = inject(PokerStoreService);

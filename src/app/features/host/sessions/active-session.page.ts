@@ -87,7 +87,7 @@ import {
             </p>
           </div>
 
-          <div class="session-action-grid">
+          <div class="session-action-bar">
             <button
               type="button"
               [disabled]="isBusy()"
@@ -513,9 +513,11 @@ import {
         animation: action-spinner 700ms linear infinite;
       }
 
-      .session-action-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+      .session-action-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
         gap: 0.6rem;
       }
 
@@ -525,26 +527,27 @@ import {
         white-space: nowrap;
       }
 
-      .session-action-grid .pokertrack-icon-button {
-        width: 100%;
-        min-width: 0;
+      .session-action-bar .pokertrack-icon-button {
+        width: 2.85rem;
+        min-width: 2.85rem;
         height: 2.85rem;
       }
 
-      @media (min-width: 640px) {
-        .session-action-grid {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: flex-start;
+      @media (max-width: 639px) {
+        .session-action-bar {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
         }
+      }
 
+      @media (min-width: 640px) {
         .session-action-button {
           padding-inline: 0.85rem;
         }
       }
 
       @media (min-width: 1024px) {
-        .session-action-grid {
+        .session-action-bar {
           justify-content: flex-end;
         }
       }
