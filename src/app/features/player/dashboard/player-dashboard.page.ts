@@ -6,6 +6,7 @@ import {
   LucideCalculator,
   LucideHistory,
   LucideHouse,
+  LucideAlarmClock,
   LucideRefreshCcw
 } from '@lucide/angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -13,6 +14,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PotCalculatorPage } from '../../host/tools/pot-calculator.page';
 import {
+  CALL_TIME_LIMIT,
   PokerSession,
   PokerStoreService,
   SessionPlayer,
@@ -49,6 +51,7 @@ interface PlayerActivityEntry {
     LucideCalculator,
     LucideHistory,
     LucideHouse,
+    LucideAlarmClock,
     LucideRefreshCcw,
     RouterLink,
     PotCalculatorPage
@@ -100,9 +103,9 @@ interface PlayerActivityEntry {
         }
       </nav>
 
-      @if (store.error()) {
+      @if (actionError() || store.error()) {
         <div class="player-alert player-alert-error">
-          {{ store.error() }}
+          {{ actionError() || store.error() }}
         </div>
       }
 
@@ -124,18 +127,70 @@ interface PlayerActivityEntry {
                   [attr.aria-expanded]="isFeaturedExpanded(entry)"
                   (click)="toggleFeaturedDetails(entry)"
                 >
+                  @let activeCall = store.activeTimeCallForSession(entry.session);
+                  @let remainingCalls = store.remainingTimeCallsForPlayer(entry.session, entry.player.id);
+                  @let isMyClock = store.isTimeCallRunningForPlayer(entry.session, entry.player.id);
                   <div class="feature-heading">
                     <div>
                       <h2>{{ entry.session.name }}</h2>
                     </div>
-                    <a
-                      [routerLink]="['/player/sessions', entry.session.id]"
-                      class="feature-toggle-label"
-                      (click)="$event.stopPropagation()"
-                    >
-                      Detail
-                    </a>
+                    <div class="feature-heading-actions">
+                      @if (activeCall) {
+                        <div class="call-time-mini-ring" [class.call-time-mini-ring-active]="isMyClock">
+                          <svg viewBox="0 0 44 44" aria-hidden="true">
+                            <circle class="call-time-ring-track" cx="22" cy="22" r="18"></circle>
+                            <circle
+                              class="call-time-ring-progress"
+                              cx="22"
+                              cy="22"
+                              r="18"
+                              pathLength="1"
+                              [attr.stroke-dashoffset]="1 - store.timeCallProgressFor(activeCall)"
+                            ></circle>
+                          </svg>
+                          <span>{{ store.secondsRemainingFor(activeCall) }}</span>
+                        </div>
+                      } @else {
+                        <button
+                          type="button"
+                          class="player-call-time-orb"
+                          [class.player-call-time-orb-loading]="isRequesting(entry.player.id)"
+                          [disabled]="isRequesting(entry.player.id) || !store.canRequestTimeCall(entry.session, entry.player)"
+                          aria-label="Call time"
+                          title="Call time"
+                          (click)="requestTimeCall(entry); $event.stopPropagation()"
+                        >
+                          <svg
+                            lucideAlarmClock
+                            [strokeWidth]="3"
+                            [absoluteStrokeWidth]="true"
+                            aria-hidden="true"
+                          ></svg>
+                          <span>{{ remainingCalls }}/{{ callTimeLimit }}</span>
+                        </button>
+                      }
+                      <a
+                        [routerLink]="['/player/sessions', entry.session.id]"
+                        class="feature-toggle-label"
+                        (click)="$event.stopPropagation()"
+                      >
+                        Detail
+                      </a>
+                    </div>
                   </div>
+
+                  @if (activeCall) {
+                    <div
+                      class="player-call-time-status"
+                      [class.player-call-time-status-active]="isMyClock"
+                    >
+                      <span>{{ isMyClock ? 'Your clock is running' : 'Table clock running' }}</span>
+                    </div>
+                  }
+
+                  @if (!store.timeCallSchemaReady()) {
+                    <p class="player-clock-warning">Clock setup needed</p>
+                  }
 
                   <div class="player-metrics">
                     <div class="metric-card metric-buyin">
@@ -497,6 +552,88 @@ interface PlayerActivityEntry {
 
       .feature-heading {
         align-items: flex-end;
+      }
+
+      .feature-heading-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        flex: 0 0 auto;
+      }
+
+      .player-call-time-orb {
+        display: inline-grid;
+        min-height: 2.9rem;
+        min-width: 3.35rem;
+        place-items: center;
+        border: 1px solid rgb(34 197 94 / 0.48);
+        border-radius: 1rem;
+        background:
+          linear-gradient(150deg, rgb(34 197 94 / 0.22), rgb(20 184 166 / 0.08)),
+          rgb(255 255 255 / 0.045);
+        color: rgb(220 252 231);
+        box-shadow: 0 0 24px rgb(34 197 94 / 0.16);
+        transition:
+          border-color 180ms ease,
+          box-shadow 180ms ease,
+          transform 180ms ease;
+      }
+
+      .player-call-time-orb:not(:disabled):hover {
+        border-color: rgb(74 222 128 / 0.72);
+        box-shadow: 0 0 30px rgb(34 197 94 / 0.24);
+        transform: translateY(-1px);
+      }
+
+      .player-call-time-orb:active {
+        transform: scale(0.97);
+      }
+
+      .player-call-time-orb:disabled {
+        cursor: not-allowed;
+        opacity: 0.46;
+      }
+
+      .player-call-time-orb svg {
+        height: 1.25rem;
+        width: 1.25rem;
+      }
+
+      .player-call-time-orb span {
+        font-size: 0.72rem;
+        font-weight: 820;
+        line-height: 1;
+      }
+
+      .player-call-time-orb-loading svg {
+        animation: player-clock-spin 760ms linear infinite;
+      }
+
+      .player-call-time-status,
+      .player-clock-warning {
+        margin: 0;
+        border-radius: 0.85rem;
+        padding: 0.65rem 0.75rem;
+        font-size: 0.8rem;
+        font-weight: 760;
+      }
+
+      .player-call-time-status {
+        border: 1px solid rgb(245 158 11 / 0.24);
+        background: rgb(245 158 11 / 0.1);
+        color: rgb(253 230 138);
+      }
+
+      .player-call-time-status-active {
+        border-color: rgb(34 197 94 / 0.32);
+        background: rgb(34 197 94 / 0.11);
+        color: rgb(220 252 231);
+      }
+
+      .player-clock-warning {
+        border: 1px solid rgb(245 158 11 / 0.2);
+        background: rgb(245 158 11 / 0.09);
+        color: rgb(254 243 199);
       }
 
       .player-feature-card:hover {
@@ -875,6 +1012,12 @@ interface PlayerActivityEntry {
           transform: translateY(0);
         }
       }
+
+      @keyframes player-clock-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
     `
   ]
 })
@@ -882,6 +1025,9 @@ export class PlayerDashboardPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
   protected readonly store = inject(PokerStoreService);
+  protected readonly callTimeLimit = CALL_TIME_LIMIT;
+  protected readonly pendingTimeCallPlayerId = signal<string | null>(null);
+  protected readonly actionError = signal<string | null>(null);
 
   protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string }> = [
     { id: 'calculator', label: 'Calculator' },
@@ -984,6 +1130,28 @@ export class PlayerDashboardPage implements OnInit {
   protected toggleFeaturedDetails(entry: PlayerSessionEntry): void {
     const key = this.entryKey(entry);
     this.expandedFeatureKey.set(this.expandedFeatureKey() === key ? null : key);
+  }
+
+  protected isRequesting(sessionPlayerId: string): boolean {
+    return this.pendingTimeCallPlayerId() === sessionPlayerId;
+  }
+
+  protected async requestTimeCall(entry: PlayerSessionEntry): Promise<void> {
+    if (this.pendingTimeCallPlayerId()) {
+      return;
+    }
+
+    this.actionError.set(null);
+    this.pendingTimeCallPlayerId.set(entry.player.id);
+
+    try {
+      await this.store.requestTimeCall(entry.session.id, entry.player.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to call time.';
+      this.actionError.set(message);
+    } finally {
+      this.pendingTimeCallPlayerId.set(null);
+    }
   }
 
   protected buyInRows(entry: PlayerSessionEntry): PokerTransaction[] {

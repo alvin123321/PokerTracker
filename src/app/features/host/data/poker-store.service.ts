@@ -220,6 +220,7 @@ export class PokerStoreService implements OnDestroy {
   );
   private readonly loadingSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
+  private readonly timeCallSchemaReadySignal = signal(true);
   private readonly nowSignal = signal(Date.now());
   private readonly realtimeRefreshSignal = new Subject<void>();
   private readonly realtimeRefreshSubscription: Subscription;
@@ -232,6 +233,7 @@ export class PokerStoreService implements OnDestroy {
   readonly sessions = this.sessionsSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+  readonly timeCallSchemaReady = this.timeCallSchemaReadySignal.asReadonly();
   readonly activeSessions = computed(() =>
     this.sessionsSignal().filter((session) => session.status === 'ACTIVE')
   );
@@ -354,8 +356,17 @@ export class PokerStoreService implements OnDestroy {
         throw transactionsResult.error;
       }
 
+      let timeCalls: TimeCallRow[] = [];
+
       if (timeCallsResult.error) {
-        throw timeCallsResult.error;
+        if (this.isMissingTimeCallSchema(timeCallsResult.error)) {
+          this.timeCallSchemaReadySignal.set(false);
+        } else {
+          throw timeCallsResult.error;
+        }
+      } else {
+        this.timeCallSchemaReadySignal.set(true);
+        timeCalls = (timeCallsResult.data ?? []) as TimeCallRow[];
       }
 
       const sessionPlayers = (sessionPlayersResult.data ?? []) as SessionPlayerRow[];
@@ -363,7 +374,6 @@ export class PokerStoreService implements OnDestroy {
       const playersById = await this.loadPlayersById(playerIds);
       const tables = (tablesResult.data ?? []) as SessionTableRow[];
       const transactions = (transactionsResult.data ?? []) as TransactionRow[];
-      const timeCalls = (timeCallsResult.data ?? []) as TimeCallRow[];
 
       this.sessionsSignal.set(
         sessions.map((session) =>
@@ -999,12 +1009,21 @@ export class PokerStoreService implements OnDestroy {
 
   async requestTimeCall(sessionId: string, sessionPlayerId: string): Promise<void> {
     if (this.shouldUseSupabase()) {
+      if (!this.timeCallSchemaReadySignal()) {
+        throw new Error(this.timeCallSetupMessage());
+      }
+
       const { error } = await this.supabaseService.requireClient().rpc('request_time_call', {
         p_session_id: sessionId,
         p_session_player_id: sessionPlayerId
       });
 
       if (error) {
+        if (this.isMissingTimeCallSchema(error)) {
+          this.timeCallSchemaReadySignal.set(false);
+          throw new Error(this.timeCallSetupMessage());
+        }
+
         throw error;
       }
 
@@ -1065,12 +1084,21 @@ export class PokerStoreService implements OnDestroy {
 
   async resolveTimeCall(timeCallId: string, status: ResolvedTimeCallStatus): Promise<void> {
     if (this.shouldUseSupabase()) {
+      if (!this.timeCallSchemaReadySignal()) {
+        throw new Error(this.timeCallSetupMessage());
+      }
+
       const { error } = await this.supabaseService.requireClient().rpc('resolve_time_call', {
         p_time_call_id: timeCallId,
         p_status: status
       });
 
       if (error) {
+        if (this.isMissingTimeCallSchema(error)) {
+          this.timeCallSchemaReadySignal.set(false);
+          throw new Error(this.timeCallSetupMessage());
+        }
+
         throw error;
       }
 
@@ -1133,6 +1161,7 @@ export class PokerStoreService implements OnDestroy {
     return (
       session.status === 'ACTIVE' &&
       player.status === 'ACTIVE' &&
+      (!this.shouldUseSupabase() || this.timeCallSchemaReadySignal()) &&
       this.isCurrentPlayer(player) &&
       !this.activeTimeCallForSession(session) &&
       this.remainingTimeCallsForPlayer(session, player.id) > 0
@@ -1632,6 +1661,32 @@ export class PokerStoreService implements OnDestroy {
       'message' in error &&
       typeof (error as { message?: unknown }).message === 'string'
     );
+  }
+
+  private isMissingTimeCallSchema(error: unknown): boolean {
+    if (!this.hasMessage(error)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    const code =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : '';
+
+    return (
+      (message.includes('schema cache') || code === 'PGRST202' || code === 'PGRST205') &&
+      (message.includes('time_calls') ||
+        message.includes('request_time_call') ||
+        message.includes('resolve_time_call'))
+    );
+  }
+
+  private timeCallSetupMessage(): string {
+    return 'Call Time database setup is not installed yet. Apply the call-time migration, then refresh.';
   }
 
   private setLoading(value: boolean): void {

@@ -948,6 +948,54 @@ h3 {
   transform: scale(0.94);
 }
 
+.call-time-mini-ring {
+  position: relative;
+  display: grid;
+  height: 3.15rem;
+  width: 3.15rem;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.call-time-mini-ring-lg {
+  height: 3.6rem;
+  width: 3.6rem;
+}
+
+.call-time-mini-ring svg,
+.call-time-stage-ring svg {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  transform: rotate(-90deg);
+}
+
+.call-time-mini-ring span {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.call-time-ring-track,
+.call-time-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.call-time-ring-track {
+  stroke: rgb(255 255 255 / 0.12);
+}
+
+.call-time-ring-progress {
+  stroke: rgb(52 211 153);
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  transition: stroke-dashoffset 220ms linear;
+  filter: drop-shadow(0 0 8px rgb(52 211 153 / 0.45));
+}
+
 .dashboard-chip-mark {
   position: relative;
   display: grid;
