@@ -515,13 +515,13 @@ import {
 
       .session-action-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 0.6rem;
       }
 
       .session-action-button {
         min-height: 2.85rem;
-        padding-inline: 0.85rem;
+        padding-inline: 0.6rem;
         white-space: nowrap;
       }
 
@@ -536,6 +536,10 @@ import {
           display: flex;
           flex-wrap: wrap;
           justify-content: flex-start;
+        }
+
+        .session-action-button {
+          padding-inline: 0.85rem;
         }
       }
 

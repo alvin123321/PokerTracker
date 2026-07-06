@@ -53,19 +53,25 @@ export interface AddPlayerDialogResult {
             [class.text-neutral-300]="mode.value !== 'new'"
             (click)="setMode('new')"
           >
-            New login
+            New Sign Up
           </button>
         </div>
 
         @if (mode.value === 'existing') {
-          <label class="block text-sm font-medium text-neutral-200" for="registeredPlayer">
+          <label class="block text-sm font-medium text-neutral-200" for="playerSearch">
             Player
           </label>
+          <input
+            id="playerSearch"
+            [formControl]="searchControl"
+            class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+            placeholder="Search player"
+          />
           <div
             id="registeredPlayer"
             class="registered-player-list mt-2 space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2"
           >
-            @for (player of registeredPlayers; track player.id) {
+            @for (player of filteredRegisteredPlayers(); track player.id) {
               <button
                 type="button"
                 class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10"
@@ -79,6 +85,10 @@ export interface AddPlayerDialogResult {
                   <span class="selected-dot" aria-hidden="true"></span>
                 }
               </button>
+            } @empty {
+              <p class="rounded-lg border border-dashed border-white/10 p-4 text-sm text-neutral-500">
+                No players match that search.
+              </p>
             }
           </div>
         } @else {
@@ -88,7 +98,7 @@ export interface AddPlayerDialogResult {
           <input
             id="playerName"
             formControlName="name"
-            class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+            class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
             placeholder="Player A"
           />
           @if (duplicateName()) {
@@ -105,14 +115,14 @@ export interface AddPlayerDialogResult {
           min="1"
           step="1"
           formControlName="buyIn"
-          class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+          class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
         />
 
-        <div class="grid grid-cols-4 gap-2">
+        <div class="buy-in-presets grid grid-cols-2 gap-2 sm:grid-cols-4">
           @for (amount of buyInPresets; track amount) {
             <button
               type="button"
-              class="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300 hover:text-neutral-950"
+              class="min-w-0 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300 hover:text-neutral-950"
               (click)="setBuyIn(amount)"
             >
               {{ amount | currency: 'USD' : 'symbol' : '1.0-0' }}
@@ -120,21 +130,30 @@ export interface AddPlayerDialogResult {
           }
         </div>
 
-        <label class="block text-sm font-medium text-neutral-200" for="buyInComment">Note</label>
-        <textarea
-          id="buyInComment"
-          rows="2"
-          formControlName="comment"
-          class="mt-2 w-full resize-none rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
-          placeholder="Optional note"
-        ></textarea>
+        @if (mode.value === 'existing') {
+          <label class="block text-sm font-medium text-neutral-200" for="buyInComment">Note</label>
+          <textarea
+            id="buyInComment"
+            rows="2"
+            formControlName="comment"
+            class="mt-2 w-full min-w-0 resize-none rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+            placeholder="Optional note"
+          ></textarea>
+        }
       </div>
 
-      <div class="add-player-footer">
+      <div class="add-player-footer grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          class="w-full min-w-0 rounded-lg border border-white/10 px-4 py-3 font-semibold text-white transition hover:bg-white/10"
+          (click)="closeDialog()"
+        >
+          Close
+        </button>
         <button
           type="submit"
           [disabled]="!canSubmit()"
-          class="w-full rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+          class="w-full min-w-0 rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
         >
           Add Player
         </button>
@@ -144,10 +163,17 @@ export interface AddPlayerDialogResult {
   styles: [
     `
       .add-player-dialog {
+        box-sizing: border-box;
         display: flex;
         max-height: min(92dvh, 42rem);
         flex-direction: column;
         overflow: hidden;
+      }
+
+      .add-player-dialog *,
+      .add-player-dialog *::before,
+      .add-player-dialog *::after {
+        box-sizing: border-box;
       }
 
       .add-player-header,
@@ -183,6 +209,7 @@ export interface AddPlayerDialogResult {
 
       .member-option {
         min-height: 3.25rem;
+        min-width: 0;
       }
 
       .member-option-selected {
@@ -235,6 +262,9 @@ export class AddPlayerDialogComponent {
   private readonly data = inject<AddPlayerDialogData>(MAT_DIALOG_DATA);
   protected readonly registeredPlayers = this.data.registeredPlayers;
   protected readonly buyInPresets = [300, 400, 500, 600];
+  protected readonly searchControl = new FormControl('', {
+    nonNullable: true
+  });
 
   protected readonly form = new FormGroup({
     mode: new FormControl<AddPlayerMode>(this.registeredPlayers.length > 0 ? 'existing' : 'new', {
@@ -288,10 +318,14 @@ export class AddPlayerDialogComponent {
     this.dialogRef.close({
       name: value.name.trim(),
       buyIn: value.buyIn,
-      comment: value.comment.trim(),
+      comment: '',
       playerUserId: null,
       createRegisteredPlayer: true
     } satisfies AddPlayerDialogResult);
+  }
+
+  protected closeDialog(): void {
+    this.dialogRef.close();
   }
 
   protected setMode(mode: AddPlayerMode): void {
@@ -300,6 +334,10 @@ export class AddPlayerDialogComponent {
     }
 
     this.mode.setValue(mode);
+
+    if (mode === 'new') {
+      this.form.controls.comment.setValue('');
+    }
   }
 
   protected selectRegisteredPlayer(playerId: string): void {
@@ -320,6 +358,18 @@ export class AddPlayerDialogComponent {
     }
 
     return this.form.controls.name.valid && this.form.controls.name.value.trim().length > 0 && !this.duplicateName();
+  }
+
+  protected filteredRegisteredPlayers(): RegisteredPlayerOption[] {
+    const search = this.searchControl.value.trim().toLocaleLowerCase();
+
+    if (!search) {
+      return this.registeredPlayers;
+    }
+
+    return this.registeredPlayers.filter((player) =>
+      this.playerLabel(player).toLocaleLowerCase().includes(search)
+    );
   }
 
   protected duplicateName(): boolean {

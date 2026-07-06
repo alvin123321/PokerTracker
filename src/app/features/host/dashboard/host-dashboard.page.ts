@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -37,15 +37,6 @@ import { PokerStoreService } from '../data/poker-store.service';
           Loading latest sessions...
         </div>
       }
-
-      <div class="grid gap-3 md:grid-cols-3 md:gap-4">
-        <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
-          <p class="text-sm text-neutral-400">Open buy-ins</p>
-          <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
-            {{ openBuyIns() | currency: 'USD' : 'symbol' : '1.0-0' }}
-          </p>
-        </div>
-      </div>
 
       <section class="space-y-4">
         <div class="flex items-center">
@@ -85,7 +76,7 @@ import { PokerStoreService } from '../data/poker-store.service';
                   </span>
                 </div>
 
-                <div class="mt-5 grid grid-cols-3 gap-3 text-sm">
+                <div class="mt-5 grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p class="text-neutral-500">Players</p>
                     <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -101,10 +92,6 @@ import { PokerStoreService } from '../data/poker-store.service';
                       {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                     </p>
                   </div>
-                  <div>
-                    <p class="text-neutral-500">Open</p>
-                    <p class="mt-1 font-semibold text-white">{{ totals.activePlayers }}</p>
-                  </div>
                 </div>
               </a>
             }
@@ -117,9 +104,4 @@ import { PokerStoreService } from '../data/poker-store.service';
 export class HostDashboardPage {
   protected readonly store = inject(PokerStoreService);
   protected readonly authState = inject(AuthStateService);
-  protected readonly openBuyIns = computed(() =>
-    this.store
-      .activeSessions()
-      .reduce((sum, session) => sum + this.store.totalsFor(session).totalBuyIn, 0)
-  );
 }

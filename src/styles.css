@@ -186,11 +186,16 @@ h3 {
 }
 
 .pokertrack-dialog-panel .mat-mdc-dialog-surface {
+  max-width: 100%;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 0.12);
   border-radius: 8px;
   background: #0a0a0a;
   box-shadow: 0 24px 80px rgb(0 0 0 / 0.6);
+}
+
+.pokertrack-dialog-panel {
+  max-width: min(96vw, 32rem) !important;
 }
 
 .trash-icon {
