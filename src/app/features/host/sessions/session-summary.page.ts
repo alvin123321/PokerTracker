@@ -13,7 +13,7 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
       <section class="space-y-5 sm:space-y-6">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">&larr; Dashboard</a>
+            <a routerLink="/host/sessions/history" class="text-sm font-semibold text-emerald-300">&larr; History</a>
             <div class="mt-3 flex flex-wrap items-center gap-3">
               <h1 class="text-2xl font-semibold text-white sm:text-3xl">Session Summary</h1>
               <span
@@ -33,12 +33,6 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
               }
             </p>
           </div>
-          <a
-            routerLink="/host/sessions/history"
-            class="rounded-lg border border-white/10 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10"
-          >
-            View History
-          </a>
         </div>
 
         @if (store.error()) {
