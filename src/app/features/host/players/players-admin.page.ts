@@ -56,18 +56,7 @@ interface PlayerLedgerRow {
                 <span class="sr-only">Back to member list</span>
               </button>
 
-              <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <h2 class="text-xl font-semibold text-white">{{ playerLabel(player) }}</h2>
-                <span
-                  class="rounded-full border px-2.5 py-1 text-xs font-semibold"
-                  [class.border-emerald-300/40]="player.role === 'MANAGER'"
-                  [class.text-emerald-200]="player.role === 'MANAGER'"
-                  [class.border-white/10]="player.role !== 'MANAGER'"
-                  [class.text-neutral-400]="player.role !== 'MANAGER'"
-                >
-                  {{ player.role === 'MANAGER' ? 'Manager' : 'Player' }}
-                </span>
-              </div>
+              <div class="min-w-0 flex-1"></div>
 
               <div class="flex flex-wrap items-center gap-2">
                 <button
