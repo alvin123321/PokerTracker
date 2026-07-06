@@ -134,9 +134,9 @@ export interface AddPlayerDialogResult {
           <label class="block text-sm font-medium text-neutral-200" for="buyInComment">Note</label>
           <textarea
             id="buyInComment"
-            rows="2"
+            rows="4"
             formControlName="comment"
-            class="mt-2 w-full min-w-0 resize-none rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+            class="note-textarea mt-2 w-full min-w-0 resize-none rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
             placeholder="Optional note"
           ></textarea>
         }
@@ -210,6 +210,10 @@ export interface AddPlayerDialogResult {
       .member-option {
         min-height: 3.25rem;
         min-width: 0;
+      }
+
+      .note-textarea {
+        min-height: 7rem;
       }
 
       .member-option-selected {
