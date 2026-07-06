@@ -75,7 +75,7 @@ import {
       <section class="space-y-4 sm:space-y-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">Dashboard</a>
+            <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">&larr; Dashboard</a>
             <div class="mt-3 flex flex-wrap items-center gap-3">
               <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
               <span class="rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-neutral-950">
@@ -87,25 +87,25 @@ import {
             </p>
           </div>
 
-          <div class="flex flex-wrap gap-3 lg:justify-end">
+          <div class="session-action-grid">
             <button
               type="button"
               [disabled]="isBusy()"
-              class="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+              class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
               (click)="openAddPlayerDialog()"
             >
               @if (isPending('add-player')) {
                 <span class="action-spinner" aria-hidden="true"></span>
                 Adding...
               } @else {
-                Add New Member
+                Add Player
               }
             </button>
             @if (canDelete()) {
               <button
                 type="button"
                 [disabled]="isBusy()"
-                class="inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
                 (click)="closeSession()"
               >
                 @if (isPending('close-session')) {
@@ -161,16 +161,15 @@ import {
         </div>
 
         @if (currentSession.players.length === 0) {
-          <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-10 text-center">
-            <p class="text-xl font-semibold text-white">Add the first player</p>
-            <p class="mt-2 text-sm text-neutral-400">Players are added immediately with a default $200 buy-in.</p>
+          <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-6 text-center sm:p-10">
+            <p class="text-xl font-semibold text-white">Add a player</p>
             <button
               type="button"
               class="mt-5 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
               [disabled]="isBusy()"
               (click)="openAddPlayerDialog()"
             >
-              Add New Member
+              Add Player
             </button>
           </div>
         } @else {
@@ -514,6 +513,38 @@ import {
         animation: action-spinner 700ms linear infinite;
       }
 
+      .session-action-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+      }
+
+      .session-action-button {
+        min-height: 2.85rem;
+        padding-inline: 0.85rem;
+        white-space: nowrap;
+      }
+
+      .session-action-grid .pokertrack-icon-button {
+        width: 100%;
+        min-width: 0;
+        height: 2.85rem;
+      }
+
+      @media (min-width: 640px) {
+        .session-action-grid {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-start;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        .session-action-grid {
+          justify-content: flex-end;
+        }
+      }
+
       .action-spinner-sm {
         width: 0.75rem;
         height: 0.75rem;
@@ -711,7 +742,7 @@ export class ActiveSessionPage implements OnDestroy {
     const action = this.pendingAction();
 
     if (action === 'add-player') {
-      return 'Adding member...';
+      return 'Adding player...';
     }
 
     if (action?.startsWith('rebuy:')) {

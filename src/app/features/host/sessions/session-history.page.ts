@@ -11,9 +11,9 @@ import { PokerStoreService } from '../data/poker-store.service';
     <section class="space-y-5 sm:space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
+          <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">&larr; Dashboard</a>
           <p class="text-sm font-medium uppercase text-emerald-300">History</p>
           <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Session History</h1>
-          <p class="mt-2 text-sm text-neutral-400">Active and completed sessions, newest first.</p>
         </div>
         <a
           routerLink="/host/sessions/new"

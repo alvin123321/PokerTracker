@@ -9,7 +9,7 @@ import { PokerStoreService } from '../data/poker-store.service';
   imports: [ReactiveFormsModule, RouterLink],
   template: `
     <section class="mx-auto max-w-2xl space-y-5 sm:space-y-6">
-      <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">Back</a>
+      <a routerLink="/host/dashboard" class="text-sm font-semibold text-emerald-300">&larr; Dashboard</a>
 
       <div>
         <p class="text-sm font-medium uppercase text-emerald-300">Session</p>

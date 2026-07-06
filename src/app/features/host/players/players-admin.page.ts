@@ -42,9 +42,6 @@ interface PlayerTotals {
           <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">
             {{ selectedPlayer() ? playerLabel(selectedPlayer()!) : 'Players' }}
           </h1>
-          <p class="mt-2 max-w-2xl text-sm leading-6 text-neutral-400">
-            {{ selectedPlayer() ? 'Review this player by session and manage account access.' : 'Search and manage registered players.' }}
-          </p>
         </div>
         <a
           routerLink="/host/dashboard"
@@ -240,7 +237,7 @@ interface PlayerTotals {
         <section class="space-y-4">
           <form class="grid gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4 md:grid-cols-[1fr_auto] md:items-end">
             <div>
-              <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add New Member</label>
+              <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add Player</label>
               <input
                 id="newPlayerLogin"
                 [formControl]="newPlayerLogin"
@@ -258,7 +255,7 @@ interface PlayerTotals {
                 <span class="action-spinner" aria-hidden="true"></span>
                 Adding...
               } @else {
-                Add New Member
+                Add Player
               }
             </button>
           </form>

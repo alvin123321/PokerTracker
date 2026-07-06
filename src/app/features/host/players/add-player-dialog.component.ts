@@ -24,20 +24,19 @@ export interface AddPlayerDialogResult {
   imports: [CurrencyPipe, ReactiveFormsModule],
   template: `
     <form
-      class="add-player-dialog w-[min(94vw,30rem)] bg-neutral-950 text-neutral-50"
+      class="add-player-dialog w-[min(96vw,30rem)] bg-neutral-950 text-neutral-50"
       [formGroup]="form"
       (ngSubmit)="submit()"
     >
       <div class="add-player-header">
-        <h2 class="text-xl font-semibold">Add New Member</h2>
-        <p class="mt-1 text-sm text-neutral-400">Select a player or create a login with password 123456.</p>
+        <h2 class="text-xl font-semibold">Add Player</h2>
       </div>
 
       <div class="add-player-body">
-        <div class="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-neutral-900 p-1.5">
+        <div class="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-neutral-900 p-1">
           <button
             type="button"
-            class="rounded-md px-3 py-2.5 text-sm font-semibold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+            class="rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
             [class.bg-emerald-400]="mode.value === 'existing'"
             [class.text-neutral-950]="mode.value === 'existing'"
             [class.text-neutral-300]="mode.value !== 'existing'"
@@ -48,7 +47,7 @@ export interface AddPlayerDialogResult {
           </button>
           <button
             type="button"
-            class="rounded-md px-3 py-2.5 text-sm font-semibold transition hover:bg-white/10"
+            class="rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-white/10"
             [class.bg-emerald-400]="mode.value === 'new'"
             [class.text-neutral-950]="mode.value === 'new'"
             [class.text-neutral-300]="mode.value !== 'new'"
@@ -60,7 +59,7 @@ export interface AddPlayerDialogResult {
 
         @if (mode.value === 'existing') {
           <label class="block text-sm font-medium text-neutral-200" for="registeredPlayer">
-            Registered player
+            Player
           </label>
           <div
             id="registeredPlayer"
@@ -75,19 +74,16 @@ export interface AddPlayerDialogResult {
               >
                 <span>
                   <span class="block text-base font-semibold">{{ playerLabel(player) }}</span>
-                  <span class="member-option-meta mt-1 block text-xs text-neutral-500">
-                    Registered member
-                  </span>
                 </span>
                 @if (form.controls.playerUserId.value === player.id) {
-                  <span class="text-xs font-black uppercase" aria-hidden="true">Selected</span>
+                  <span class="selected-dot" aria-hidden="true"></span>
                 }
               </button>
             }
           </div>
         } @else {
           <label class="block text-sm font-medium text-neutral-200" for="playerName">
-            New player name
+            Name
           </label>
           <input
             id="playerName"
@@ -102,7 +98,7 @@ export interface AddPlayerDialogResult {
           }
         }
 
-        <label class="block text-sm font-medium text-neutral-200" for="buyIn">Buy-in amount</label>
+        <label class="block text-sm font-medium text-neutral-200" for="buyIn">Buy-in</label>
         <input
           id="buyIn"
           type="number"
@@ -124,7 +120,7 @@ export interface AddPlayerDialogResult {
           }
         </div>
 
-        <label class="block text-sm font-medium text-neutral-200" for="buyInComment">Comment</label>
+        <label class="block text-sm font-medium text-neutral-200" for="buyInComment">Note</label>
         <textarea
           id="buyInComment"
           rows="2"
@@ -140,7 +136,7 @@ export interface AddPlayerDialogResult {
           [disabled]="!canSubmit()"
           class="w-full rounded-lg bg-emerald-400 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
         >
-          Add New Member
+          Add Player
         </button>
       </div>
     </form>
@@ -149,7 +145,7 @@ export interface AddPlayerDialogResult {
     `
       .add-player-dialog {
         display: flex;
-        max-height: min(90vh, 44rem);
+        max-height: min(92dvh, 42rem);
         flex-direction: column;
         overflow: hidden;
       }
@@ -162,27 +158,31 @@ export interface AddPlayerDialogResult {
 
       .add-player-header {
         border-bottom: 1px solid rgb(255 255 255 / 0.1);
-        padding: 1rem 1rem 0.9rem;
+        padding: 0.95rem 1rem 0.8rem;
       }
 
       .add-player-body {
         display: grid;
-        gap: 1rem;
+        gap: 0.85rem;
         min-height: 0;
         overflow-y: auto;
         overscroll-behavior: contain;
-        padding: 1rem;
+        padding: 0.95rem 1rem;
         -webkit-overflow-scrolling: touch;
       }
 
       .add-player-footer {
         border-top: 1px solid rgb(255 255 255 / 0.1);
-        padding: 0.85rem 1rem max(0.85rem, env(safe-area-inset-bottom));
+        padding: 0.8rem 1rem max(0.95rem, env(safe-area-inset-bottom));
       }
 
       .registered-player-list {
-        min-height: min(18rem, 42vh);
-        max-height: min(26rem, 54vh);
+        min-height: 10rem;
+        max-height: min(18rem, 38dvh);
+      }
+
+      .member-option {
+        min-height: 3.25rem;
       }
 
       .member-option-selected {
@@ -195,10 +195,18 @@ export interface AddPlayerDialogResult {
         color: rgb(38 38 38);
       }
 
+      .selected-dot {
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 9999px;
+        background: rgb(10 10 10);
+        box-shadow: 0 0 0 0.2rem rgb(10 10 10 / 0.16);
+      }
+
       @media (max-width: 640px) {
         .add-player-dialog {
-          width: 94vw;
-          max-height: 86vh;
+          width: 96vw;
+          max-height: 88dvh;
         }
 
         .add-player-header {
@@ -206,17 +214,17 @@ export interface AddPlayerDialogResult {
         }
 
         .add-player-body {
-          gap: 0.8rem;
+          gap: 0.7rem;
           padding: 0.85rem;
         }
 
         .add-player-footer {
-          padding: 0.75rem 0.85rem max(0.75rem, env(safe-area-inset-bottom));
+          padding: 0.75rem 0.85rem max(1rem, env(safe-area-inset-bottom));
         }
 
         .registered-player-list {
-          min-height: min(19rem, 48vh);
-          max-height: min(24rem, 52vh);
+          min-height: 8rem;
+          max-height: 30dvh;
         }
       }
     `

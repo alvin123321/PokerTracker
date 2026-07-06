@@ -19,7 +19,7 @@ interface PlayerLedgerRow {
         <section class="space-y-5 sm:space-y-6">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <a routerLink="/player/dashboard" class="text-sm font-semibold text-sky-300">My Sessions</a>
+              <a routerLink="/player/dashboard" class="text-sm font-semibold text-sky-300">&larr; My Sessions</a>
               <div class="mt-3 flex flex-wrap items-center gap-3">
                 <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
                 <span
