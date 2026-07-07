@@ -2,6 +2,8 @@
 -- session history so new table-scoped sessions can be entered cleanly. The player
 -- directory is preserved: do not delete from public.players or public.users here.
 
+drop trigger if exists transactions_prevent_delete on public.transactions;
+
 delete from public.sessions;
 
 create type public.session_table_status as enum ('ACTIVE', 'CLOSED');
