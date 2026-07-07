@@ -18,7 +18,7 @@ interface SidePotResult {
   imports: [CurrencyPipe],
   template: `
     <section class="pot-calculator-page space-y-5 sm:space-y-6">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div class="pot-calculator-heading flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">Poker tool</p>
           <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Pot Calculator</h1>
@@ -134,6 +134,12 @@ interface SidePotResult {
       .pot-player-row:hover,
       .pot-result-row:hover {
         border-color: rgb(52 211 153 / 0.32);
+      }
+
+      @media (max-width: 639px) {
+        .pot-calculator-heading {
+          display: none;
+        }
       }
 
       @keyframes pot-calculator-enter {
