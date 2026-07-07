@@ -153,21 +153,36 @@ class TableNameDialogComponent {
             <div class="whats-next-grid mt-4 grid grid-cols-3 gap-2 sm:gap-3">
               <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
                 <span class="whats-next-number">1</span>
-                <div class="whats-next-icon whats-next-icon-session" aria-hidden="true"></div>
+                <img
+                  class="whats-next-icon"
+                  src="/icons/dashboard-steps/create-session.png"
+                  alt=""
+                  aria-hidden="true"
+                />
                 <h3 class="mt-3 text-base font-semibold text-white">Create Session</h3>
                 <p class="whats-next-copy mt-2 text-sm leading-5 text-neutral-400">Open the session for today.</p>
               </article>
 
               <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
                 <span class="whats-next-number">2</span>
-                <div class="whats-next-icon whats-next-icon-table" aria-hidden="true"></div>
+                <img
+                  class="whats-next-icon"
+                  src="/icons/dashboard-steps/add-table.png"
+                  alt=""
+                  aria-hidden="true"
+                />
                 <h3 class="mt-3 text-base font-semibold text-white">Add Tables</h3>
                 <p class="whats-next-copy mt-2 text-sm leading-5 text-neutral-400">Create one or more tables.</p>
               </article>
 
               <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
                 <span class="whats-next-number">3</span>
-                <div class="whats-next-icon whats-next-icon-player" aria-hidden="true"></div>
+                <img
+                  class="whats-next-icon"
+                  src="/icons/dashboard-steps/add-player.png"
+                  alt=""
+                  aria-hidden="true"
+                />
                 <h3 class="mt-3 text-base font-semibold text-white">Add Players</h3>
                 <p class="whats-next-copy mt-2 text-sm leading-5 text-neutral-400">Seat players and track buy-ins.</p>
               </article>
@@ -690,71 +705,12 @@ class TableNameDialogComponent {
       }
 
       .whats-next-icon {
-        position: relative;
-        width: 3rem;
-        height: 3rem;
+        display: block;
+        width: 4.7rem;
+        height: 4.7rem;
         margin-top: 0.85rem;
-        color: rgb(94, 234, 212);
-        opacity: 0.82;
-      }
-
-      .whats-next-icon-session {
-        border: 2px solid currentColor;
-        border-radius: 8px;
-        box-shadow: inset 0 0 0 0.55rem rgba(45, 212, 191, 0.06);
-      }
-
-      .whats-next-icon-session::before,
-      .whats-next-icon-session::after {
-        position: absolute;
-        background: currentColor;
-        content: '';
-      }
-
-      .whats-next-icon-session::before {
-        width: 1.4rem;
-        height: 2px;
-        transform: translate(0.78rem, 1.42rem);
-      }
-
-      .whats-next-icon-session::after {
-        width: 2px;
-        height: 1.4rem;
-        transform: translate(1.45rem, 0.75rem);
-      }
-
-      .whats-next-icon-table {
-        border: 2px solid currentColor;
-        border-radius: 999px;
-        box-shadow:
-          inset 0 0 0 0.55rem rgba(45, 212, 191, 0.06),
-          0 0 0 0.34rem rgba(45, 212, 191, 0.06);
-      }
-
-      .whats-next-icon-player {
-        position: relative;
-      }
-
-      .whats-next-icon-player::before {
-        position: absolute;
-        top: 0.15rem;
-        left: 0.95rem;
-        width: 1.1rem;
-        height: 1.1rem;
-        border: 2px solid currentColor;
-        border-radius: 999px;
-        content: '';
-      }
-
-      .whats-next-icon-player::after {
-        position: absolute;
-        right: 0.25rem;
-        bottom: 0.2rem;
-        left: 0.25rem;
-        height: 1.55rem;
-        border: 2px solid currentColor;
-        border-radius: 999px 999px 8px 8px;
-        content: '';
+        object-fit: contain;
+        opacity: 0.96;
       }
 
       @keyframes dashboard-empty-in {
@@ -811,8 +767,8 @@ class TableNameDialogComponent {
         }
 
         .whats-next-icon {
-          width: 2.45rem;
-          height: 2.45rem;
+          width: 3.1rem;
+          height: 3.1rem;
           margin-top: 0;
           align-self: end;
         }
@@ -823,44 +779,6 @@ class TableNameDialogComponent {
           line-height: 1.15;
         }
 
-        .whats-next-icon-session {
-          border-radius: 999px;
-        }
-
-        .whats-next-icon-session::before {
-          width: 1.12rem;
-          transform: translate(0.58rem, 1.12rem);
-        }
-
-        .whats-next-icon-session::after {
-          height: 1.12rem;
-          transform: translate(1.13rem, 0.58rem);
-        }
-
-        .whats-next-icon-table {
-          height: 1.75rem;
-          border-radius: 999px;
-          box-shadow:
-            0 -0.42rem 0 -0.22rem rgba(94, 234, 212, 0.74),
-            0 0.42rem 0 -0.22rem rgba(94, 234, 212, 0.74),
-            inset 0 0 0 0.42rem rgba(45, 212, 191, 0.06);
-        }
-
-        .whats-next-icon-player::before {
-          top: 0.08rem;
-          left: 0.35rem;
-          width: 0.85rem;
-          height: 0.85rem;
-          box-shadow: 1.18rem 0 0 -0.08rem rgb(11, 18, 32), 1.18rem 0 0 0.04rem currentColor;
-        }
-
-        .whats-next-icon-player::after {
-          right: 0.08rem;
-          bottom: 0.14rem;
-          left: 0.08rem;
-          height: 1.28rem;
-          border-radius: 14px 14px 8px 8px;
-        }
       }
 
       .pokertrack-sync-overlay {
