@@ -768,11 +768,10 @@ class TableNameDialogComponent {
         }
 
         .whats-next-step {
-          display: grid;
+          display: block;
           height: 7.25rem;
           min-height: 7.25rem;
-          place-items: center;
-          padding: 0.85rem 0.35rem 0.55rem;
+          padding: 0.95rem 0.35rem 0.65rem;
           text-align: center;
         }
 
@@ -786,16 +785,26 @@ class TableNameDialogComponent {
         }
 
         .whats-next-icon {
+          position: absolute;
+          top: 1.65rem;
+          left: 50%;
           width: 3.1rem;
           height: 3.1rem;
           margin-top: 0;
-          align-self: end;
+          transform: translateX(-50%);
         }
 
         .whats-next-step h3 {
-          margin-top: 0.35rem;
+          position: absolute;
+          right: 0;
+          bottom: 0.65rem;
+          left: 0;
+          width: 100%;
+          margin-top: 0;
+          padding: 0 0.25rem;
           font-size: 0.78rem;
           line-height: 1.15;
+          text-align: center;
         }
 
       }
