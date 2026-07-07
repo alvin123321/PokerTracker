@@ -125,13 +125,10 @@ class TableNameDialogComponent {
               <span class="empty-poker-felt">
                 <span class="empty-poker-spade">♠</span>
               </span>
-              <span class="empty-poker-chip empty-poker-chip-one"></span>
-              <span class="empty-poker-chip empty-poker-chip-two"></span>
-              <span class="empty-poker-chip empty-poker-chip-three"></span>
             </div>
 
             <div class="mx-auto mt-6 max-w-xl">
-              <p class="text-2xl font-semibold text-white sm:text-3xl">No active session</p>
+              <p class="empty-session-title text-2xl font-semibold text-white sm:text-3xl">No active session</p>
               <p class="empty-session-copy mt-3 text-sm leading-6 text-neutral-300 sm:text-base">
                 Start a session first, then create tables and seat players.
               </p>
@@ -563,8 +560,8 @@ class TableNameDialogComponent {
 
       .empty-poker-seat {
         position: absolute;
-        width: 15%;
-        height: 22%;
+        width: 14%;
+        height: 21%;
         border: 1px solid rgba(94, 234, 212, 0.46);
         border-radius: 8px;
         background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.82));
@@ -578,15 +575,15 @@ class TableNameDialogComponent {
       }
 
       .empty-poker-seat-right-top {
-        top: 22%;
-        right: 4%;
-        transform: rotate(90deg);
+        top: 20%;
+        right: 2%;
+        transform: rotate(76deg);
       }
 
       .empty-poker-seat-right-bottom {
-        right: 16%;
-        bottom: 2%;
-        transform: rotate(34deg);
+        right: 2%;
+        bottom: 20%;
+        transform: rotate(104deg);
       }
 
       .empty-poker-seat-bottom {
@@ -596,15 +593,15 @@ class TableNameDialogComponent {
       }
 
       .empty-poker-seat-left-bottom {
-        bottom: 2%;
-        left: 16%;
-        transform: rotate(-35deg);
+        bottom: 20%;
+        left: 2%;
+        transform: rotate(-104deg);
       }
 
       .empty-poker-seat-left-top {
-        top: 22%;
-        left: 4%;
-        transform: rotate(-90deg);
+        top: 20%;
+        left: 2%;
+        transform: rotate(-76deg);
       }
 
       .empty-poker-felt {
@@ -636,30 +633,6 @@ class TableNameDialogComponent {
         font-size: clamp(2rem, 9vw, 4.1rem);
         line-height: 1;
         text-shadow: 0 0 18px rgba(45, 212, 191, 0.34);
-      }
-
-      .empty-poker-chip {
-        position: absolute;
-        bottom: 19%;
-        width: 5%;
-        aspect-ratio: 1;
-        border: 2px solid rgba(94, 234, 212, 0.8);
-        border-radius: 999px;
-        background: rgba(15, 118, 110, 0.7);
-        box-shadow: 0 0 14px rgba(45, 212, 191, 0.26);
-      }
-
-      .empty-poker-chip-one {
-        left: calc(50% - 7.25%);
-      }
-
-      .empty-poker-chip-two {
-        left: 50%;
-        transform: translateX(-50%);
-      }
-
-      .empty-poker-chip-three {
-        right: calc(50% - 7.25%);
       }
 
       .empty-session-action:hover {
@@ -804,6 +777,7 @@ class TableNameDialogComponent {
           width: min(78vw, 18.5rem);
         }
 
+        .empty-session-title,
         .empty-session-copy,
         .whats-next-copy {
           display: none;
@@ -819,53 +793,73 @@ class TableNameDialogComponent {
         }
 
         .whats-next-step {
-          display: flex;
+          display: grid;
+          height: 7.25rem;
           min-height: 7.25rem;
-          flex-direction: column;
-          align-items: center;
-          padding: 0.65rem 0.35rem;
+          place-items: center;
+          padding: 0.85rem 0.35rem 0.55rem;
           text-align: center;
         }
 
-        .whats-next-number {
+        .whats-next-step .whats-next-number {
+          position: absolute;
+          top: 0.45rem;
+          left: 0.45rem;
           width: 1.5rem;
           height: 1.5rem;
           font-size: 0.78rem;
         }
 
         .whats-next-icon {
-          width: 2.35rem;
-          height: 2.35rem;
-          margin-top: 0.55rem;
+          width: 2.45rem;
+          height: 2.45rem;
+          margin-top: 0;
+          align-self: end;
         }
 
         .whats-next-step h3 {
-          margin-top: 0.55rem;
+          margin-top: 0.35rem;
           font-size: 0.78rem;
           line-height: 1.15;
         }
 
+        .whats-next-icon-session {
+          border-radius: 999px;
+        }
+
         .whats-next-icon-session::before {
-          width: 1.05rem;
-          transform: translate(0.61rem, 1.09rem);
+          width: 1.12rem;
+          transform: translate(0.58rem, 1.12rem);
         }
 
         .whats-next-icon-session::after {
-          height: 1.05rem;
-          transform: translate(1.12rem, 0.58rem);
+          height: 1.12rem;
+          transform: translate(1.13rem, 0.58rem);
+        }
+
+        .whats-next-icon-table {
+          height: 1.75rem;
+          border-radius: 999px;
+          box-shadow:
+            0 -0.42rem 0 -0.22rem rgba(94, 234, 212, 0.74),
+            0 0.42rem 0 -0.22rem rgba(94, 234, 212, 0.74),
+            inset 0 0 0 0.42rem rgba(45, 212, 191, 0.06);
         }
 
         .whats-next-icon-player::before {
-          left: 0.72rem;
-          width: 0.9rem;
-          height: 0.9rem;
+          top: 0.08rem;
+          left: 0.35rem;
+          width: 0.85rem;
+          height: 0.85rem;
+          box-shadow: 1.18rem 0 0 -0.08rem rgb(11, 18, 32), 1.18rem 0 0 0.04rem currentColor;
         }
 
         .whats-next-icon-player::after {
-          right: 0.18rem;
+          right: 0.08rem;
           bottom: 0.14rem;
-          left: 0.18rem;
-          height: 1.2rem;
+          left: 0.08rem;
+          height: 1.28rem;
+          border-radius: 14px 14px 8px 8px;
         }
       }
 
