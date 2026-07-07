@@ -96,6 +96,76 @@ const developmentUsers: Record<string, { password: string; profile: UserProfile 
       createdAt: nowIso(),
       updatedAt: nowIso()
     }
+  },
+  joao: {
+    password: 'joao',
+    profile: {
+      id: 'b1611146-e36d-449a-baee-92a7612c2e84',
+      displayName: 'Joao',
+      role: 'PLAYER',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  qatest58926999: {
+    password: 'qatest58926999',
+    profile: {
+      id: 'dev-player-qatest58926999',
+      displayName: 'Qatest58926999',
+      role: 'PLAYER',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  e2enew59886104: {
+    password: 'e2enew59886104',
+    profile: {
+      id: 'dev-player-e2enew59886104',
+      displayName: 'E2enew59886104',
+      role: 'PLAYER',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  uiadd59164235: {
+    password: 'uiadd59164235',
+    profile: {
+      id: 'dev-player-uiadd59164235',
+      displayName: 'Uiadd59164235',
+      role: 'PLAYER',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  zac: {
+    password: 'zac',
+    profile: {
+      id: '6f419f4b-a2cf-4abd-bb69-4b596efd9e95',
+      displayName: 'Zac Baby Face',
+      role: 'PLAYER',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  '88': {
+    password: '88',
+    profile: {
+      id: 'b043927d-a3d1-43d1-81ed-45ec9fb12e18',
+      displayName: '88 88',
+      role: 'PLAYER',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
+  },
+  '1010': {
+    password: '1010',
+    profile: {
+      id: '9a4ca886-1a42-4119-9b97-7eb80fb4e3c0',
+      displayName: '1010',
+      role: 'PLAYER',
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    }
   }
 };
 

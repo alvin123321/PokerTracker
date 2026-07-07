@@ -5,7 +5,6 @@ import {
   LucideHistory,
   LucideHouse,
   LucideLogOut,
-  LucidePresentation,
   LucideUsersRound
 } from '@lucide/angular';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -24,7 +23,6 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
     LucideHistory,
     LucideHouse,
     LucideLogOut,
-    LucidePresentation,
     LucideUsersRound,
     MatDialogModule,
     RouterLink,

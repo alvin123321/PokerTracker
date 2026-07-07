@@ -190,6 +190,12 @@ interface DeleteRegisteredPlayerResponse {
   ok: boolean;
 }
 
+interface LocalSharedState {
+  sessions?: PokerSession[];
+  registeredPlayers?: RegisteredPlayerOption[];
+  deletedRegisteredPlayerIds?: string[];
+}
+
 const localStorageKey = 'pokertrack.localPokerStore.sessionTables.v2';
 const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
 const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers.sessionTables.v2';
@@ -228,6 +234,7 @@ export class PokerStoreService implements OnDestroy {
   private realtimeUserKey: string | null = null;
   private loadedSupabaseUserId: string | null = null;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
+  private localSharedPollTimer: ReturnType<typeof setInterval> | null = null;
   private readonly expiringTimeCallIds = new Set<string>();
 
   readonly sessions = this.sessionsSignal.asReadonly();
@@ -273,6 +280,13 @@ export class PokerStoreService implements OnDestroy {
         this.nowSignal.set(Date.now());
         this.expireDueTimeCalls();
       }, 250);
+
+      if (this.shouldUseLocalSharedData()) {
+        void this.loadLocalSharedState();
+        this.localSharedPollTimer = window.setInterval(() => {
+          void this.loadLocalSharedState();
+        }, 1500);
+      }
     }
   }
 
@@ -285,6 +299,11 @@ export class PokerStoreService implements OnDestroy {
       clearInterval(this.countdownTimer);
       this.countdownTimer = null;
     }
+
+    if (this.localSharedPollTimer) {
+      clearInterval(this.localSharedPollTimer);
+      this.localSharedPollTimer = null;
+    }
   }
 
   async refreshSessions(): Promise<void> {
@@ -292,6 +311,11 @@ export class PokerStoreService implements OnDestroy {
   }
 
   async refreshHostSessions(): Promise<void> {
+    if (this.shouldUseLocalSharedData()) {
+      await this.loadLocalSharedState();
+      return;
+    }
+
     if (!this.shouldUseSupabase()) {
       await this.refreshDevelopmentProductionSnapshot();
       return;
@@ -1769,6 +1793,7 @@ export class PokerStoreService implements OnDestroy {
 
     localStorage.setItem(localStorageKey, JSON.stringify(sessions));
     localStorage.removeItem(legacyLocalStorageKey);
+    void this.saveLocalSharedState({ sessions });
   }
 
   private async refreshDevelopmentProductionSnapshot(): Promise<void> {
@@ -2023,6 +2048,7 @@ export class PokerStoreService implements OnDestroy {
     }
 
     localStorage.setItem(localRegisteredPlayersStorageKey, JSON.stringify(players));
+    void this.saveLocalSharedState({ registeredPlayers: players });
   }
 
   private saveLocalDeletedRegisteredPlayerIds(ids: string[]): void {
@@ -2031,5 +2057,73 @@ export class PokerStoreService implements OnDestroy {
     }
 
     localStorage.setItem(localDeletedRegisteredPlayersStorageKey, JSON.stringify(ids));
+    void this.saveLocalSharedState({ deletedRegisteredPlayerIds: ids });
+  }
+
+  private shouldUseLocalSharedData(): boolean {
+    return !environment.production && !this.supabaseService.isConfigured && typeof window !== 'undefined';
+  }
+
+  private localSharedDataUrl(path: string): string {
+    const hostname = window.location.hostname || '127.0.0.1';
+    return `http://${hostname}:4300${path}`;
+  }
+
+  private async loadLocalSharedState(): Promise<void> {
+    if (!this.shouldUseLocalSharedData()) {
+      return;
+    }
+
+    try {
+      const response = await fetch(this.localSharedDataUrl('/state'), { cache: 'no-store' });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const state = (await response.json()) as LocalSharedState;
+
+      if (Array.isArray(state.sessions)) {
+        this.sessionsSignal.set(state.sessions);
+        localStorage.setItem(localStorageKey, JSON.stringify(state.sessions));
+        localStorage.removeItem(legacyLocalStorageKey);
+      }
+
+      if (Array.isArray(state.registeredPlayers)) {
+        this.localRegisteredPlayersSignal.set(state.registeredPlayers);
+        localStorage.setItem(
+          localRegisteredPlayersStorageKey,
+          JSON.stringify(state.registeredPlayers)
+        );
+      }
+
+      if (Array.isArray(state.deletedRegisteredPlayerIds)) {
+        this.localDeletedRegisteredPlayerIdsSignal.set(state.deletedRegisteredPlayerIds);
+        localStorage.setItem(
+          localDeletedRegisteredPlayersStorageKey,
+          JSON.stringify(state.deletedRegisteredPlayerIds)
+        );
+      }
+    } catch {
+      // The shared local server is optional; browser-local data remains as a fallback.
+    }
+  }
+
+  private async saveLocalSharedState(state: LocalSharedState): Promise<void> {
+    if (!this.shouldUseLocalSharedData()) {
+      return;
+    }
+
+    try {
+      await fetch(this.localSharedDataUrl('/state'), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(state)
+      });
+    } catch {
+      // The shared local server is optional; browser-local data remains as a fallback.
+    }
   }
 }
