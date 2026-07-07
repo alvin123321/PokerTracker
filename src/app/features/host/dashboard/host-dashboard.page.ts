@@ -1,9 +1,10 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnDestroy, inject, signal } from '@angular/core';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
-import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PokerSession, PokerStoreService, SessionPlayer } from '../data/poker-store.service';
 import {
   AddPlayerDialogComponent,
@@ -19,6 +20,67 @@ import {
   RebuyDialogData,
   RebuyDialogResult
 } from '../transactions/rebuy-dialog.component';
+
+interface TableNameDialogData {
+  tableName: string;
+}
+
+@Component({
+  selector: 'app-table-name-dialog',
+  imports: [ReactiveFormsModule],
+  template: `
+    <section class="w-[min(92vw,26rem)] bg-neutral-950 p-5 text-neutral-50">
+      <div>
+        <h2 class="text-xl font-semibold text-white">New Table</h2>
+        <p class="mt-1 text-sm text-neutral-400">Name this table before adding players.</p>
+      </div>
+
+      <label class="mt-5 block text-sm font-medium text-neutral-200" for="tableName">Table name</label>
+      <input
+        id="tableName"
+        [formControl]="tableName"
+        class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none transition focus:border-emerald-300"
+        placeholder="Main Table"
+        (keydown.enter)="save()"
+      />
+
+      <div class="mt-6 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          class="rounded-lg border border-white/10 px-4 py-3 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+          (click)="dialogRef.close()"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          [disabled]="tableName.invalid"
+          class="rounded-lg bg-emerald-400 px-4 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+          (click)="save()"
+        >
+          Create
+        </button>
+      </div>
+    </section>
+  `
+})
+class TableNameDialogComponent {
+  protected readonly dialogRef = inject(MatDialogRef<TableNameDialogComponent, string | undefined>);
+  private readonly data = inject<TableNameDialogData>(MAT_DIALOG_DATA);
+  protected readonly tableName = new FormControl(this.data.tableName, {
+    nonNullable: true,
+    validators: [Validators.required]
+  });
+
+  protected save(): void {
+    if (this.tableName.invalid) {
+      this.tableName.markAsTouched();
+      return;
+    }
+
+    this.dialogRef.close(this.tableName.value.trim());
+  }
+}
 
 @Component({
   selector: 'app-host-dashboard-page',
@@ -44,223 +106,296 @@ import {
               <span></span>
             </div>
             <p class="text-base font-semibold text-white">{{ loadingMessage() }}</p>
-            <p class="mt-1 text-sm text-neutral-400">Syncing the table before controls unlock.</p>
+            <p class="mt-1 text-sm text-neutral-400">Syncing before controls unlock.</p>
           </div>
         </div>
       }
 
-      <section class="rounded-xl border border-white/10 bg-white/[0.025] p-4 shadow-2xl shadow-black/20 sm:p-5">
-        <div class="mb-4 flex items-center justify-between gap-3">
-          <div class="flex min-w-0 items-center gap-3">
+      @if (store.activeSessions().length === 0) {
+        <section class="grid min-h-[45vh] place-items-center">
+          <a
+            routerLink="/host/sessions/new"
+            class="inline-flex min-h-14 min-w-56 items-center justify-center rounded-lg bg-emerald-400 px-7 text-base font-semibold text-neutral-950 shadow-[0_0_28px_rgba(52,211,153,0.22)] transition hover:bg-emerald-300"
+          >
+            Create New Session
+          </a>
+        </section>
+      } @else {
+        <section class="space-y-4">
+          <div class="flex items-center gap-3">
             <span class="dashboard-table-icon" aria-hidden="true"></span>
-            <h2 class="truncate text-xl font-semibold text-white">Active Tables</h2>
+            <h2 class="truncate text-xl font-semibold text-white">Active Sessions</h2>
           </div>
 
-          @if (authState.isHostAdmin()) {
-            <a
-              routerLink="/host/sessions/new"
-              class="dashboard-new-session-icon"
-              aria-label="New session"
-              title="New session"
-            >
-              <span aria-hidden="true">+</span>
-            </a>
-          }
-        </div>
-        @if (store.activeSessions().length === 0) {
-          <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-            <p class="text-lg font-semibold text-white">No active session</p>
-            <p class="mt-2 text-sm text-neutral-400">Start a table when the first player arrives.</p>
-          </div>
-        } @else {
-          <div class="grid gap-3">
+          <div class="grid gap-4">
             @for (session of store.activeSessions(); track session.id) {
               @let totals = store.totalsFor(session);
-              <article
-                class="overflow-hidden rounded-lg border border-white/10 bg-neutral-950/55 shadow-[0_0_28px_rgba(0,0,0,0.25)] transition hover:border-emerald-300/35"
-              >
-                <div
-                  role="button"
-                  tabindex="0"
-                  class="w-full px-4 py-4 text-left transition hover:bg-white/[0.035] sm:px-5"
-                  [attr.aria-expanded]="isSessionExpanded(session)"
+              <article class="session-overview-card overflow-hidden rounded-lg border border-emerald-300/25 bg-neutral-950/65 shadow-[0_0_28px_rgba(0,0,0,0.25)] ring-1 ring-emerald-300/10">
+                <button
+                  type="button"
+                  class="w-full p-4 text-left transition hover:bg-white/[0.035] sm:p-5"
+                  [attr.aria-expanded]="isSessionExpanded(session.id)"
                   (click)="toggleSession(session.id)"
-                  (keydown.enter)="toggleSession(session.id)"
-                  (keydown.space)="$event.preventDefault(); toggleSession(session.id)"
                 >
-                  <div class="grid gap-5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
-                    <div class="hidden items-center gap-4 sm:flex">
-                      <span class="dashboard-chip-mark dashboard-mobile-hidden" aria-hidden="true">
-                        <span>&spades;</span>
-                      </span>
-                      <span
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-300/10 text-sm font-bold text-emerald-200 transition-transform duration-300 ease-in-out"
-                        [style.transform]="isSessionExpanded(session) ? 'rotate(90deg)' : 'rotate(0deg)'"
-                      >
-                        >
-                      </span>
-                    </div>
-
-                    <div class="min-w-0">
-                      <div class="flex flex-wrap items-center gap-3">
-                        <h3 class="truncate text-2xl font-semibold text-white">{{ session.name }}</h3>
-                        <span class="rounded-full border border-emerald-300/45 px-3 py-1 text-xs font-semibold uppercase text-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.12)]">
-                          Active
+                  <span class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <span class="min-w-0">
+                      <span class="flex flex-wrap items-center gap-3">
+                        <span class="truncate text-2xl font-semibold text-white">{{ session.name }}</span>
+                        <span class="rounded-full border border-emerald-300/35 px-3 py-1 text-xs font-semibold text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.12)]">
+                          {{ session.tables.length }} table{{ session.tables.length === 1 ? '' : 's' }}
                         </span>
-                      </div>
-                      <p class="mt-2 hidden items-center gap-2 text-sm text-neutral-400 sm:flex">
-                        <span class="dashboard-date-icon" aria-hidden="true">▣</span>
-                        <span>{{ session.sessionDate | date: 'mediumDate' }}</span>
-                      </p>
+                      </span>
+                      <span class="mt-2 block text-sm text-neutral-400">
+                        {{ session.sessionDate | date: 'mediumDate' }}
+                      </span>
+                    </span>
 
-                      <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:max-w-2xl">
-                        <div class="dashboard-stat">
-                          <span class="dashboard-stat-icon dashboard-stat-icon-players" aria-hidden="true"></span>
-                          <span class="dashboard-stat-copy">
-                            <span class="dashboard-stat-value">{{ totals.totalPlayers }}</span>
-                            <span class="dashboard-stat-label">Players</span>
+                    <span class="grid grid-cols-3 gap-2 text-center text-sm lg:min-w-[30rem]">
+                      <span class="dashboard-stat">
+                        <span class="dashboard-stat-icon dashboard-stat-icon-players" aria-hidden="true"></span>
+                        <span class="dashboard-stat-copy">
+                          <span class="dashboard-stat-value">{{ session.tables.length }}</span>
+                          <span class="dashboard-stat-label">Tables</span>
+                        </span>
+                      </span>
+                      <span class="dashboard-stat">
+                        <span class="dashboard-stat-icon dashboard-stat-icon-buyin" aria-hidden="true"></span>
+                        <span class="dashboard-stat-copy">
+                          <span
+                            class="dashboard-stat-value"
+                            [class.dashboard-number-shuffle]="isRecentRebuySession(session.id)"
+                          >
+                            {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                           </span>
-                        </div>
-                        <div class="dashboard-stat">
-                          <span class="dashboard-stat-icon dashboard-stat-icon-cashed" aria-hidden="true"></span>
-                          <span class="dashboard-stat-copy">
-                            <span class="dashboard-stat-value">{{ totals.cashedOutPlayers }}</span>
-                            <span class="dashboard-stat-label">Cashed-Out</span>
+                          <span class="dashboard-stat-label">Buy-in</span>
+                        </span>
+                      </span>
+                      <span class="dashboard-stat">
+                        <span class="dashboard-stat-icon dashboard-stat-icon-cashed" aria-hidden="true"></span>
+                        <span class="dashboard-stat-copy">
+                          <span class="dashboard-stat-value">
+                            {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                           </span>
-                        </div>
-                        <div class="dashboard-stat dashboard-mobile-hidden">
-                          <span class="dashboard-stat-icon dashboard-stat-icon-buyin" aria-hidden="true"></span>
-                          <span class="dashboard-stat-copy">
-                            <span
-                              class="dashboard-stat-value"
-                              [class.dashboard-number-shuffle]="isRecentRebuySession(session.id)"
-                            >
-                              {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                            </span>
-                            <span class="dashboard-stat-label">Buy-in</span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                          <span class="dashboard-stat-label">Cash out</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                </button>
 
-                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:min-w-[24rem]">
-                      <a
-                        [routerLink]="['/host/sessions', session.id]"
-                        class="dashboard-session-button dashboard-session-button-outline dashboard-mobile-hidden"
-                        [attr.tabindex]="isSessionExpanded(session) ? null : 0"
-                        (click)="$event.stopPropagation()"
-                      >
-                        <span aria-hidden="true">♤</span>
-                        Open Session
-                      </a>
-                      <a
-                        [routerLink]="['/host/sessions', session.id]"
-                        class="dashboard-session-button dashboard-session-button-outline dashboard-mobile-only"
-                        (click)="$event.stopPropagation()"
-                      >
-                        Detail
-                      </a>
-                      <button
-                        type="button"
-                        [disabled]="isBusy()"
-                        class="dashboard-session-button dashboard-session-button-primary"
-                        (click)="openAddPlayerDialog(session.id); $event.stopPropagation()"
-                      >
-                        <span aria-hidden="true">+</span>
-                        @if (isPending('add-player')) {
-                          Adding...
-                        } @else {
-                          Add Player
-                        }
-                      </button>
-                    </div>
-                  </div>
+                <div class="border-t border-white/10 px-4 pb-4 sm:px-5 sm:pb-5">
+                  <button
+                    type="button"
+                    [disabled]="isBusy()"
+                    class="mt-4 w-full rounded-lg border border-emerald-300/30 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50 sm:mx-auto sm:block sm:max-w-xs"
+                    (click)="createTable(session.id); $event.stopPropagation()"
+                  >
+                    <span aria-hidden="true" class="mr-2">+</span>
+                    @if (isPending(tableAction('add-table', session.id))) {
+                      Creating...
+                    } @else {
+                      Add Table
+                    }
+                  </button>
                 </div>
 
                 <div
                   class="grid overflow-hidden transition-[grid-template-rows] duration-300 ease-in-out"
-                  [style.grid-template-rows]="isSessionExpanded(session) ? '1fr' : '0fr'"
-                  [style.pointer-events]="isSessionExpanded(session) ? 'auto' : 'none'"
+                  [style.grid-template-rows]="isSessionExpanded(session.id) ? '1fr' : '0fr'"
+                  [style.pointer-events]="isSessionExpanded(session.id) ? 'auto' : 'none'"
                 >
                   <div class="min-h-0">
                     <div
-                      class="border-t border-white/10 px-4 py-4 opacity-0 transition-opacity duration-300 ease-in-out sm:px-5"
-                      [class.opacity-100]="isSessionExpanded(session)"
+                      class="border-t border-white/10 p-4 opacity-0 transition-opacity duration-300 ease-in-out sm:p-5"
+                      [class.opacity-100]="isSessionExpanded(session.id)"
                     >
-                      @for (player of store.sortedPlayersForActiveSession(session); track player.id) {
-                        <div
-                          class="grid gap-3 border border-white/10 border-b-0 bg-black/20 p-3 first:rounded-t-lg last:rounded-b-lg last:border-b md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-                          [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
-                        >
-                          <div class="min-w-0">
-                            <div class="flex flex-wrap items-center gap-2">
-                              <p class="truncate font-semibold text-white">{{ player.name }}</p>
-                              <span
-                                class="dashboard-player-buyin-mobile ml-auto sm:hidden"
-                                [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
-                              >
-                                {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                              </span>
-                              @if (player.status === 'COMPLETED') {
-                                <span class="text-sm font-bold leading-none text-emerald-300">&check;</span>
-                              }
-                            </div>
-                            <p class="mt-1 hidden text-xs text-neutral-500 md:block">
-                              Joined {{ player.joinedAt | date: 'shortTime' }}
-                            </p>
-                          </div>
-
-                          <div class="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-3 md:min-w-96">
-                            <span class="hidden rounded-lg bg-white/[0.04] px-3 py-2 md:col-span-1 md:block">
-                              <span class="block text-xs text-neutral-500">Buy-in</span>
-                              <span
-                                class="mt-1 block font-semibold text-white"
-                                [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
-                              >
-                                {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                              </span>
-                            </span>
-                            @if (player.status === 'ACTIVE') {
-                              <button
-                                type="button"
-                                [disabled]="isBusy()"
-                                class="dashboard-player-action"
-                                (click)="openRebuyDialog(session.id, player); $event.stopPropagation()"
-                              >
-                                @if (isPending(playerAction('rebuy', player.id))) {
-                                  Saving...
-                                } @else {
-                                  Rebuy
-                                }
-                              </button>
-                              <button
-                                type="button"
-                                [disabled]="isBusy()"
-                                class="dashboard-player-action dashboard-player-action-cashout"
-                                (click)="openCashOutDialog(session.id, player); $event.stopPropagation()"
-                              >
-                                @if (isPending(playerAction('cash-out', player.id))) {
-                                  Saving...
-                                } @else {
-                                  Cashout
-                                }
-                              </button>
-                            } @else {
-                              <span class="dashboard-player-action dashboard-player-action-disabled" aria-disabled="true">
-                                Rebuy
-                              </span>
-                              <span
-                                class="dashboard-player-action dashboard-player-action-cashout dashboard-player-action-disabled"
-                                aria-disabled="true"
-                              >
-                                Cashout
-                              </span>
-                            }
-                          </div>
+                      @if (session.tables.length === 0) {
+                        <div class="rounded-lg border border-dashed border-white/10 p-5 text-center text-sm text-neutral-500">
+                          No active tables yet.
                         </div>
-                      } @empty {
-                        <div class="rounded-lg border border-dashed border-white/10 p-4 text-sm text-neutral-500">
-                          No players added yet.
+                      } @else {
+                        <div class="grid gap-3">
+                          @for (table of session.tables; track table.id) {
+                            @let tableTotals = store.totalsForTable(session, table.id);
+                            <article
+                              class="table-shell relative overflow-hidden rounded-lg border bg-neutral-950/70 shadow-[0_16px_34px_rgba(0,0,0,0.22)] ring-1"
+                              [class.table-shell-cyan]="tableAccent(table.tableNumber) === 'cyan'"
+                              [class.table-shell-amber]="tableAccent(table.tableNumber) === 'amber'"
+                              [class.table-shell-fuchsia]="tableAccent(table.tableNumber) === 'fuchsia'"
+                              [class.table-shell-emerald]="tableAccent(table.tableNumber) === 'emerald'"
+                              [class.border-cyan-300/35]="tableAccent(table.tableNumber) === 'cyan'"
+                              [class.ring-cyan-300/15]="tableAccent(table.tableNumber) === 'cyan'"
+                              [class.border-amber-300/35]="tableAccent(table.tableNumber) === 'amber'"
+                              [class.ring-amber-300/15]="tableAccent(table.tableNumber) === 'amber'"
+                              [class.border-fuchsia-300/35]="tableAccent(table.tableNumber) === 'fuchsia'"
+                              [class.ring-fuchsia-300/15]="tableAccent(table.tableNumber) === 'fuchsia'"
+                              [class.border-emerald-300/35]="tableAccent(table.tableNumber) === 'emerald'"
+                              [class.ring-emerald-300/15]="tableAccent(table.tableNumber) === 'emerald'"
+                            >
+                              <button
+                                type="button"
+                                class="relative w-full overflow-hidden p-4 text-left transition hover:bg-white/[0.035]"
+                                [attr.aria-expanded]="isTableExpanded(table.id)"
+                                (click)="toggleTable(table.id)"
+                              >
+                                <span
+                                  class="table-glow-wash pointer-events-none absolute inset-0"
+                                  [class.table-glow-wash-cyan]="tableAccent(table.tableNumber) === 'cyan'"
+                                  [class.table-glow-wash-amber]="tableAccent(table.tableNumber) === 'amber'"
+                                  [class.table-glow-wash-fuchsia]="tableAccent(table.tableNumber) === 'fuchsia'"
+                                  [class.table-glow-wash-emerald]="tableAccent(table.tableNumber) === 'emerald'"
+                                  aria-hidden="true"
+                                ></span>
+                                <span
+                                  class="table-soft-rail absolute inset-y-5 left-0 w-px rounded-full"
+                                  [class.table-soft-rail-cyan]="tableAccent(table.tableNumber) === 'cyan'"
+                                  [class.table-soft-rail-amber]="tableAccent(table.tableNumber) === 'amber'"
+                                  [class.table-soft-rail-fuchsia]="tableAccent(table.tableNumber) === 'fuchsia'"
+                                  [class.table-soft-rail-emerald]="tableAccent(table.tableNumber) === 'emerald'"
+                                  aria-hidden="true"
+                                ></span>
+                                <span class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-center">
+                                  <span class="flex min-w-0 items-center justify-center pl-1 text-center">
+                                    <span class="block max-w-full truncate text-lg font-semibold text-white">{{ table.name }}</span>
+                                  </span>
+
+                                  <span class="grid grid-cols-3 gap-2 text-center text-sm">
+                                    <span class="flex min-h-16 flex-col justify-center rounded-md bg-white/[0.045] px-2 py-2">
+                                      <span class="block text-xs text-neutral-500">Players</span>
+                                      <span class="mt-1 block font-semibold text-white">{{ tableTotals.activePlayers }}/{{ tableTotals.totalPlayers }}</span>
+                                    </span>
+                                    <span class="flex min-h-16 flex-col justify-center rounded-md bg-white/[0.045] px-2 py-2">
+                                      <span class="block text-xs text-neutral-500">Buy-in</span>
+                                      <span class="mt-1 block font-semibold text-white">
+                                        {{ tableTotals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                                      </span>
+                                    </span>
+                                    <span class="flex min-h-16 flex-col justify-center rounded-md bg-white/[0.045] px-2 py-2">
+                                      <span class="block text-xs text-neutral-500">Cash out</span>
+                                      <span class="mt-1 block font-semibold text-white">
+                                        {{ tableTotals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                                      </span>
+                                    </span>
+                                  </span>
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                [disabled]="isBusy()"
+                                class="table-add-player-button mx-4 mb-4 mt-0 w-[calc(100%-2rem)]"
+                                aria-label="Add player"
+                                title="Add player"
+                                (click)="openAddPlayerDialog(session.id, table.id); $event.stopPropagation()"
+                              >
+                                <img
+                                  src="/icons/add-user-emerald.svg"
+                                  alt=""
+                                  class="table-add-user-icon"
+                                  aria-hidden="true"
+                                />
+                                <span class="ml-2 text-sm font-semibold">Add Player</span>
+                              </button>
+
+                              <div
+                                class="grid overflow-hidden transition-[grid-template-rows] duration-300 ease-in-out"
+                                [style.grid-template-rows]="isTableExpanded(table.id) ? '1fr' : '0fr'"
+                                [style.pointer-events]="isTableExpanded(table.id) ? 'auto' : 'none'"
+                              >
+                                <div class="min-h-0">
+                                  <div
+                                    class="border-t p-3 opacity-0 transition-opacity duration-300 ease-in-out sm:p-4"
+                                    [class.border-cyan-300/20]="tableAccent(table.tableNumber) === 'cyan'"
+                                    [class.bg-cyan-300/[0.035]]="tableAccent(table.tableNumber) === 'cyan'"
+                                    [class.border-amber-300/20]="tableAccent(table.tableNumber) === 'amber'"
+                                    [class.bg-amber-300/[0.035]]="tableAccent(table.tableNumber) === 'amber'"
+                                    [class.border-fuchsia-300/20]="tableAccent(table.tableNumber) === 'fuchsia'"
+                                    [class.bg-fuchsia-300/[0.035]]="tableAccent(table.tableNumber) === 'fuchsia'"
+                                    [class.border-emerald-300/20]="tableAccent(table.tableNumber) === 'emerald'"
+                                    [class.bg-emerald-300/[0.035]]="tableAccent(table.tableNumber) === 'emerald'"
+                                    [class.opacity-100]="isTableExpanded(table.id)"
+                                  >
+                                    @for (player of store.playersForTable(session, table.id); track player.id) {
+                                      <div
+                                        class="grid gap-3 border border-white/10 border-b-0 bg-neutral-950/60 p-3 first:rounded-t-md last:rounded-b-md last:border-b md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                                        [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
+                                      >
+                                        <div class="min-w-0">
+                                          <div class="flex flex-wrap items-center gap-2">
+                                            <p class="truncate font-semibold text-white">{{ player.name }}</p>
+                                            <span
+                                              class="dashboard-player-buyin-mobile ml-auto sm:hidden"
+                                              [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
+                                            >
+                                              {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                                            </span>
+                                            @if (player.status === 'COMPLETED') {
+                                              <span class="text-sm font-bold leading-none text-emerald-300">&check;</span>
+                                            }
+                                          </div>
+                                          <p class="mt-1 hidden text-xs text-neutral-500 md:block">
+                                            Joined {{ player.joinedAt | date: 'shortTime' }}
+                                          </p>
+                                        </div>
+
+                                        <div class="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-3 md:min-w-96">
+                                          <span class="hidden rounded-lg bg-white/[0.04] px-3 py-2 md:col-span-1 md:block">
+                                            <span class="block text-xs text-neutral-500">Buy-in</span>
+                                            <span
+                                              class="mt-1 block font-semibold text-white"
+                                              [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
+                                            >
+                                              {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                                            </span>
+                                          </span>
+                                          @if (player.status === 'ACTIVE') {
+                                            <button
+                                              type="button"
+                                              [disabled]="isBusy()"
+                                              class="dashboard-player-action"
+                                              (click)="openRebuyDialog(session.id, player)"
+                                            >
+                                              @if (isPending(playerAction('rebuy', player.id))) {
+                                                Saving...
+                                              } @else {
+                                                Rebuy
+                                              }
+                                            </button>
+                                            <button
+                                              type="button"
+                                              [disabled]="isBusy()"
+                                              class="dashboard-player-action dashboard-player-action-cashout"
+                                              (click)="openCashOutDialog(session.id, player)"
+                                            >
+                                              @if (isPending(playerAction('cash-out', player.id))) {
+                                                Saving...
+                                              } @else {
+                                                Cashout
+                                              }
+                                            </button>
+                                          } @else {
+                                            <span class="dashboard-player-action dashboard-player-action-disabled" aria-disabled="true">
+                                              Rebuy
+                                            </span>
+                                            <span
+                                              class="dashboard-player-action dashboard-player-action-cashout dashboard-player-action-disabled"
+                                              aria-disabled="true"
+                                            >
+                                              Cashout
+                                            </span>
+                                          }
+                                        </div>
+                                      </div>
+                                    } @empty {
+                                      <div class="rounded-lg border border-dashed border-white/10 p-4 text-center text-sm text-neutral-500">
+                                        No players at this table yet.
+                                      </div>
+                                    }
+                                  </div>
+                                </div>
+                              </div>
+                            </article>
+                          }
                         </div>
                       }
                     </div>
@@ -269,8 +404,8 @@ import {
               </article>
             }
           </div>
-        }
-      </section>
+        </section>
+      }
 
       @if (store.completedSessions().length > 0) {
         <section class="space-y-4">
@@ -323,15 +458,260 @@ import {
         </section>
       }
     </section>
-  `
+  `,
+  styles: [
+    `
+      .session-overview-card {
+        position: relative;
+        isolation: isolate;
+      }
+
+      .pokertrack-sync-overlay {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        min-height: 100dvh;
+      }
+
+      @supports (height: 100dvh) {
+        .pokertrack-sync-overlay {
+          height: 100dvh;
+        }
+      }
+
+      .session-overview-card::before {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background:
+          linear-gradient(135deg, rgba(52, 211, 153, 0.12), transparent 38%),
+          radial-gradient(circle at 96% 8%, rgba(34, 211, 238, 0.12), transparent 30%);
+        content: '';
+      }
+
+      .session-overview-card::after {
+        position: absolute;
+        inset: 1px;
+        z-index: -1;
+        border-radius: 7px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 48%);
+        content: '';
+      }
+
+      .table-add-player-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.75rem;
+        border: 1px solid rgba(110, 231, 183, 0.36);
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.82);
+        color: rgb(209, 250, 229);
+        box-shadow: 0 0 18px rgba(52, 211, 153, 0.14);
+        transition:
+          background 160ms ease,
+          border-color 160ms ease,
+          box-shadow 180ms ease,
+          transform 160ms ease;
+      }
+
+      .table-add-player-button:hover {
+        border-color: rgba(110, 231, 183, 0.78);
+        background: rgba(52, 211, 153, 0.16);
+        box-shadow: 0 0 24px rgba(52, 211, 153, 0.24);
+        transform: translateY(-1px);
+      }
+
+      .table-add-player-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+        transform: none;
+      }
+
+      .table-add-user-icon {
+        display: block;
+        width: 1.55rem;
+        height: 1.55rem;
+        object-fit: contain;
+      }
+
+      .table-shell {
+        position: relative;
+        isolation: isolate;
+        transition:
+          border-color 180ms ease,
+          box-shadow 240ms ease,
+          transform 180ms ease;
+      }
+
+      .table-shell::before {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        opacity: 0.58;
+        content: '';
+        pointer-events: none;
+      }
+
+      .table-shell > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .table-shell-cyan::before {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.2), transparent 36%),
+          linear-gradient(90deg, rgba(34, 211, 238, 0.1), transparent 56%);
+      }
+
+      .table-shell-amber::before {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(251, 191, 36, 0.2), transparent 36%),
+          linear-gradient(90deg, rgba(251, 191, 36, 0.1), transparent 56%);
+      }
+
+      .table-shell-fuchsia::before {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(217, 70, 239, 0.2), transparent 36%),
+          linear-gradient(90deg, rgba(217, 70, 239, 0.1), transparent 56%);
+      }
+
+      .table-shell-emerald::before {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(52, 211, 153, 0.2), transparent 36%),
+          linear-gradient(90deg, rgba(52, 211, 153, 0.1), transparent 56%);
+      }
+
+      .table-shell:hover {
+        transform: translateY(-1px);
+      }
+
+      .table-shell-cyan {
+        animation: table-breathe-cyan 4.8s ease-in-out infinite;
+      }
+
+      .table-shell-amber {
+        animation: table-breathe-amber 5.2s ease-in-out infinite;
+      }
+
+      .table-shell-fuchsia {
+        animation: table-breathe-fuchsia 5s ease-in-out infinite;
+      }
+
+      .table-shell-emerald {
+        animation: table-breathe-emerald 5.4s ease-in-out infinite;
+      }
+
+      .table-glow-wash {
+        opacity: 0;
+        z-index: -1;
+      }
+
+      .table-glow-wash-cyan {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.18), transparent 34%),
+          linear-gradient(90deg, rgba(34, 211, 238, 0.1), transparent 46%);
+      }
+
+      .table-glow-wash-amber {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(251, 191, 36, 0.18), transparent 34%),
+          linear-gradient(90deg, rgba(251, 191, 36, 0.1), transparent 46%);
+      }
+
+      .table-glow-wash-fuchsia {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(217, 70, 239, 0.18), transparent 34%),
+          linear-gradient(90deg, rgba(217, 70, 239, 0.1), transparent 46%);
+      }
+
+      .table-glow-wash-emerald {
+        background:
+          radial-gradient(circle at 0% 0%, rgba(52, 211, 153, 0.18), transparent 34%),
+          linear-gradient(90deg, rgba(52, 211, 153, 0.1), transparent 46%);
+      }
+
+      .table-soft-rail {
+        opacity: 0.38;
+        filter: blur(0.35px);
+      }
+
+      .table-soft-rail-cyan {
+        background: rgba(103, 232, 249, 0.46);
+        box-shadow: 0 0 10px rgba(34, 211, 238, 0.18);
+      }
+
+      .table-soft-rail-amber {
+        background: rgba(252, 211, 77, 0.46);
+        box-shadow: 0 0 10px rgba(251, 191, 36, 0.16);
+      }
+
+      .table-soft-rail-fuchsia {
+        background: rgba(232, 121, 249, 0.46);
+        box-shadow: 0 0 10px rgba(217, 70, 239, 0.16);
+      }
+
+      .table-soft-rail-emerald {
+        background: rgba(110, 231, 183, 0.46);
+        box-shadow: 0 0 10px rgba(52, 211, 153, 0.16);
+      }
+
+      @keyframes table-breathe-cyan {
+        0%,
+        100% {
+          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(34, 211, 238, 0.08);
+        }
+        50% {
+          box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26), 0 0 30px rgba(34, 211, 238, 0.18);
+        }
+      }
+
+      @keyframes table-breathe-amber {
+        0%,
+        100% {
+          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(251, 191, 36, 0.08);
+        }
+        50% {
+          box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26), 0 0 30px rgba(251, 191, 36, 0.17);
+        }
+      }
+
+      @keyframes table-breathe-fuchsia {
+        0%,
+        100% {
+          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(217, 70, 239, 0.08);
+        }
+        50% {
+          box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26), 0 0 30px rgba(217, 70, 239, 0.17);
+        }
+      }
+
+      @keyframes table-breathe-emerald {
+        0%,
+        100% {
+          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(52, 211, 153, 0.08);
+        }
+        50% {
+          box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26), 0 0 30px rgba(52, 211, 153, 0.18);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .table-shell {
+          animation: none;
+        }
+      }
+    `
+  ]
 })
 export class HostDashboardPage implements OnDestroy {
   protected readonly store = inject(PokerStoreService);
-  protected readonly authState = inject(AuthStateService);
   private readonly dialog = inject(MatDialog);
-  protected readonly expandedSessionId = signal<string | null | undefined>(undefined);
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly expandedSessionId = signal<string | null | undefined>(undefined);
+  protected readonly expandedTableId = signal<string | null | undefined>(undefined);
   protected readonly recentRebuyPlayerId = signal<string | null>(null);
   protected readonly recentRebuySessionId = signal<string | null>(null);
   private rebuyAnimationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -340,14 +720,14 @@ export class HostDashboardPage implements OnDestroy {
     this.clearRebuyAnimation();
   }
 
-  protected isSessionExpanded(session: PokerSession): boolean {
+  protected isSessionExpanded(sessionId: string): boolean {
     const expandedSessionId = this.expandedSessionId();
 
     if (expandedSessionId === undefined) {
-      return this.store.activeSessions()[0]?.id === session.id;
+      return this.store.activeSessions()[0]?.id === sessionId;
     }
 
-    return expandedSessionId === session.id;
+    return expandedSessionId === sessionId;
   }
 
   protected toggleSession(sessionId: string): void {
@@ -358,7 +738,70 @@ export class HostDashboardPage implements OnDestroy {
     this.expandedSessionId.set(isCurrentlyOpen ? null : sessionId);
   }
 
-  protected async openAddPlayerDialog(sessionId: string): Promise<void> {
+  protected isTableExpanded(tableId: string): boolean {
+    const expandedTableId = this.expandedTableId();
+
+    if (expandedTableId === undefined) {
+      const firstTable = this.store.activeSessions().flatMap((session) => session.tables)[0];
+      return firstTable?.id === tableId;
+    }
+
+    return expandedTableId === tableId;
+  }
+
+  protected toggleTable(tableId: string): void {
+    const expandedTableId = this.expandedTableId();
+    const firstTable = this.store.activeSessions().flatMap((session) => session.tables)[0];
+    const isDefaultOpen = expandedTableId === undefined && firstTable?.id === tableId;
+    const isCurrentlyOpen = expandedTableId === tableId || isDefaultOpen;
+
+    this.expandedTableId.set(isCurrentlyOpen ? null : tableId);
+  }
+
+  protected tableAccent(tableNumber: number): 'cyan' | 'amber' | 'fuchsia' | 'emerald' {
+    return ['cyan', 'amber', 'fuchsia', 'emerald'][(tableNumber - 1) % 4] as
+      | 'cyan'
+      | 'amber'
+      | 'fuchsia'
+      | 'emerald';
+  }
+
+  protected async createTable(sessionId: string): Promise<void> {
+    if (this.isBusy() || !sessionId) {
+      return;
+    }
+
+    const session = this.store.getSession(sessionId);
+    const nextNumber = (session?.tables.length ?? 0) + 1;
+    const dialogRef = this.dialog.open<TableNameDialogComponent, TableNameDialogData, string | undefined>(
+      TableNameDialogComponent,
+      {
+        autoFocus: 'first-tabbable',
+        data: { tableName: `Table ${nextNumber}` },
+        panelClass: 'pokertrack-dialog-panel'
+      }
+    );
+
+    const tableName = (await firstValueFrom(dialogRef.afterClosed()))?.trim();
+
+    if (!tableName) {
+      return;
+    }
+
+    let createdTableId: string | null = null;
+
+    const succeeded = await this.runAction(this.tableAction('add-table', sessionId), async () => {
+      const table = await this.store.createTable(sessionId, tableName);
+      createdTableId = table.id;
+    });
+
+    if (succeeded && createdTableId) {
+      this.expandedSessionId.set(sessionId);
+      this.expandedTableId.set(createdTableId);
+    }
+  }
+
+  protected async openAddPlayerDialog(sessionId: string, tableId: string): Promise<void> {
     if (this.isBusy()) {
       return;
     }
@@ -388,14 +831,15 @@ export class HostDashboardPage implements OnDestroy {
         return;
       }
 
-      await this.runAction('add-player', () =>
+      await this.runAction(this.tableAction('add-player', tableId), () =>
         this.store.addPlayer(
           sessionId,
           result.name,
           result.buyIn,
           result.comment,
           result.playerUserId,
-          result.createRegisteredPlayer
+          result.createRegisteredPlayer,
+          tableId
         )
       );
     });
@@ -462,8 +906,12 @@ export class HostDashboardPage implements OnDestroy {
   protected loadingMessage(): string {
     const action = this.pendingAction();
 
-    if (action === 'add-player') {
+    if (action?.startsWith('add-player:')) {
       return 'Adding player...';
+    }
+
+    if (action?.startsWith('add-table:')) {
+      return 'Creating table...';
     }
 
     if (action?.startsWith('rebuy:')) {
@@ -487,6 +935,10 @@ export class HostDashboardPage implements OnDestroy {
 
   protected playerAction(action: string, playerId: string): string {
     return `${action}:${playerId}`;
+  }
+
+  protected tableAction(action: string, tableId: string): string {
+    return `${action}:${tableId}`;
   }
 
   private async runAction(action: string, task: () => Promise<void>): Promise<boolean> {

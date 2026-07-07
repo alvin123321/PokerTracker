@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { PokerStoreService } from '../data/poker-store.service';
+import { PokerSession, PokerStoreService } from '../data/poker-store.service';
 
 @Component({
   selector: 'app-session-history-page',
@@ -59,7 +59,7 @@ import { PokerStoreService } from '../data/poker-store.service';
                   </p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3 md:min-w-96">
+                <div class="grid grid-cols-3 gap-3 text-sm md:min-w-96">
                   <div>
                     <p class="text-neutral-500">Players</p>
                     <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -75,10 +75,10 @@ import { PokerStoreService } from '../data/poker-store.service';
                       {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                     </p>
                   </div>
-                  <div class="hidden sm:block">
-                    <p class="text-neutral-500">Cash out</p>
+                  <div>
+                    <p class="text-neutral-500">Active tables</p>
                     <p class="mt-1 font-semibold text-white">
-                      {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      {{ activeTableCount(session) }}
                     </p>
                   </div>
                 </div>
@@ -107,4 +107,8 @@ export class SessionHistoryPage {
   protected readonly sortedSessions = computed(() =>
     [...this.store.sessions()].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   );
+
+  protected activeTableCount(session: PokerSession): number {
+    return session.tables.filter((table) => table.status === 'ACTIVE').length;
+  }
 }

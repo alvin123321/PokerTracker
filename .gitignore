@@ -42,6 +42,13 @@ angular-server*.log
 /typings
 __screenshots__/
 
+# Local runtime artifacts
+.local/
+*.log
+*.err.log
+*.pid
+public/snapshots/
+
 # System files
 .DS_Store
 Thumbs.db
