@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="hide-under-add-button">
+      <rect width="512" height="512" fill="white"/>
+      <circle cx="362" cy="156" r="76" fill="black"/>
+    </mask>
+  </defs>
+
+  <g stroke="#63FFE8" stroke-linecap="round" stroke-linejoin="round">
+    <g mask="url(#hide-under-add-button)">
+      <rect x="96" y="156" width="320" height="200" rx="100" stroke-width="21"/>
+
+      <rect x="136" y="196" width="240" height="120" rx="60" stroke-width="21" opacity="0.72"/>
+
+      <rect x="176" y="116" width="56" height="40" rx="12" stroke-width="21"/>
+      <rect x="280" y="116" width="56" height="40" rx="12" stroke-width="21"/>
+
+      <rect x="176" y="356" width="56" height="40" rx="12" stroke-width="21"/>
+      <rect x="280" y="356" width="56" height="40" rx="12" stroke-width="21"/>
+
+      <rect x="56" y="226" width="40" height="60" rx="12" stroke-width="21"/>
+      <rect x="416" y="226" width="40" height="60" rx="12" stroke-width="21"/>
+    </g>
+
+    <circle cx="362" cy="156" r="48" stroke-width="21"/>
+    <path d="M362 130V182" stroke-width="21"/>
+    <path d="M336 156H388" stroke-width="21"/>
+  </g>
+</svg>
