@@ -46,7 +46,6 @@ import {
               aria-hidden="true"
             ></svg>
           </button>
-          <span aria-hidden="true" class="hidden sm:block"></span>
           <a
             routerLink="/host/dashboard"
             class="pokertrack-brand host-shell-brand justify-self-center"

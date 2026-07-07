@@ -124,7 +124,9 @@ a {
 
 @media (min-width: 640px) {
   .host-shell-nav {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    row-gap: 0.65rem;
   }
 
   .pokertrack-mobile-signout,
@@ -339,13 +341,15 @@ app-host-shell main {
 
 @media (min-width: 640px) {
   .host-shell-brand {
-    grid-column: 2;
+    grid-column: 1;
+    grid-row: 1;
     justify-self: center;
   }
 
   .host-shell-desktop-nav {
-    grid-column: 3;
-    justify-self: end;
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
   }
 
   .pokertrack-nav-link {
