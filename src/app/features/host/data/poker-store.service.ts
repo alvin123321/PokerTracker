@@ -724,11 +724,9 @@ export class PokerStoreService implements OnDestroy {
 
   async deleteSession(sessionId: string): Promise<void> {
     if (this.shouldUseSupabase()) {
-      const { error } = await this.supabaseService
-        .requireClient()
-        .from('sessions')
-        .delete()
-        .eq('id', sessionId);
+      const { error } = await this.supabaseService.requireClient().rpc('delete_session', {
+        p_session_id: sessionId
+      });
 
       if (error) {
         throw error;
