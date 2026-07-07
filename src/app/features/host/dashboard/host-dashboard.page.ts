@@ -136,10 +136,19 @@ class TableNameDialogComponent {
 
             <a
               routerLink="/host/sessions/new"
-              class="empty-session-action mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-lg bg-emerald-400 px-6 text-base font-semibold text-neutral-950 shadow-[0_0_30px_rgba(45,212,191,0.3)] transition hover:bg-emerald-300 sm:max-w-sm"
+              class="empty-session-action mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-lg border px-5 text-base font-semibold transition sm:max-w-sm"
             >
-              <span class="text-3xl leading-none" aria-hidden="true">+</span>
-              Create New Session
+              <span class="empty-session-action-cross" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 5v14M5 12h14"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </span>
+              <span class="empty-session-action-label">Create New Session</span>
             </a>
           </article>
 
@@ -650,9 +659,67 @@ class TableNameDialogComponent {
         text-shadow: 0 0 18px rgba(45, 212, 191, 0.34);
       }
 
+      .empty-session-action {
+        border-color: rgba(110, 231, 183, 0.46);
+        background: rgba(16, 185, 129, 0.15);
+        color: rgb(236, 253, 245);
+        box-shadow: 0 0 30px rgba(45, 212, 191, 0.18);
+      }
+
+      .empty-session-action-cross {
+        display: inline-grid;
+        width: 2rem;
+        height: 2rem;
+        flex: 0 0 auto;
+        place-items: center;
+        color: rgb(110, 231, 183);
+        transform: translateY(-0.08rem);
+        transition: color 180ms ease, filter 180ms ease, transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .empty-session-action-cross svg {
+        display: block;
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      .empty-session-action-label {
+        font-family: 'OCR A Extended', 'Agency FB', 'Bahnschrift SemiCondensed', Consolas, monospace;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.07em;
+        transform: translateY(0.03rem);
+      }
+
       .empty-session-action:hover {
-        box-shadow: 0 0 36px rgba(45, 212, 191, 0.42);
+        border-color: rgba(167, 243, 208, 0.7);
+        background: rgba(16, 185, 129, 0.22);
+        color: #fff;
+        box-shadow:
+          0 0 36px rgba(45, 212, 191, 0.32),
+          0 0 0 1px rgba(110, 231, 183, 0.1);
         transform: translateY(-1px);
+      }
+
+      .empty-session-action:hover .empty-session-action-cross {
+        color: rgb(167, 243, 208);
+        filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.42));
+        transform: translateY(-0.13rem) scale(1.1);
+      }
+
+      .empty-session-action:active {
+        box-shadow: 0 0 20px rgba(45, 212, 191, 0.22);
+        transform: translateY(1px) scale(0.985);
+      }
+
+      .empty-session-action:active .empty-session-action-cross {
+        transform: translateY(-0.05rem) scale(0.92);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .empty-session-action-cross {
+          transition-duration: 1ms;
+        }
       }
 
       .whats-next-line {
