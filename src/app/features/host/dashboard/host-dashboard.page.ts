@@ -667,7 +667,7 @@ class TableNameDialogComponent {
         align-items: center;
         justify-content: flex-start;
         overflow: hidden;
-        padding-top: 1.05rem;
+        padding-top: 0.65rem;
         text-align: center;
         transition:
           border-color 180ms ease,
@@ -715,15 +715,15 @@ class TableNameDialogComponent {
 
       .whats-next-icon {
         display: block;
-        width: 4.7rem;
-        height: 4.7rem;
-        margin-top: 0.2rem;
+        width: min(7.5rem, 72%);
+        height: 6.25rem;
+        margin-top: 0;
         object-fit: contain;
         opacity: 0.96;
       }
 
       .whats-next-step h3 {
-        margin-top: 0.45rem;
+        margin-top: 0.2rem;
       }
 
       .whats-next-copy {
@@ -786,10 +786,10 @@ class TableNameDialogComponent {
 
         .whats-next-icon {
           position: absolute;
-          top: 1.65rem;
+          top: 1.35rem;
           left: 50%;
-          width: 3.1rem;
-          height: 3.1rem;
+          width: min(5.15rem, 82%);
+          height: 4.25rem;
           margin-top: 0;
           transform: translateX(-50%);
         }
