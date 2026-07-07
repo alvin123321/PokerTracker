@@ -696,19 +696,19 @@ class TableNameDialogComponent {
         transform: translateY(-1px);
       }
 
-      .whats-next-number {
+      .whats-next-step > .whats-next-number {
         position: absolute;
-        top: 0.75rem;
-        left: 0.75rem;
+        top: 0.55rem;
+        left: 0.55rem;
         display: inline-grid;
-        width: 1.8rem;
-        height: 1.8rem;
+        width: 2.15rem;
+        height: 2.15rem;
         place-items: center;
         border: 1px solid rgba(94, 234, 212, 0.58);
         border-radius: 999px;
         background: rgba(45, 212, 191, 0.82);
         color: rgb(4, 47, 46);
-        font-size: 0.9rem;
+        font-size: 1.05rem;
         font-weight: 800;
         box-shadow: 0 0 18px rgba(45, 212, 191, 0.28);
       }
