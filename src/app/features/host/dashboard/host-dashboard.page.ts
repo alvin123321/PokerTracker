@@ -155,7 +155,7 @@ class TableNameDialogComponent {
                 <span class="whats-next-number">1</span>
                 <img
                   class="whats-next-icon"
-                  src="/icons/dashboard-steps/create-session.png"
+                  src="/icons/dashboard-steps/create-session.svg"
                   alt=""
                   aria-hidden="true"
                 />
@@ -179,7 +179,7 @@ class TableNameDialogComponent {
                 <span class="whats-next-number">3</span>
                 <img
                   class="whats-next-icon"
-                  src="/icons/dashboard-steps/add-player.png"
+                  src="/icons/dashboard-steps/add-player.svg"
                   alt=""
                   aria-hidden="true"
                 />
