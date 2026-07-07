@@ -112,13 +112,70 @@ class TableNameDialogComponent {
       }
 
       @if (store.activeSessions().length === 0) {
-        <section class="grid min-h-[45vh] place-items-center">
-          <a
-            routerLink="/host/sessions/new"
-            class="inline-flex min-h-14 min-w-56 items-center justify-center rounded-lg bg-emerald-400 px-7 text-base font-semibold text-neutral-950 shadow-[0_0_28px_rgba(52,211,153,0.22)] transition hover:bg-emerald-300"
-          >
-            Create New Session
-          </a>
+        <section class="dashboard-empty-state mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
+          <article class="empty-session-hero overflow-hidden rounded-lg border border-emerald-300/35 bg-neutral-950/78 p-5 text-center shadow-[0_22px_60px_rgba(0,0,0,0.36)] ring-1 ring-emerald-300/10 sm:p-8">
+            <div class="empty-poker-table mx-auto" aria-hidden="true">
+              <span class="empty-poker-table-pattern"></span>
+              <span class="empty-poker-seat empty-poker-seat-top"></span>
+              <span class="empty-poker-seat empty-poker-seat-right-top"></span>
+              <span class="empty-poker-seat empty-poker-seat-right-bottom"></span>
+              <span class="empty-poker-seat empty-poker-seat-bottom"></span>
+              <span class="empty-poker-seat empty-poker-seat-left-bottom"></span>
+              <span class="empty-poker-seat empty-poker-seat-left-top"></span>
+              <span class="empty-poker-felt">
+                <span class="empty-poker-spade">♠</span>
+              </span>
+              <span class="empty-poker-chip empty-poker-chip-one"></span>
+              <span class="empty-poker-chip empty-poker-chip-two"></span>
+              <span class="empty-poker-chip empty-poker-chip-three"></span>
+            </div>
+
+            <div class="mx-auto mt-6 max-w-xl">
+              <p class="text-2xl font-semibold text-white sm:text-3xl">No active session</p>
+              <p class="mt-3 text-sm leading-6 text-neutral-300 sm:text-base">
+                Start a session first, then create tables and seat players.
+              </p>
+            </div>
+
+            <a
+              routerLink="/host/sessions/new"
+              class="empty-session-action mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-lg bg-emerald-400 px-6 text-base font-semibold text-neutral-950 shadow-[0_0_30px_rgba(45,212,191,0.3)] transition hover:bg-emerald-300 sm:max-w-sm"
+            >
+              <span class="text-3xl leading-none" aria-hidden="true">+</span>
+              Create New Session
+            </a>
+          </article>
+
+          <section class="whats-next-panel rounded-lg border border-white/10 bg-neutral-950/60 p-4 shadow-[0_18px_44px_rgba(0,0,0,0.26)] sm:p-5">
+            <div class="flex items-center gap-3">
+              <span class="whats-next-line h-px flex-1"></span>
+              <h2 class="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-300">What's next</h2>
+              <span class="whats-next-line h-px flex-1"></span>
+            </div>
+
+            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+              <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
+                <span class="whats-next-number">1</span>
+                <div class="whats-next-icon whats-next-icon-session" aria-hidden="true"></div>
+                <h3 class="mt-3 text-base font-semibold text-white">Create Session</h3>
+                <p class="mt-2 text-sm leading-5 text-neutral-400">Open the session for today.</p>
+              </article>
+
+              <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
+                <span class="whats-next-number">2</span>
+                <div class="whats-next-icon whats-next-icon-table" aria-hidden="true"></div>
+                <h3 class="mt-3 text-base font-semibold text-white">Add Tables</h3>
+                <p class="mt-2 text-sm leading-5 text-neutral-400">Create one or more tables.</p>
+              </article>
+
+              <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
+                <span class="whats-next-number">3</span>
+                <div class="whats-next-icon whats-next-icon-player" aria-hidden="true"></div>
+                <h3 class="mt-3 text-base font-semibold text-white">Add Players</h3>
+                <p class="mt-2 text-sm leading-5 text-neutral-400">Seat players and track buy-ins.</p>
+              </article>
+            </div>
+          </section>
         </section>
       } @else {
         <section class="space-y-4">
@@ -464,6 +521,275 @@ class TableNameDialogComponent {
       .session-overview-card {
         position: relative;
         isolation: isolate;
+      }
+
+      .dashboard-empty-state {
+        animation: dashboard-empty-in 360ms ease-out both;
+      }
+
+      .empty-session-hero,
+      .whats-next-panel {
+        position: relative;
+        isolation: isolate;
+      }
+
+      .empty-session-hero::before {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background:
+          radial-gradient(circle at 50% 12%, rgba(45, 212, 191, 0.16), transparent 30%),
+          radial-gradient(circle at 8% 100%, rgba(16, 185, 129, 0.12), transparent 34%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 48%);
+        content: '';
+      }
+
+      .empty-poker-table {
+        position: relative;
+        width: min(82vw, 24rem);
+        aspect-ratio: 1.55;
+        filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.34));
+      }
+
+      .empty-poker-table-pattern {
+        position: absolute;
+        inset: 4% 0;
+        border-radius: 999px;
+        background:
+          radial-gradient(circle at 20% 24%, rgba(45, 212, 191, 0.2) 0 2px, transparent 3px),
+          radial-gradient(circle at 78% 70%, rgba(16, 185, 129, 0.18) 0 2px, transparent 3px);
+        opacity: 0.7;
+      }
+
+      .empty-poker-seat {
+        position: absolute;
+        width: 16%;
+        height: 25%;
+        border: 1px solid rgba(94, 234, 212, 0.46);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.82));
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.035), 0 0 18px rgba(45, 212, 191, 0.16);
+      }
+
+      .empty-poker-seat-top {
+        top: 1%;
+        left: 42%;
+      }
+
+      .empty-poker-seat-right-top {
+        top: 20%;
+        right: 1%;
+        transform: rotate(88deg);
+      }
+
+      .empty-poker-seat-right-bottom {
+        right: 9%;
+        bottom: 6%;
+        transform: rotate(35deg);
+      }
+
+      .empty-poker-seat-bottom {
+        bottom: 0;
+        left: 42%;
+      }
+
+      .empty-poker-seat-left-bottom {
+        bottom: 6%;
+        left: 9%;
+        transform: rotate(-35deg);
+      }
+
+      .empty-poker-seat-left-top {
+        top: 20%;
+        left: 1%;
+        transform: rotate(-88deg);
+      }
+
+      .empty-poker-felt {
+        position: absolute;
+        inset: 17% 12%;
+        display: grid;
+        place-items: center;
+        border: 2px solid rgba(45, 212, 191, 0.84);
+        border-radius: 999px;
+        background:
+          radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.22), transparent 42%),
+          linear-gradient(135deg, rgba(6, 78, 59, 0.94), rgba(8, 47, 73, 0.88));
+        box-shadow:
+          inset 0 0 0 2px rgba(255, 255, 255, 0.055),
+          inset 0 0 42px rgba(0, 0, 0, 0.38),
+          0 0 34px rgba(45, 212, 191, 0.28);
+      }
+
+      .empty-poker-felt::before {
+        position: absolute;
+        inset: 22% 21%;
+        border: 1px solid rgba(94, 234, 212, 0.48);
+        border-radius: 999px;
+        content: '';
+      }
+
+      .empty-poker-spade {
+        color: rgba(94, 234, 212, 0.78);
+        font-size: clamp(2rem, 9vw, 4.1rem);
+        line-height: 1;
+        text-shadow: 0 0 18px rgba(45, 212, 191, 0.34);
+      }
+
+      .empty-poker-chip {
+        position: absolute;
+        bottom: 17%;
+        width: 5.5%;
+        aspect-ratio: 1;
+        border: 2px solid rgba(94, 234, 212, 0.8);
+        border-radius: 999px;
+        background: rgba(15, 118, 110, 0.7);
+        box-shadow: 0 0 14px rgba(45, 212, 191, 0.26);
+      }
+
+      .empty-poker-chip-one {
+        left: 43%;
+      }
+
+      .empty-poker-chip-two {
+        left: 50%;
+      }
+
+      .empty-poker-chip-three {
+        left: 57%;
+      }
+
+      .empty-session-action:hover {
+        box-shadow: 0 0 36px rgba(45, 212, 191, 0.42);
+        transform: translateY(-1px);
+      }
+
+      .whats-next-line {
+        background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.44), transparent);
+      }
+
+      .whats-next-step {
+        position: relative;
+        min-height: 10.75rem;
+        overflow: hidden;
+        transition:
+          border-color 180ms ease,
+          background 180ms ease,
+          transform 180ms ease,
+          box-shadow 220ms ease;
+      }
+
+      .whats-next-step::before {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(45, 212, 191, 0.13), transparent 30%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 52%);
+        content: '';
+      }
+
+      .whats-next-step > * {
+        position: relative;
+      }
+
+      .whats-next-step:hover {
+        border-color: rgba(94, 234, 212, 0.36);
+        background: rgba(255, 255, 255, 0.065);
+        box-shadow: 0 0 28px rgba(45, 212, 191, 0.1);
+        transform: translateY(-1px);
+      }
+
+      .whats-next-number {
+        display: inline-grid;
+        width: 1.8rem;
+        height: 1.8rem;
+        place-items: center;
+        border: 1px solid rgba(94, 234, 212, 0.58);
+        border-radius: 999px;
+        background: rgba(45, 212, 191, 0.82);
+        color: rgb(4, 47, 46);
+        font-size: 0.9rem;
+        font-weight: 800;
+        box-shadow: 0 0 18px rgba(45, 212, 191, 0.28);
+      }
+
+      .whats-next-icon {
+        position: relative;
+        width: 3rem;
+        height: 3rem;
+        margin-top: 0.85rem;
+        color: rgb(94, 234, 212);
+        opacity: 0.82;
+      }
+
+      .whats-next-icon-session {
+        border: 2px solid currentColor;
+        border-radius: 8px;
+        box-shadow: inset 0 0 0 0.55rem rgba(45, 212, 191, 0.06);
+      }
+
+      .whats-next-icon-session::before,
+      .whats-next-icon-session::after {
+        position: absolute;
+        background: currentColor;
+        content: '';
+      }
+
+      .whats-next-icon-session::before {
+        width: 1.4rem;
+        height: 2px;
+        transform: translate(0.78rem, 1.42rem);
+      }
+
+      .whats-next-icon-session::after {
+        width: 2px;
+        height: 1.4rem;
+        transform: translate(1.45rem, 0.75rem);
+      }
+
+      .whats-next-icon-table {
+        border: 2px solid currentColor;
+        border-radius: 999px;
+        box-shadow:
+          inset 0 0 0 0.55rem rgba(45, 212, 191, 0.06),
+          0 0 0 0.34rem rgba(45, 212, 191, 0.06);
+      }
+
+      .whats-next-icon-player {
+        position: relative;
+      }
+
+      .whats-next-icon-player::before {
+        position: absolute;
+        top: 0.15rem;
+        left: 0.95rem;
+        width: 1.1rem;
+        height: 1.1rem;
+        border: 2px solid currentColor;
+        border-radius: 999px;
+        content: '';
+      }
+
+      .whats-next-icon-player::after {
+        position: absolute;
+        right: 0.25rem;
+        bottom: 0.2rem;
+        left: 0.25rem;
+        height: 1.55rem;
+        border: 2px solid currentColor;
+        border-radius: 999px 999px 8px 8px;
+        content: '';
+      }
+
+      @keyframes dashboard-empty-in {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       .pokertrack-sync-overlay {
