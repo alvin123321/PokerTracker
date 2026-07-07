@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -6,6 +6,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import {
   PokerStoreService,
+  PokerSession,
+  PokerTable,
   SessionPlayer,
   PokerTransaction
 } from '../data/poker-store.service';
@@ -35,7 +37,7 @@ import {
 
 @Component({
   selector: 'app-active-session-page',
-  imports: [CurrencyPipe, DatePipe, MatDialogModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, MatDialogModule, NgTemplateOutlet, RouterLink],
   template: `
     @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
@@ -88,23 +90,39 @@ import {
           </div>
 
           <div class="session-action-bar">
-            <button
-              type="button"
-              [disabled]="isBusy()"
-              class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-              (click)="openAddPlayerDialog()"
-            >
-              @if (isPending('add-player')) {
-                <span class="action-spinner" aria-hidden="true"></span>
-                Adding...
-              } @else {
-                Add Player
-              }
-            </button>
-            @if (canDelete()) {
+            @if (!isHistoryView) {
               <button
                 type="button"
                 [disabled]="isBusy()"
+                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                (click)="createTable()"
+              >
+                @if (isPending('add-table')) {
+                  <span class="action-spinner" aria-hidden="true"></span>
+                  Creating...
+                } @else {
+                  + Table
+                }
+              </button>
+              <button
+                type="button"
+                [disabled]="isBusy() || !selectedTable()"
+                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                (click)="openAddPlayerDialog()"
+              >
+                @if (isPending('add-player')) {
+                  <span class="action-spinner" aria-hidden="true"></span>
+                  Adding...
+                } @else {
+                  Add Player
+                }
+              </button>
+            }
+            @if (canDelete()) {
+              <button
+                type="button"
+                [disabled]="isBusy() || !canCloseSession(currentSession)"
+                [title]="canCloseSession(currentSession) ? 'Close session' : 'Cash out all players before closing'"
                 class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
                 (click)="closeSession()"
               >
@@ -139,53 +157,162 @@ import {
 
         <div class="hidden gap-3 md:grid md:grid-cols-4 md:gap-4">
           <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 md:p-4">
-            <p class="text-sm text-neutral-400">Players</p>
-            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ totals.totalPlayers }}</p>
-          </div>
-          <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 md:block md:p-4">
-            <p class="text-sm text-neutral-400">Active</p>
-            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ totals.activePlayers }}</p>
-          </div>
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 md:p-4">
             <p class="text-sm text-neutral-400">Total buy-in</p>
             <p class="mt-1 text-2xl font-semibold text-white md:mt-2">
               {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
             </p>
           </div>
           <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 md:block md:p-4">
-            <p class="text-sm text-neutral-400">Cash out</p>
-            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">
-              {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
-            </p>
+            <p class="text-sm text-neutral-400">Players</p>
+            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ totals.totalPlayers }}</p>
+          </div>
+          <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 md:block md:p-4">
+            <p class="text-sm text-neutral-400">Cashed out</p>
+            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ totals.cashedOutPlayers }}</p>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 md:p-4">
+            <p class="text-sm text-neutral-400">Tables</p>
+            <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ currentSession.tables.length }}</p>
           </div>
         </div>
 
-        @if (currentSession.players.length === 0) {
-          <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-6 text-center sm:p-10">
-            <p class="text-xl font-semibold text-white">Add a player</p>
-            <button
-              type="button"
-              class="mt-5 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
-              [disabled]="isBusy()"
-              (click)="openAddPlayerDialog()"
-            >
-              Add Player
-            </button>
+        <section class="space-y-3">
+          @if (!isHistoryView) {
+          <div class="flex justify-end">
+              <button
+                type="button"
+                [disabled]="isBusy()"
+                class="rounded-lg border border-emerald-300/30 px-3 py-2 text-sm font-semibold text-emerald-100"
+                (click)="createTable()"
+              >
+                + Table
+              </button>
           </div>
-        } @else {
-          <div class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-            <div
-              class="hidden grid-cols-[1.35fr_0.9fr_0.65fr_0.9fr_0.85fr_1.4fr] gap-3 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase text-neutral-500 lg:grid"
-            >
-              <span>Player</span>
-              <span>Buy-in</span>
-              <span>Rebuys</span>
-              <span>Cash out</span>
-              <span>Net</span>
-              <span class="text-right">Actions</span>
-            </div>
+          }
 
-            @for (player of sortedPlayers(); track player.id) {
+          @if (currentSession.tables.length === 0) {
+            <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-6 text-center">
+              <p class="text-lg font-semibold text-white">
+                {{ isHistoryView ? 'No tables in this session' : 'Create the first table' }}
+              </p>
+              <p class="mt-2 text-sm text-neutral-400">
+                {{ isHistoryView ? 'Tables added during the session will appear here.' : 'A session can contain multiple tables. Add a table before adding players.' }}
+              </p>
+              @if (!isHistoryView) {
+                <button
+                  type="button"
+                  [disabled]="isBusy()"
+                  class="mt-5 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
+                  (click)="createTable()"
+                >
+                  Create Table 1
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="grid gap-3">
+              @for (table of currentSession.tables; track table.id) {
+                @let tableTotals = store.totalsForTable(currentSession, table.id);
+                <article
+                  class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] transition"
+                  [class.border-emerald-300]="isTableExpanded(table.id)"
+                  [class.bg-emerald-300/10]="isTableExpanded(table.id)"
+                >
+                <button
+                  type="button"
+                  class="w-full p-4 text-left"
+                    [attr.aria-expanded]="isTableExpanded(table.id)"
+                    (click)="selectTable(table.id)"
+                >
+                  <span class="flex items-start justify-between gap-3">
+                    <span>
+                      <span class="block text-base font-semibold text-white">{{ table.name }}</span>
+                      <span class="mt-1 block text-xs uppercase tracking-wide text-neutral-500">
+                        Table {{ table.tableNumber }} · {{ table.status }}
+                      </span>
+                    </span>
+                    <span class="rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-neutral-200">
+                      {{ tableTotals.totalPlayers }}/9 Seats
+                    </span>
+                  </span>
+                  <span class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                    <span class="rounded-md bg-black/20 px-2 py-2">
+                      <span class="block text-neutral-500">Active</span>
+                      <span class="mt-1 block font-semibold text-white">{{ tableTotals.activePlayers }}</span>
+                    </span>
+                    <span class="rounded-md bg-black/20 px-2 py-2">
+                      <span class="block text-neutral-500">Buy-in</span>
+                      <span class="mt-1 block font-semibold text-white">{{ tableTotals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                    </span>
+                    <span class="rounded-md bg-black/20 px-2 py-2">
+                      <span class="block text-neutral-500">Done</span>
+                      <span class="mt-1 block font-semibold text-white">{{ tableTotals.cashedOutPlayers }}</span>
+                    </span>
+                  </span>
+                </button>
+                  <div
+                    class="table-detail-panel"
+                    [class.table-detail-panel-open]="isTableExpanded(table.id)"
+                    [attr.aria-hidden]="isTableExpanded(table.id) ? null : 'true'"
+                    [attr.inert]="isTableExpanded(table.id) ? null : ''"
+                  >
+                    <div class="table-detail-panel-inner border-t border-white/10 bg-neutral-950/35 p-3 sm:p-4">
+                    @if (playersForTable(currentSession, table.id).length === 0) {
+                      <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-6 text-center sm:p-8">
+                        <p class="text-lg font-semibold text-white">No players at {{ table.name }}</p>
+                        @if (!isHistoryView) {
+                          <button
+                            type="button"
+                            class="mt-5 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
+                            [disabled]="isBusy()"
+                            (click)="openAddPlayerDialog()"
+                          >
+                            Add Player
+                          </button>
+                        }
+                      </div>
+                    } @else {
+                      <div class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                        <div
+                          class="hidden grid-cols-[1.35fr_0.9fr_0.65fr_0.9fr_0.85fr_1.4fr] gap-3 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase text-neutral-500 lg:grid"
+                        >
+                          <span>Player</span>
+                          <span>Buy-in</span>
+                          <span>Rebuys</span>
+                          <span>Cash out</span>
+                          <span>Net</span>
+                          <span class="text-right">Actions</span>
+                        </div>
+
+                        @for (player of playersForTable(currentSession, table.id); track player.id) {
+                          <ng-container
+                            [ngTemplateOutlet]="playerRow"
+                            [ngTemplateOutletContext]="{ $implicit: player }"
+                          ></ng-container>
+                        }
+                      </div>
+                    }
+                    </div>
+                  </div>
+                </article>
+              }
+            </div>
+            @if (!isHistoryView) {
+              <div class="pt-1 text-center">
+                <button
+                  type="button"
+                  [disabled]="isBusy()"
+                  class="w-full rounded-lg border border-emerald-300/30 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 sm:w-auto sm:min-w-56"
+                  (click)="createTable()"
+                >
+                  + Table
+                </button>
+              </div>
+            }
+          }
+        </section>
+
+        <ng-template #playerRow let-player>
               <div
                 class="player-row border-b border-white/5 transition last:border-b-0 hover:bg-white/[0.035]"
                 [class.opacity-70]="player.status === 'COMPLETED'"
@@ -460,9 +587,7 @@ import {
                   </div>
                 </div>
               </div>
-            }
-          </div>
-        }
+        </ng-template>
       </section>
     } @else {
       <section class="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
@@ -513,6 +638,50 @@ import {
         height: 2.85rem;
       }
 
+      .table-detail-panel {
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+          grid-template-rows 320ms cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 220ms ease,
+          visibility 0ms linear 320ms;
+      }
+
+      .table-detail-panel-open {
+        grid-template-rows: 1fr;
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition:
+          grid-template-rows 360ms cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 220ms ease;
+      }
+
+      .table-detail-panel-inner {
+        min-height: 0;
+        overflow: hidden;
+        transform: translateY(-0.35rem);
+        transition:
+          padding 280ms cubic-bezier(0.16, 1, 0.3, 1),
+          transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+          border-color 220ms ease,
+          background 220ms ease;
+      }
+
+      .table-detail-panel-open .table-detail-panel-inner {
+        transform: translateY(0);
+      }
+
+      .table-detail-panel:not(.table-detail-panel-open) .table-detail-panel-inner {
+        border-width: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+
       @media (max-width: 639px) {
         .session-action-bar {
           display: grid;
@@ -538,7 +707,18 @@ import {
       }
 
       .pokertrack-sync-overlay {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        min-height: 100dvh;
         animation: pokertrack-sync-fade 180ms ease-out both;
+      }
+
+      @supports (height: 100dvh) {
+        .pokertrack-sync-overlay {
+          height: 100dvh;
+        }
       }
 
       .deck-shuffle {
@@ -719,12 +899,13 @@ export class ActiveSessionPage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
+  protected readonly isHistoryView = this.route.snapshot.queryParamMap.get('from') === 'history';
   protected readonly backLink =
-    this.route.snapshot.queryParamMap.get('from') === 'history'
+    this.isHistoryView
       ? '/host/sessions/history'
       : '/host/dashboard';
   protected readonly backLabel =
-    this.route.snapshot.queryParamMap.get('from') === 'history' ? 'History' : 'Dashboard';
+    this.isHistoryView ? 'History' : 'Dashboard';
   private readonly expandedPlayerId = signal<string | null>(null);
   protected readonly recentRebuyPlayerId = signal<string | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -732,10 +913,21 @@ export class ActiveSessionPage implements OnDestroy {
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
   protected readonly successToast = signal<string | null>(null);
+  protected readonly selectedTableId = signal<string | null>(null);
+  protected readonly expandedTableIds = signal<string[]>([]);
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
+  protected readonly selectedTable = computed(() => {
+    const currentSession = this.session();
+    const tables = currentSession?.tables ?? [];
+    const selectedId = this.selectedTableId();
+    return tables.find((table) => table.id === selectedId) ?? tables[0] ?? null;
+  });
   protected readonly sortedPlayers = computed(() =>
-    this.store.sortedPlayersForActiveSession(this.session())
+    this.store.sortedPlayersForActiveSession({
+      ...(this.session() ?? this.emptySession()),
+      players: this.store.playersForTable(this.session(), this.selectedTable()?.id ?? null)
+    })
   );
   protected readonly toastMessage = computed(() => {
     if (this.actionError() || this.store.error()) {
@@ -762,6 +954,10 @@ export class ActiveSessionPage implements OnDestroy {
       return 'Adding player...';
     }
 
+    if (action === 'add-table') {
+      return 'Creating table...';
+    }
+
     if (action?.startsWith('rebuy:')) {
       return 'Recording rebuy...';
     }
@@ -786,8 +982,52 @@ export class ActiveSessionPage implements OnDestroy {
     this.clearRebuyGlow();
   }
 
-  protected async openAddPlayerDialog(): Promise<void> {
+  protected selectTable(tableId: string): void {
+    this.expandedTableIds.update((tableIds) =>
+      tableIds.includes(tableId)
+        ? tableIds.filter((currentTableId) => currentTableId !== tableId)
+        : [...tableIds, tableId]
+    );
+    this.selectedTableId.set(tableId);
+    this.expandedPlayerId.set(null);
+  }
+
+  protected isTableExpanded(tableId: string): boolean {
+    return this.expandedTableIds().includes(tableId);
+  }
+
+  protected playersForTable(currentSession: PokerSession | undefined, tableId: string): SessionPlayer[] {
+    return this.store.sortedPlayersForActiveSession({
+      ...(currentSession ?? this.emptySession()),
+      players: this.store.playersForTable(currentSession ?? undefined, tableId)
+    });
+  }
+
+  protected async createTable(): Promise<void> {
     if (this.isBusy()) {
+      return;
+    }
+
+    const nextNumber = (this.session()?.tables.length ?? 0) + 1;
+    const name = `Table ${nextNumber}`;
+
+    let createdTableId: string | null = null;
+    const succeeded = await this.runAction('add-table', async () => {
+      const table = await this.store.createTable(this.sessionId, name);
+      createdTableId = table.id;
+    });
+
+    if (succeeded && createdTableId) {
+      const tableId = createdTableId;
+      this.selectedTableId.set(tableId);
+      this.expandedTableIds.update((tableIds) => [...tableIds, tableId]);
+    }
+  }
+
+  protected async openAddPlayerDialog(): Promise<void> {
+    const selectedTable = this.selectedTable();
+
+    if (this.isBusy() || !selectedTable) {
       return;
     }
 
@@ -823,7 +1063,8 @@ export class ActiveSessionPage implements OnDestroy {
           result.buyIn,
           result.comment,
           result.playerUserId,
-          result.createRegisteredPlayer
+          result.createRegisteredPlayer,
+          selectedTable.id
         )
       );
     });
@@ -989,6 +1230,10 @@ export class ActiveSessionPage implements OnDestroy {
     return this.authState.isHostAdmin();
   }
 
+  protected canCloseSession(session: PokerSession): boolean {
+    return session.status === 'ACTIVE' && session.players.every((player) => player.status === 'COMPLETED');
+  }
+
   protected isPending(action: string): boolean {
     return this.pendingAction() === action;
   }
@@ -1014,18 +1259,21 @@ export class ActiveSessionPage implements OnDestroy {
 
     const totals = this.store.totalsFor(currentSession);
     const pendingPlayers = currentSession.players.filter((player) => player.status === 'ACTIVE');
+
+    if (!this.canCloseSession(currentSession)) {
+      this.actionError.set('Cash out all players before closing this session.');
+      return;
+    }
+
     const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
       ConfirmationDialogComponent,
       {
         autoFocus: false,
         data: {
           title: 'Close session?',
-          message:
-            pendingPlayers.length > 0
-              ? 'Some players have not cashed out yet. You can close anyway, but their cash out will remain pending in this session.'
-              : 'This marks the session completed and opens the final summary.',
-          confirmLabel: pendingPlayers.length > 0 ? 'Close anyway' : 'Close session',
-          tone: pendingPlayers.length > 0 ? 'danger' : 'primary',
+          message: 'This marks the session completed and opens the final summary.',
+          confirmLabel: 'Close session',
+          tone: 'primary',
           details: [
             `${totals.totalPlayers} players`,
             `${this.formatMoney(totals.totalBuyIn)} total buy-in`,
@@ -1091,7 +1339,7 @@ export class ActiveSessionPage implements OnDestroy {
       });
 
       if (deleted) {
-        await this.router.navigateByUrl('/host/dashboard', { replaceUrl: true });
+        await this.router.navigateByUrl(this.backLink, { replaceUrl: true });
       }
     });
   }
@@ -1176,6 +1424,20 @@ export class ActiveSessionPage implements OnDestroy {
       currency: 'USD',
       maximumFractionDigits: 0
     }).format(amount);
+  }
+
+  private emptySession() {
+    return {
+      id: '',
+      name: '',
+      sessionDate: '',
+      status: 'ACTIVE' as const,
+      createdAt: '',
+      closedAt: null,
+      tables: [] as PokerTable[],
+      players: [] as SessionPlayer[],
+      transactions: [] as PokerTransaction[]
+    };
   }
 
   private toMessage(error: unknown): string {

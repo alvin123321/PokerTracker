@@ -6,12 +6,14 @@ import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { SupabaseService } from '../../../core/supabase/supabase.service';
 
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
+export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
 export type PokerPlayerStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTransactionType = 'BUYIN' | 'REBUY' | 'CASHOUT';
 
 export interface PokerTransaction {
   id: string;
   sessionId: string;
+  tableId: string | null;
   playerId: string;
   type: PokerTransactionType;
   amount: number;
@@ -20,9 +22,20 @@ export interface PokerTransaction {
   deletedAt?: string;
 }
 
+export interface PokerTable {
+  id: string;
+  sessionId: string;
+  name: string;
+  status: PokerTableStatus;
+  tableNumber: number;
+  createdAt: string;
+  closedAt: string | null;
+}
+
 export interface SessionPlayer {
   id: string;
   playerRecordId?: string;
+  tableId: string | null;
   userId?: string | null;
   name: string;
   status: PokerPlayerStatus;
@@ -40,6 +53,7 @@ export interface PokerSession {
   status: PokerSessionStatus;
   createdAt: string;
   closedAt: string | null;
+  tables: PokerTable[];
   players: SessionPlayer[];
   transactions: PokerTransaction[];
 }
@@ -82,6 +96,7 @@ interface PlayerRow {
 interface SessionPlayerRow {
   id: string;
   session_id: string;
+  table_id?: string | null;
   player_id: string;
   status: PokerPlayerStatus;
   total_buy_in: number | string;
@@ -94,6 +109,7 @@ interface SessionPlayerRow {
 interface TransactionRow {
   id: string;
   session_id: string;
+  table_id?: string | null;
   player_id: string;
   session_player_id: string;
   type: PokerTransactionType;
@@ -101,6 +117,16 @@ interface TransactionRow {
   created_at: string;
   comment: string | null;
   deleted_at: string | null;
+}
+
+interface SessionTableRow {
+  id: string;
+  session_id: string;
+  name: string;
+  status: PokerTableStatus;
+  table_number: number;
+  created_at: string;
+  closed_at: string | null;
 }
 
 interface RegisteredPlayerRow {
@@ -123,10 +149,11 @@ interface DeleteRegisteredPlayerResponse {
   ok: boolean;
 }
 
-const localStorageKey = 'pokertrack.localPokerStore';
+const localStorageKey = 'pokertrack.localPokerStore.sessionTables.v2';
 const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
-const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers';
-const localDeletedRegisteredPlayersStorageKey = 'pokertrack.localDeletedRegisteredPlayers';
+const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers.sessionTables.v2';
+const localDeletedRegisteredPlayersStorageKey =
+  'pokertrack.localDeletedRegisteredPlayers.sessionTables.v2';
 
 @Injectable({
   providedIn: 'root'
@@ -224,20 +251,29 @@ export class PokerStoreService implements OnDestroy {
         return;
       }
 
-      const [sessionPlayersResult, transactionsResult] = await Promise.all([
+      const [tablesResult, sessionPlayersResult, transactionsResult] = await Promise.all([
+        client
+          .from('session_tables')
+          .select('id,session_id,name,status,table_number,created_at,closed_at')
+          .in('session_id', sessionIds)
+          .order('table_number', { ascending: true }),
         client
           .from('session_players')
           .select(
-            'id,session_id,player_id,status,total_buy_in,cash_out,net,joined_at,completed_at'
+            'id,session_id,table_id,player_id,status,total_buy_in,cash_out,net,joined_at,completed_at'
           )
           .in('session_id', sessionIds)
           .order('joined_at', { ascending: true }),
         client
           .from('transactions')
-          .select('id,session_id,player_id,session_player_id,type,amount,created_at,comment,deleted_at')
+          .select('id,session_id,table_id,player_id,session_player_id,type,amount,created_at,comment,deleted_at')
           .in('session_id', sessionIds)
           .order('created_at', { ascending: true })
       ]);
+
+      if (tablesResult.error) {
+        throw tablesResult.error;
+      }
 
       if (sessionPlayersResult.error) {
         throw sessionPlayersResult.error;
@@ -250,11 +286,12 @@ export class PokerStoreService implements OnDestroy {
       const sessionPlayers = (sessionPlayersResult.data ?? []) as SessionPlayerRow[];
       const playerIds = [...new Set(sessionPlayers.map((player) => player.player_id))];
       const playersById = await this.loadPlayersById(playerIds);
+      const tables = (tablesResult.data ?? []) as SessionTableRow[];
       const transactions = (transactionsResult.data ?? []) as TransactionRow[];
 
       this.sessionsSignal.set(
         sessions.map((session) =>
-          this.mapSession(session, sessionPlayers, playersById, transactions)
+          this.mapSession(session, tables, sessionPlayers, playersById, transactions)
         )
       );
     } catch (error) {
@@ -278,7 +315,7 @@ export class PokerStoreService implements OnDestroy {
         throw error;
       }
 
-      const createdSession = this.mapSession(data as SessionRow, [], new Map(), []);
+      const createdSession = this.mapSession(data as SessionRow, [], [], new Map(), []);
       await this.refreshHostSessions();
 
       return this.getSession(createdSession.id) ?? createdSession;
@@ -291,6 +328,7 @@ export class PokerStoreService implements OnDestroy {
       status: 'ACTIVE',
       createdAt: new Date().toISOString(),
       closedAt: null,
+      tables: [],
       players: [],
       transactions: []
     };
@@ -302,6 +340,47 @@ export class PokerStoreService implements OnDestroy {
 
   getSession(sessionId: string | null): PokerSession | undefined {
     return this.sessionsSignal().find((session) => session.id === sessionId);
+  }
+
+  async createTable(sessionId: string, name: string): Promise<PokerTable> {
+    const cleanName = name.trim();
+
+    if (!cleanName) {
+      throw new Error('Table name is required.');
+    }
+
+    if (this.shouldUseSupabase()) {
+      const { data, error } = await this.supabaseService.requireClient().rpc('create_session_table', {
+        p_session_id: sessionId,
+        p_name: cleanName
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return this.mapTable(data as SessionTableRow);
+    }
+
+    const session = this.getSession(sessionId);
+    const tableNumber = (session?.tables ?? []).length + 1;
+    const table: PokerTable = {
+      id: this.createId('table'),
+      sessionId,
+      name: cleanName,
+      status: 'ACTIVE',
+      tableNumber,
+      createdAt: new Date().toISOString(),
+      closedAt: null
+    };
+
+    this.updateSession(sessionId, (currentSession) => ({
+      ...currentSession,
+      tables: [...currentSession.tables, table]
+    }));
+
+    return table;
   }
 
   async listRegisteredPlayers(): Promise<RegisteredPlayerOption[]> {
@@ -356,8 +435,15 @@ export class PokerStoreService implements OnDestroy {
     buyIn: number,
     comment = '',
     playerUserId: string | null = null,
-    createRegisteredPlayer = false
+    createRegisteredPlayer = false,
+    tableId: string | null = null
   ): Promise<void> {
+    const targetTableId = tableId ?? this.defaultTableId(sessionId);
+
+    if (!targetTableId) {
+      throw new Error('Create a table before adding players.');
+    }
+
     if (this.shouldUseSupabase()) {
       let targetUserId = playerUserId;
       let targetName = name.trim();
@@ -374,6 +460,7 @@ export class PokerStoreService implements OnDestroy {
         .requireClient()
         .rpc('add_player_to_session', {
           p_session_id: sessionId,
+          p_table_id: targetTableId,
           p_player_name: targetName,
           p_buy_in: this.normalizeAmount(buyIn),
           p_existing_player_id: null,
@@ -403,6 +490,7 @@ export class PokerStoreService implements OnDestroy {
     const cleanBuyIn = this.normalizeAmount(buyIn);
     const player: SessionPlayer = {
       id: playerId,
+      tableId: targetTableId,
       userId: targetUserId,
       name: targetName,
       status: 'ACTIVE',
@@ -418,7 +506,7 @@ export class PokerStoreService implements OnDestroy {
       players: [...session.players, player],
       transactions: [
         ...session.transactions,
-        this.createTransaction(session.id, playerId, 'BUYIN', cleanBuyIn, joinedAt, comment)
+        this.createTransaction(session.id, targetTableId, playerId, 'BUYIN', cleanBuyIn, joinedAt, comment)
       ]
     }));
   }
@@ -466,7 +554,15 @@ export class PokerStoreService implements OnDestroy {
       }),
       transactions: [
         ...session.transactions,
-        this.createTransaction(session.id, sessionPlayerId, 'REBUY', rebuyAmount, createdAt, comment)
+        this.createTransaction(
+          session.id,
+          this.tableIdForPlayer(session, sessionPlayerId),
+          sessionPlayerId,
+          'REBUY',
+          rebuyAmount,
+          createdAt,
+          comment
+        )
       ]
     }));
   }
@@ -509,7 +605,14 @@ export class PokerStoreService implements OnDestroy {
       }),
       transactions: [
         ...session.transactions,
-        this.createTransaction(session.id, sessionPlayerId, 'CASHOUT', cashOut, completedAt)
+        this.createTransaction(
+          session.id,
+          this.tableIdForPlayer(session, sessionPlayerId),
+          sessionPlayerId,
+          'CASHOUT',
+          cashOut,
+          completedAt
+        )
       ]
     }));
   }
@@ -656,6 +759,17 @@ export class PokerStoreService implements OnDestroy {
     return [...(session?.players ?? [])].sort((a, b) => b.net - a.net);
   }
 
+  totalsForTable(session: PokerSession | undefined, tableId: string | null): SessionTotals {
+    return this.totalsFor({
+      ...(session ?? this.emptySession()),
+      players: this.playersForTable(session, tableId)
+    });
+  }
+
+  playersForTable(session: PokerSession | undefined, tableId: string | null): SessionPlayer[] {
+    return (session?.players ?? []).filter((player) => player.tableId === tableId);
+  }
+
   sortedPlayersForActiveSession(session: PokerSession | undefined): SessionPlayer[] {
     return [...(session?.players ?? [])].sort((a, b) => {
       if (a.status !== b.status) {
@@ -797,11 +911,13 @@ export class PokerStoreService implements OnDestroy {
 
   private mapSession(
     session: SessionRow,
+    tables: SessionTableRow[],
     sessionPlayers: SessionPlayerRow[],
     playersById: Map<string, PlayerRow>,
     transactions: TransactionRow[]
   ): PokerSession {
     const currentSessionPlayers = sessionPlayers.filter((player) => player.session_id === session.id);
+    const currentTables = tables.filter((table) => table.session_id === session.id);
 
     return {
       id: session.id,
@@ -810,6 +926,7 @@ export class PokerStoreService implements OnDestroy {
       status: session.status,
       createdAt: session.created_at,
       closedAt: session.closed_at,
+      tables: currentTables.map((table) => this.mapTable(table)),
       players: currentSessionPlayers.map((sessionPlayer) =>
         this.mapSessionPlayer(sessionPlayer, playersById.get(sessionPlayer.player_id))
       ),
@@ -826,6 +943,7 @@ export class PokerStoreService implements OnDestroy {
     return {
       id: sessionPlayer.id,
       playerRecordId: sessionPlayer.player_id,
+      tableId: sessionPlayer.table_id ?? null,
       userId: player?.user_id ?? null,
       name: this.titleCaseName(player?.name ?? 'Unknown player'),
       status: sessionPlayer.status,
@@ -841,12 +959,25 @@ export class PokerStoreService implements OnDestroy {
     return {
       id: transaction.id,
       sessionId: transaction.session_id,
+      tableId: transaction.table_id ?? null,
       playerId: transaction.session_player_id,
       type: transaction.type,
       amount: this.toNumber(transaction.amount),
       createdAt: transaction.created_at,
       ...(transaction.comment ? { comment: transaction.comment } : {}),
       ...(transaction.deleted_at ? { deletedAt: transaction.deleted_at } : {})
+    };
+  }
+
+  private mapTable(table: SessionTableRow): PokerTable {
+    return {
+      id: table.id,
+      sessionId: table.session_id,
+      name: table.name,
+      status: table.status,
+      tableNumber: table.table_number,
+      createdAt: table.created_at,
+      closedAt: table.closed_at
     };
   }
 
@@ -867,6 +998,7 @@ export class PokerStoreService implements OnDestroy {
 
   private createTransaction(
     sessionId: string,
+    tableId: string | null,
     playerId: string,
     type: PokerTransactionType,
     amount: number,
@@ -878,11 +1010,35 @@ export class PokerStoreService implements OnDestroy {
     return {
       id: this.createId('transaction'),
       sessionId,
+      tableId,
       playerId,
       type,
       amount,
       createdAt,
       ...(cleanComment ? { comment: cleanComment } : {})
+    };
+  }
+
+  private defaultTableId(sessionId: string): string | null {
+    const session = this.getSession(sessionId);
+    return session?.tables.find((table) => table.status === 'ACTIVE')?.id ?? session?.tables[0]?.id ?? null;
+  }
+
+  private tableIdForPlayer(session: PokerSession, playerId: string): string | null {
+    return session.players.find((player) => player.id === playerId)?.tableId ?? this.defaultTableId(session.id);
+  }
+
+  private emptySession(): PokerSession {
+    return {
+      id: '',
+      name: '',
+      sessionDate: '',
+      status: 'ACTIVE',
+      createdAt: '',
+      closedAt: null,
+      tables: [],
+      players: [],
+      transactions: []
     };
   }
 

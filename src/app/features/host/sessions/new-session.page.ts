@@ -92,9 +92,9 @@ export class NewSessionPage {
 
     try {
       const value = this.form.getRawValue();
-      const session = await this.store.createSession(value.name, value.sessionDate);
+      await this.store.createSession(value.name, value.sessionDate);
 
-      await this.router.navigate(['/host/sessions', session.id]);
+      await this.router.navigate(['/host/dashboard']);
     } catch (error) {
       this.errorMessage.set(this.toMessage(error));
     } finally {

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Add player">
+  <defs>
+    <linearGradient id="userAddGradient" x1="8" x2="58" y1="7" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A7F3D0"/>
+      <stop offset="0.58" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+  <path
+    fill="url(#userAddGradient)"
+    d="M29.2 29.1c7.2 0 13-5.8 13-13s-5.8-13-13-13-13 5.8-13 13 5.8 13 13 13Zm-21 22.7c0-10.4 8.4-18.9 18.9-18.9h4.2c3.8 0 7.3 1.1 10.2 3.1a16.8 16.8 0 0 0-4.5 11.4c0 2.4.5 4.8 1.5 6.9H10.7a2.5 2.5 0 0 1-2.5-2.5Z"
+  />
+  <circle cx="48" cy="47" r="13" fill="#052E24" stroke="url(#userAddGradient)" stroke-width="4"/>
+  <path
+    fill="url(#userAddGradient)"
+    d="M46 39.4h4v5.6h5.6v4H50v5.6h-4V49h-5.6v-4H46v-5.6Z"
+  />
+</svg>
