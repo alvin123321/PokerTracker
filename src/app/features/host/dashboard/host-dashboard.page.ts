@@ -167,7 +167,7 @@ class TableNameDialogComponent {
                 <span class="whats-next-number">2</span>
                 <img
                   class="whats-next-icon"
-                  src="/icons/dashboard-steps/add-table.png"
+                  src="/icons/dashboard-steps/add-table.svg"
                   alt=""
                   aria-hidden="true"
                 />
