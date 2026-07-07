@@ -722,10 +722,11 @@ class TableNameDialogComponent {
           drop-shadow(0 0 18px rgba(45, 212, 191, 0.22));
         object-fit: contain;
         opacity: 1;
+        transform: translateY(-0.35rem);
       }
 
       .whats-next-step h3 {
-        margin-top: 0.1rem;
+        margin-top: -0.15rem;
       }
 
       .whats-next-copy {
@@ -788,7 +789,7 @@ class TableNameDialogComponent {
 
         .whats-next-icon {
           position: absolute;
-          top: 0.85rem;
+          top: 0.45rem;
           left: 50%;
           width: min(4.6rem, 76%);
           height: 3.75rem;
