@@ -661,8 +661,14 @@ class TableNameDialogComponent {
 
       .whats-next-step {
         position: relative;
+        display: flex;
         min-height: 10.75rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
         overflow: hidden;
+        padding-top: 1.05rem;
+        text-align: center;
         transition:
           border-color 180ms ease,
           background 180ms ease,
@@ -691,6 +697,9 @@ class TableNameDialogComponent {
       }
 
       .whats-next-number {
+        position: absolute;
+        top: 0.75rem;
+        left: 0.75rem;
         display: inline-grid;
         width: 1.8rem;
         height: 1.8rem;
@@ -708,9 +717,19 @@ class TableNameDialogComponent {
         display: block;
         width: 4.7rem;
         height: 4.7rem;
-        margin-top: 0.85rem;
+        margin-top: 0.2rem;
         object-fit: contain;
         opacity: 0.96;
+      }
+
+      .whats-next-step h3 {
+        margin-top: 0.45rem;
+      }
+
+      .whats-next-copy {
+        max-width: 10.5rem;
+        margin-right: auto;
+        margin-left: auto;
       }
 
       @keyframes dashboard-empty-in {
