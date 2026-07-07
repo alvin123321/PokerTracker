@@ -2,7 +2,7 @@
   <defs>
     <mask id="hide-under-add-button">
       <rect width="512" height="512" fill="white"/>
-      <circle cx="362" cy="156" r="58" fill="black"/>
+      <circle cx="362" cy="156" r="76" fill="black"/>
     </mask>
   </defs>
 
