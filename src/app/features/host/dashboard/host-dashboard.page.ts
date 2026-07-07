@@ -88,7 +88,7 @@ class TableNameDialogComponent {
   template: `
     <section class="space-y-6 sm:space-y-8">
       <div>
-        <h1 class="hidden text-2xl font-semibold text-white sm:block sm:text-3xl">Dashboard</h1>
+        <h1 class="sr-only">Dashboard</h1>
       </div>
 
       @if (actionError() || store.error()) {
@@ -132,7 +132,7 @@ class TableNameDialogComponent {
 
             <div class="mx-auto mt-6 max-w-xl">
               <p class="text-2xl font-semibold text-white sm:text-3xl">No active session</p>
-              <p class="mt-3 text-sm leading-6 text-neutral-300 sm:text-base">
+              <p class="empty-session-copy mt-3 text-sm leading-6 text-neutral-300 sm:text-base">
                 Start a session first, then create tables and seat players.
               </p>
             </div>
@@ -153,26 +153,26 @@ class TableNameDialogComponent {
               <span class="whats-next-line h-px flex-1"></span>
             </div>
 
-            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+            <div class="whats-next-grid mt-4 grid grid-cols-3 gap-2 sm:gap-3">
               <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
                 <span class="whats-next-number">1</span>
                 <div class="whats-next-icon whats-next-icon-session" aria-hidden="true"></div>
                 <h3 class="mt-3 text-base font-semibold text-white">Create Session</h3>
-                <p class="mt-2 text-sm leading-5 text-neutral-400">Open the session for today.</p>
+                <p class="whats-next-copy mt-2 text-sm leading-5 text-neutral-400">Open the session for today.</p>
               </article>
 
               <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
                 <span class="whats-next-number">2</span>
                 <div class="whats-next-icon whats-next-icon-table" aria-hidden="true"></div>
                 <h3 class="mt-3 text-base font-semibold text-white">Add Tables</h3>
-                <p class="mt-2 text-sm leading-5 text-neutral-400">Create one or more tables.</p>
+                <p class="whats-next-copy mt-2 text-sm leading-5 text-neutral-400">Create one or more tables.</p>
               </article>
 
               <article class="whats-next-step rounded-lg border border-white/10 bg-white/[0.045] p-4">
                 <span class="whats-next-number">3</span>
                 <div class="whats-next-icon whats-next-icon-player" aria-hidden="true"></div>
                 <h3 class="mt-3 text-base font-semibold text-white">Add Players</h3>
-                <p class="mt-2 text-sm leading-5 text-neutral-400">Seat players and track buy-ins.</p>
+                <p class="whats-next-copy mt-2 text-sm leading-5 text-neutral-400">Seat players and track buy-ins.</p>
               </article>
             </div>
           </section>
@@ -563,8 +563,8 @@ class TableNameDialogComponent {
 
       .empty-poker-seat {
         position: absolute;
-        width: 16%;
-        height: 25%;
+        width: 15%;
+        height: 22%;
         border: 1px solid rgba(94, 234, 212, 0.46);
         border-radius: 8px;
         background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.82));
@@ -572,37 +572,39 @@ class TableNameDialogComponent {
       }
 
       .empty-poker-seat-top {
-        top: 1%;
-        left: 42%;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
       }
 
       .empty-poker-seat-right-top {
-        top: 20%;
-        right: 1%;
-        transform: rotate(88deg);
+        top: 22%;
+        right: 4%;
+        transform: rotate(90deg);
       }
 
       .empty-poker-seat-right-bottom {
-        right: 9%;
-        bottom: 6%;
-        transform: rotate(35deg);
+        right: 16%;
+        bottom: 2%;
+        transform: rotate(34deg);
       }
 
       .empty-poker-seat-bottom {
         bottom: 0;
-        left: 42%;
+        left: 50%;
+        transform: translateX(-50%);
       }
 
       .empty-poker-seat-left-bottom {
-        bottom: 6%;
-        left: 9%;
+        bottom: 2%;
+        left: 16%;
         transform: rotate(-35deg);
       }
 
       .empty-poker-seat-left-top {
-        top: 20%;
-        left: 1%;
-        transform: rotate(-88deg);
+        top: 22%;
+        left: 4%;
+        transform: rotate(-90deg);
       }
 
       .empty-poker-felt {
@@ -638,8 +640,8 @@ class TableNameDialogComponent {
 
       .empty-poker-chip {
         position: absolute;
-        bottom: 17%;
-        width: 5.5%;
+        bottom: 19%;
+        width: 5%;
         aspect-ratio: 1;
         border: 2px solid rgba(94, 234, 212, 0.8);
         border-radius: 999px;
@@ -648,15 +650,16 @@ class TableNameDialogComponent {
       }
 
       .empty-poker-chip-one {
-        left: 43%;
+        left: calc(50% - 7.25%);
       }
 
       .empty-poker-chip-two {
         left: 50%;
+        transform: translateX(-50%);
       }
 
       .empty-poker-chip-three {
-        left: 57%;
+        right: calc(50% - 7.25%);
       }
 
       .empty-session-action:hover {
@@ -789,6 +792,80 @@ class TableNameDialogComponent {
         to {
           opacity: 1;
           transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 639px) {
+        .empty-session-hero {
+          padding: 1rem;
+        }
+
+        .empty-poker-table {
+          width: min(78vw, 18.5rem);
+        }
+
+        .empty-session-copy,
+        .whats-next-copy {
+          display: none;
+        }
+
+        .whats-next-panel {
+          padding: 0.85rem;
+        }
+
+        .whats-next-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.45rem;
+        }
+
+        .whats-next-step {
+          display: flex;
+          min-height: 7.25rem;
+          flex-direction: column;
+          align-items: center;
+          padding: 0.65rem 0.35rem;
+          text-align: center;
+        }
+
+        .whats-next-number {
+          width: 1.5rem;
+          height: 1.5rem;
+          font-size: 0.78rem;
+        }
+
+        .whats-next-icon {
+          width: 2.35rem;
+          height: 2.35rem;
+          margin-top: 0.55rem;
+        }
+
+        .whats-next-step h3 {
+          margin-top: 0.55rem;
+          font-size: 0.78rem;
+          line-height: 1.15;
+        }
+
+        .whats-next-icon-session::before {
+          width: 1.05rem;
+          transform: translate(0.61rem, 1.09rem);
+        }
+
+        .whats-next-icon-session::after {
+          height: 1.05rem;
+          transform: translate(1.12rem, 0.58rem);
+        }
+
+        .whats-next-icon-player::before {
+          left: 0.72rem;
+          width: 0.9rem;
+          height: 0.9rem;
+        }
+
+        .whats-next-icon-player::after {
+          right: 0.18rem;
+          bottom: 0.14rem;
+          left: 0.18rem;
+          height: 1.2rem;
         }
       }
 
