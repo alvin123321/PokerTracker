@@ -97,76 +97,77 @@ import {
               Sign out
             </button>
           </div>
-          <div class="pokertrack-mobile-tabs col-span-full grid grid-flow-col auto-cols-fr items-center gap-2 sm:hidden">
-            <a
-              routerLink="/host/dashboard"
-              routerLinkActive="pokertrack-nav-link-active"
-              class="pokertrack-nav-link pokertrack-mobile-tab"
-              aria-label="Dashboard"
-            >
-              <svg
-                lucideHouse
-                class="pokertrack-nav-icon"
-                [strokeWidth]="3"
-                [absoluteStrokeWidth]="true"
-                aria-hidden="true"
-              ></svg>
-              <span class="sr-only">Dashboard</span>
-            </a>
-            <a
-              routerLink="/host/pot-calculator"
-              routerLinkActive="pokertrack-nav-link-active"
-              class="pokertrack-nav-link pokertrack-mobile-tab"
-              aria-label="Calculator"
-            >
-              <svg
-                lucideCalculator
-                class="pokertrack-nav-icon"
-                [strokeWidth]="3"
-                [absoluteStrokeWidth]="true"
-                aria-hidden="true"
-              ></svg>
-              <span class="sr-only">Calculator</span>
-            </a>
-            @if (authState.isHostAdmin()) {
-              <a
-                routerLink="/host/players"
-                routerLinkActive="pokertrack-nav-link-active"
-                class="pokertrack-nav-link pokertrack-mobile-tab"
-                aria-label="Member"
-              >
-                <svg
-                  lucideUsersRound
-                  class="pokertrack-nav-icon"
-                  [strokeWidth]="3"
-                  [absoluteStrokeWidth]="true"
-                  aria-hidden="true"
-                ></svg>
-                <span class="sr-only">Member</span>
-              </a>
-              <a
-                routerLink="/host/sessions/history"
-                routerLinkActive="pokertrack-nav-link-active"
-                class="pokertrack-nav-link pokertrack-mobile-tab"
-                aria-label="History"
-              >
-                <svg
-                  lucideHistory
-                  class="pokertrack-nav-icon"
-                  [strokeWidth]="3"
-                  [absoluteStrokeWidth]="true"
-                  aria-hidden="true"
-                ></svg>
-                <span class="sr-only">History</span>
-              </a>
-            }
-          </div>
         </nav>
       </header>
 
       <div class="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-8">
         <router-outlet />
       </div>
+
+      <nav class="host-mobile-tabs sm:hidden" aria-label="Host navigation">
+        <a
+          routerLink="/host/dashboard"
+          routerLinkActive="host-mobile-tab-active"
+          class="host-mobile-tab"
+          aria-label="Dashboard"
+        >
+          <svg
+            lucideHouse
+            class="pokertrack-nav-icon"
+            [strokeWidth]="3"
+            [absoluteStrokeWidth]="true"
+            aria-hidden="true"
+          ></svg>
+          <span class="sr-only">Dashboard</span>
+        </a>
+        <a
+          routerLink="/host/pot-calculator"
+          routerLinkActive="host-mobile-tab-active"
+          class="host-mobile-tab"
+          aria-label="Pot Calculator"
+        >
+          <svg
+            lucideCalculator
+            class="pokertrack-nav-icon"
+            [strokeWidth]="3"
+            [absoluteStrokeWidth]="true"
+            aria-hidden="true"
+          ></svg>
+          <span class="sr-only">Pot Calculator</span>
+        </a>
+        @if (authState.isHostAdmin()) {
+          <a
+            routerLink="/host/players"
+            routerLinkActive="host-mobile-tab-active"
+            class="host-mobile-tab"
+            aria-label="Players"
+          >
+            <svg
+              lucideUsersRound
+              class="pokertrack-nav-icon"
+              [strokeWidth]="3"
+              [absoluteStrokeWidth]="true"
+              aria-hidden="true"
+            ></svg>
+            <span class="sr-only">Players</span>
+          </a>
+          <a
+            routerLink="/host/sessions/history"
+            routerLinkActive="host-mobile-tab-active"
+            class="host-mobile-tab"
+            aria-label="History"
+          >
+            <svg
+              lucideHistory
+              class="pokertrack-nav-icon"
+              [strokeWidth]="3"
+              [absoluteStrokeWidth]="true"
+              aria-hidden="true"
+            ></svg>
+            <span class="sr-only">History</span>
+          </a>
+        }
+      </nav>
     </main>
   `
 })
