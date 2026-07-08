@@ -115,23 +115,19 @@ interface SessionTableGroup {
 
                 <div class="space-y-2 p-2 sm:p-3">
                   @for (player of tableGroup.players; track player.id) {
-                    <article class="overflow-hidden rounded-lg border border-white/10 bg-black/25">
+                    <article
+                      class="summary-player-row overflow-hidden rounded-lg border border-white/10 bg-black/25"
+                      [class.summary-player-row-open]="isPlayerExpanded(player.id)"
+                    >
                       <button
                         type="button"
-                        class="grid w-full gap-3 p-3 text-left transition hover:bg-white/[0.035] sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center"
+                        class="grid w-full gap-3 p-3 text-left transition duration-200 ease-out hover:bg-white/[0.035] sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center"
                         [attr.aria-expanded]="isPlayerExpanded(player.id)"
                         (click)="togglePlayer(player.id)"
                       >
                         <div class="min-w-0">
-                          <div class="relative grid min-h-8 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:min-h-0 sm:flex-wrap sm:items-center">
-                            <span
-                              class="summary-toggle-icon grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400"
-                              [class.summary-toggle-icon-open]="isPlayerExpanded(player.id)"
-                              aria-hidden="true"
-                            >
-                              >
-                            </span>
-                            <h4 class="absolute left-1/2 max-w-[70%] -translate-x-1/2 truncate text-center font-semibold text-white sm:static sm:max-w-none sm:translate-x-0 sm:text-left">
+                          <div class="relative grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:min-h-0 sm:flex-wrap sm:items-center">
+                            <h4 class="min-w-0 truncate text-center font-semibold text-white sm:text-left">
                               {{ player.name }}
                             </h4>
                             @if (player.status === 'ACTIVE') {
@@ -285,17 +281,21 @@ interface SessionTableGroup {
         padding-bottom: 0;
       }
 
-      .summary-toggle-icon {
+      .summary-player-row {
         transition:
-          transform 260ms ease-in-out,
-          color 260ms ease-in-out,
-          border-color 260ms ease-in-out;
+          border-color 220ms ease-out,
+          background-color 220ms ease-out,
+          box-shadow 260ms ease-out;
       }
 
-      .summary-toggle-icon-open {
-        transform: rotate(90deg);
+      .summary-player-row-open {
         border-color: rgb(52 211 153 / 0.35);
-        color: rgb(110 231 183);
+        background:
+          linear-gradient(180deg, rgb(16 185 129 / 0.1), rgb(16 185 129 / 0.035)),
+          rgb(0 0 0 / 0.32);
+        box-shadow:
+          0 0 0 1px rgb(52 211 153 / 0.14),
+          0 0 22px rgb(16 185 129 / 0.13);
       }
     `
   ]
