@@ -2,7 +2,18 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { PokerStoreService, PokerTransaction } from '../data/poker-store.service';
+import {
+  PokerSession,
+  PokerStoreService,
+  PokerTransaction,
+  SessionPlayer
+} from '../data/poker-store.service';
+
+interface SessionTableGroup {
+  tableId: string | null;
+  tableName: string;
+  players: SessionPlayer[];
+}
 
 @Component({
   selector: 'app-session-summary-page',
@@ -10,6 +21,8 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
   template: `
     @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
+      @let adminNet = adminNetTotal(currentSession);
+      @let netPending = isNetPending(currentSession);
       <section class="space-y-5 sm:space-y-6">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -62,19 +75,25 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
           </div>
           <div
             class="rounded-lg border p-3 sm:p-4"
-            [class.border-emerald-300/20]="totals.totalNet >= 0"
-            [class.bg-emerald-300/[0.06]]="totals.totalNet >= 0"
-            [class.border-red-300/20]="totals.totalNet < 0"
-            [class.bg-red-300/[0.06]]="totals.totalNet < 0"
+            [class.border-amber-300/20]="netPending"
+            [class.bg-amber-300/[0.06]]="netPending"
+            [class.border-emerald-300/20]="!netPending && adminNet >= 0"
+            [class.bg-emerald-300/[0.06]]="!netPending && adminNet >= 0"
+            [class.border-red-300/20]="!netPending && adminNet < 0"
+            [class.bg-red-300/[0.06]]="!netPending && adminNet < 0"
           >
             <p class="text-sm text-neutral-400">Net total</p>
-            <p
-              class="mt-1 text-2xl font-semibold sm:mt-2"
-              [class.text-emerald-300]="totals.totalNet >= 0"
-              [class.text-red-300]="totals.totalNet < 0"
-            >
-              {{ totals.totalNet | currency: 'USD' : 'symbol' : '1.0-0' }}
-            </p>
+            @if (netPending) {
+              <p class="mt-1 text-2xl font-semibold text-amber-200 sm:mt-2">Pending</p>
+            } @else {
+              <p
+                class="mt-1 text-2xl font-semibold sm:mt-2"
+                [class.text-emerald-300]="adminNet >= 0"
+                [class.text-red-300]="adminNet < 0"
+              >
+                {{ adminNet | currency: 'USD' : 'symbol' : '1.0-0' }}
+              </p>
+            }
           </div>
         </div>
 
@@ -84,131 +103,126 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
           </div>
         }
 
-        <section class="rounded-lg border border-white/10 bg-white/[0.04]">
-          <div class="border-b border-white/10 px-4 py-3">
-            <h2 class="text-sm font-semibold uppercase text-neutral-500">Player detail</h2>
-          </div>
-          <div class="space-y-3 p-3 sm:p-4">
-          @for (player of sortedPlayers(); track player.id) {
-            <article class="overflow-hidden rounded-lg border border-white/10 bg-neutral-950">
-              <button
-                type="button"
-                class="grid w-full gap-3 p-3 text-left transition hover:bg-white/[0.035] sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center"
-                [attr.aria-expanded]="isPlayerExpanded(player.id)"
-                (click)="togglePlayer(player.id)"
-              >
-                <div class="min-w-0">
-                  <div class="relative grid min-h-8 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:min-h-0 sm:flex-wrap sm:items-center">
-                    @if (player.status === 'ACTIVE') {
-                      <span
-                        class="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400"
-                        aria-hidden="true"
-                      >
-                        {{ isPlayerExpanded(player.id) ? 'v' : '>' }}
-                      </span>
-                    } @else {
-                      <span class="h-7 w-7 sm:hidden" aria-hidden="true"></span>
-                      <span
-                        class="hidden h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400 sm:grid"
-                        aria-hidden="true"
-                      >
-                        {{ isPlayerExpanded(player.id) ? 'v' : '>' }}
-                      </span>
-                    }
-                    <h3 class="absolute left-1/2 max-w-[70%] -translate-x-1/2 truncate text-center font-semibold text-white sm:static sm:max-w-none sm:translate-x-0 sm:text-left">
-                      {{ player.name }}
-                    </h3>
-                    @if (player.status === 'ACTIVE') {
-                      <span class="justify-self-end rounded-full bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
-                        Pending
-                      </span>
-                    }
-                  </div>
+        <div class="space-y-3">
+            @for (tableGroup of tableGroups(); track tableGroup.tableId) {
+              <section class="overflow-hidden rounded-xl border border-emerald-300/15 bg-neutral-950/80">
+                <div class="flex items-center justify-between border-b border-white/10 bg-emerald-300/[0.04] px-3 py-2 sm:px-4">
+                  <h2 class="text-base font-semibold text-white">{{ tableGroup.tableName }}</h2>
+                  <span class="text-xs font-semibold text-emerald-300">
+                    {{ tableGroup.players.length }} player{{ tableGroup.players.length === 1 ? '' : 's' }}
+                  </span>
                 </div>
 
-                <div class="grid grid-cols-3 gap-2 text-center text-sm lg:min-w-96">
-                  <span class="rounded-lg bg-white/[0.03] px-3 py-2">
-                    <span class="block text-xs text-neutral-500">Buy-in</span>
-                    <span class="mt-1 block text-base font-semibold text-white">
-                      {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                    </span>
-                  </span>
-                  <span class="rounded-lg bg-white/[0.03] px-3 py-2">
-                    <span class="block text-xs text-neutral-500">Cash</span>
-                    @if (player.status === 'COMPLETED') {
-                      <span class="mt-1 block text-base font-semibold text-white">
-                        {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
-                      </span>
-                    } @else {
-                      <span class="mt-1 block text-base font-semibold text-neutral-500">Pending</span>
-                    }
-                  </span>
-                  <span class="rounded-lg bg-white/[0.03] px-3 py-2">
-                    <span class="block text-xs text-neutral-500">Net</span>
-                    @if (player.status === 'COMPLETED') {
-                      <span
-                        class="mt-1 block text-base font-semibold"
-                        [class.text-emerald-300]="player.net >= 0"
-                        [class.text-red-300]="player.net < 0"
+                <div class="space-y-2 p-2 sm:p-3">
+                  @for (player of tableGroup.players; track player.id) {
+                    <article
+                      class="summary-player-row overflow-hidden rounded-lg border border-white/10 bg-black/25"
+                      [class.summary-player-row-open]="isPlayerExpanded(player.id)"
+                    >
+                      <button
+                        type="button"
+                        class="grid w-full gap-3 p-3 text-left transition duration-200 ease-out hover:bg-white/[0.035] sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center"
+                        [attr.aria-expanded]="isPlayerExpanded(player.id)"
+                        (click)="togglePlayer(player.id)"
                       >
-                        {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
-                      </span>
-                    } @else {
-                      <span class="mt-1 block text-base font-semibold text-neutral-500">Pending</span>
-                    }
-                  </span>
-                </div>
-              </button>
+                        <div class="min-w-0">
+                          <div class="relative grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:min-h-0 sm:flex-wrap sm:items-center">
+                            <h4 class="min-w-0 truncate text-center font-semibold text-white sm:text-left">
+                              {{ player.name }}
+                            </h4>
+                            @if (player.status === 'ACTIVE') {
+                              <span class="justify-self-end rounded-full bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
+                                Pending
+                              </span>
+                            }
+                          </div>
+                        </div>
 
-              <div
-                class="summary-detail-panel"
-                [class.summary-detail-panel-open]="isPlayerExpanded(player.id)"
-                [attr.aria-hidden]="!isPlayerExpanded(player.id)"
-                [attr.inert]="isPlayerExpanded(player.id) ? null : ''"
-              >
-                <div class="summary-detail-panel-inner border-t border-white/10 bg-white/[0.02] p-3 sm:p-4">
-                  <div class="space-y-2">
-                    @for (transaction of transactionsForPlayer(player.id); track transaction.id) {
-                      <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-neutral-950 p-3">
-                        <span
-                          class="h-3 w-3 rounded-full"
-                          [class.bg-emerald-300]="transaction.type === 'BUYIN'"
-                          [class.bg-sky-300]="transaction.type === 'REBUY'"
-                          [class.bg-amber-300]="transaction.type === 'CASHOUT'"
-                        ></span>
-                        <span class="min-w-0">
-                          <span
-                            class="text-sm font-semibold uppercase"
-                            [class.text-emerald-200]="transaction.type === 'BUYIN'"
-                            [class.text-sky-200]="transaction.type === 'REBUY'"
-                            [class.text-amber-200]="transaction.type === 'CASHOUT'"
-                          >
-                            {{ transaction.type }}
+                        <div class="grid grid-cols-3 gap-2 text-center text-sm lg:min-w-96">
+                          <span class="rounded-lg bg-white/[0.03] px-3 py-2">
+                            <span class="block text-xs text-neutral-500">Buy-in</span>
+                            <span class="mt-1 block text-base font-semibold text-white">
+                              {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                            </span>
                           </span>
-                          <span class="mt-1 block text-xs text-neutral-500">
-                            {{ transaction.createdAt | date: 'short' }}
+                          <span class="rounded-lg bg-white/[0.03] px-3 py-2">
+                            <span class="block text-xs text-neutral-500">Cash</span>
+                            @if (player.status === 'COMPLETED') {
+                              <span class="mt-1 block text-base font-semibold text-white">
+                                {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                              </span>
+                            } @else {
+                              <span class="mt-1 block text-base font-semibold text-neutral-500">Pending</span>
+                            }
                           </span>
-                        </span>
-                        <span class="text-center text-lg font-semibold text-white">
-                          {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
-                        </span>
+                          <span class="rounded-lg bg-white/[0.03] px-3 py-2">
+                            <span class="block text-xs text-neutral-500">Net</span>
+                            @if (player.status === 'COMPLETED') {
+                              <span
+                                class="mt-1 block text-base font-semibold"
+                                [class.text-emerald-300]="player.net >= 0"
+                                [class.text-red-300]="player.net < 0"
+                              >
+                                {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                              </span>
+                            } @else {
+                              <span class="mt-1 block text-base font-semibold text-neutral-500">Pending</span>
+                            }
+                          </span>
+                        </div>
+                      </button>
+
+                      <div
+                        class="summary-detail-panel"
+                        [class.summary-detail-panel-open]="isPlayerExpanded(player.id)"
+                        [attr.aria-hidden]="!isPlayerExpanded(player.id)"
+                        [attr.inert]="isPlayerExpanded(player.id) ? null : ''"
+                      >
+                        <div class="summary-detail-panel-inner border-t border-white/10 bg-white/[0.02] p-3 sm:p-4">
+                          <div class="space-y-2">
+                            @for (transaction of transactionsForPlayer(player.id); track transaction.id) {
+                              <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-neutral-950 p-3">
+                                <span
+                                  class="h-3 w-3 rounded-full"
+                                  [class.bg-emerald-300]="transaction.type === 'BUYIN'"
+                                  [class.bg-sky-300]="transaction.type === 'REBUY'"
+                                  [class.bg-amber-300]="transaction.type === 'CASHOUT'"
+                                ></span>
+                                <span class="min-w-0">
+                                  <span
+                                    class="text-sm font-semibold uppercase"
+                                    [class.text-emerald-200]="transaction.type === 'BUYIN'"
+                                    [class.text-sky-200]="transaction.type === 'REBUY'"
+                                    [class.text-amber-200]="transaction.type === 'CASHOUT'"
+                                  >
+                                    {{ transaction.type }}
+                                  </span>
+                                  <span class="mt-1 block text-xs text-neutral-500">
+                                    {{ transaction.createdAt | date: 'short' }}
+                                  </span>
+                                </span>
+                                <span class="text-center text-lg font-semibold text-white">
+                                  {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                                </span>
+                              </div>
+                            } @empty {
+                              <div class="rounded-lg border border-dashed border-white/10 p-4 text-sm text-neutral-500">
+                                No buy-in, rebuy, or cash-out records for this player.
+                              </div>
+                            }
+                          </div>
+                        </div>
                       </div>
-                    } @empty {
-                      <div class="rounded-lg border border-dashed border-white/10 p-4 text-sm text-neutral-500">
-                        No buy-in, rebuy, or cash-out records for this player.
-                      </div>
-                    }
-                  </div>
+                    </article>
+                  }
                 </div>
+              </section>
+            } @empty {
+              <div class="px-4 py-8 text-center text-sm text-neutral-500">
+                No players were added to this session.
               </div>
-            </article>
-          } @empty {
-            <div class="px-4 py-8 text-center text-sm text-neutral-500">
-              No players were added to this session.
-            </div>
-          }
-          </div>
-        </section>
+            }
+        </div>
       </section>
     } @else {
       <section class="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
@@ -232,9 +246,9 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
         visibility: hidden;
         pointer-events: none;
         transition:
-          grid-template-rows 260ms ease-in-out,
-          opacity 220ms ease-in-out,
-          visibility 0ms linear 260ms;
+          grid-template-rows 360ms ease-in-out,
+          opacity 300ms ease-in-out,
+          visibility 0ms linear 360ms;
       }
 
       .summary-detail-panel-open {
@@ -243,8 +257,8 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
         visibility: visible;
         pointer-events: auto;
         transition:
-          grid-template-rows 260ms ease-in-out,
-          opacity 220ms ease-in-out;
+          grid-template-rows 360ms ease-in-out,
+          opacity 300ms ease-in-out;
       }
 
       .summary-detail-panel-inner {
@@ -252,9 +266,9 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
         overflow: hidden;
         transform: translateY(-0.25rem);
         transition:
-          padding 240ms ease-in-out,
-          transform 240ms ease-in-out,
-          border-color 240ms ease-in-out;
+          padding 320ms ease-in-out,
+          transform 320ms ease-in-out,
+          border-color 320ms ease-in-out;
       }
 
       .summary-detail-panel-open .summary-detail-panel-inner {
@@ -266,6 +280,23 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
         padding-top: 0;
         padding-bottom: 0;
       }
+
+      .summary-player-row {
+        transition:
+          border-color 220ms ease-out,
+          background-color 220ms ease-out,
+          box-shadow 260ms ease-out;
+      }
+
+      .summary-player-row-open {
+        border-color: rgb(52 211 153 / 0.35);
+        background:
+          linear-gradient(180deg, rgb(16 185 129 / 0.1), rgb(16 185 129 / 0.035)),
+          rgb(0 0 0 / 0.32);
+        box-shadow:
+          0 0 0 1px rgb(52 211 153 / 0.14),
+          0 0 22px rgb(16 185 129 / 0.13);
+      }
     `
   ]
 })
@@ -276,7 +307,45 @@ export class SessionSummaryPage {
   protected readonly expandedPlayerId = signal<string | null>(null);
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
-  protected readonly sortedPlayers = computed(() => this.store.sortedPlayersByNet(this.session()));
+  protected readonly tableGroups = computed<SessionTableGroup[]>(() => {
+    const currentSession = this.session();
+
+    if (!currentSession) {
+      return [];
+    }
+
+    const groups = currentSession.tables
+      .map((table) => ({
+        tableId: table.id,
+        tableName: table.name,
+        players: this.sortedPlayersForTable(currentSession, table.id)
+      }))
+      .filter((group) => group.players.length > 0);
+
+    const unassignedPlayers = this.sortedPlayersForTable(currentSession, null);
+
+    if (unassignedPlayers.length === 0) {
+      return groups;
+    }
+
+    return [
+      ...groups,
+      {
+        tableId: null,
+        tableName: 'Unassigned Table',
+        players: unassignedPlayers
+      }
+    ];
+  });
+
+  protected adminNetTotal(currentSession: PokerSession): number {
+    const totals = this.store.totalsFor(currentSession);
+    return totals.totalBuyIn - totals.totalCashOut;
+  }
+
+  protected isNetPending(currentSession: PokerSession): boolean {
+    return this.store.totalsFor(currentSession).activePlayers > 0;
+  }
 
   protected togglePlayer(playerId: string): void {
     this.expandedPlayerId.update((currentPlayerId) =>
@@ -294,5 +363,12 @@ export class SessionSummaryPage {
         ?.transactions.filter((transaction) => transaction.playerId === playerId && !transaction.deletedAt)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt)) ?? []
     );
+  }
+
+  private sortedPlayersForTable(
+    currentSession: PokerSession,
+    tableId: string | null
+  ): SessionPlayer[] {
+    return [...this.store.playersForTable(currentSession, tableId)].sort((a, b) => b.net - a.net);
   }
 }

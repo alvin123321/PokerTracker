@@ -448,10 +448,72 @@ a {
   }
 
   .pokertrack-mobile-signout,
-  .pokertrack-mobile-tabs,
+  .host-mobile-tabs,
   .dashboard-player-buyin-mobile,
   .dashboard-mobile-only {
     display: none !important;
+  }
+}
+
+@media (max-width: 639px) {
+  app-host-shell main {
+    padding-bottom: calc(5.85rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .host-mobile-tabs {
+    position: fixed;
+    z-index: 40;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    width: 100%;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+    border-top: 1px solid rgb(255 255 255 / 0.1);
+    background:
+      linear-gradient(180deg, rgb(3 8 7 / 0.56), rgb(3 8 7 / 0.96)),
+      rgb(3 8 7);
+    box-shadow: 0 -18px 46px rgb(0 0 0 / 0.42);
+    padding: 0.68rem 0.85rem calc(0.68rem + env(safe-area-inset-bottom, 0px));
+    backdrop-filter: blur(20px);
+  }
+
+  .host-mobile-tab {
+    display: inline-grid;
+    min-width: 0;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 0.95rem;
+    background: rgb(255 255 255 / 0.035);
+    color: rgb(212 212 216);
+    transition:
+      background-color 190ms ease,
+      border-color 190ms ease,
+      box-shadow 190ms ease,
+      color 190ms ease,
+      transform 190ms ease;
+  }
+
+  .host-mobile-tab:hover {
+    background: rgb(255 255 255 / 0.055);
+    color: white;
+  }
+
+  .host-mobile-tab:active {
+    transform: scale(0.985);
+  }
+
+  .host-mobile-tab-active {
+    border-color: rgb(34 197 94 / 0.55);
+    background:
+      linear-gradient(180deg, rgb(34 197 94 / 0.22), rgb(34 197 94 / 0.09)),
+      rgb(255 255 255 / 0.045);
+    box-shadow: 0 0 24px rgb(34 197 94 / 0.18);
+    color: rgb(220 252 231);
   }
 }
 
@@ -591,8 +653,7 @@ app-host-shell main {
   font-weight: 800;
 }
 
-.pokertrack-mobile-signout,
-.pokertrack-mobile-tab {
+.pokertrack-mobile-signout {
   display: inline-grid;
   align-items: center;
   justify-items: center;
@@ -614,27 +675,14 @@ app-host-shell main {
   background: rgb(255 255 255 / 0.035);
 }
 
-.pokertrack-mobile-signout:hover,
-.pokertrack-mobile-tab:hover,
-.pokertrack-mobile-tab.pokertrack-nav-link-active {
+.pokertrack-mobile-signout:hover {
   color: rgb(52 211 153);
   background: rgb(16 185 129 / 0.08);
   box-shadow: 0 0 18px rgb(16 185 129 / 0.12);
 }
 
-.pokertrack-mobile-signout:active,
-.pokertrack-mobile-tab:active {
+.pokertrack-mobile-signout:active {
   transform: scale(0.95);
-}
-
-.pokertrack-mobile-tab {
-  height: 2.75rem;
-  border: 1px solid transparent;
-  padding: 0;
-}
-
-.pokertrack-mobile-tab.pokertrack-nav-link-active {
-  border-color: rgb(52 211 153 / 0.38);
 }
 
 .pokertrack-nav-icon {
@@ -645,10 +693,6 @@ app-host-shell main {
 
 .pokertrack-signout-left-icon {
   transform: scaleX(-1);
-}
-
-.pokertrack-mobile-tabs .pokertrack-nav-link::before {
-  display: none;
 }
 
 ::view-transition-old(root),

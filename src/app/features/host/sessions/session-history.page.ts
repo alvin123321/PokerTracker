@@ -76,15 +76,16 @@ import { PokerSession, PokerStoreService } from '../data/poker-store.service';
                     </p>
                   </div>
                   <div>
-                    @if (session.status === 'ACTIVE') {
-                      <p class="text-neutral-500">Active tables</p>
-                      <p class="mt-1 font-semibold text-white">
-                        {{ activeTableCount(session) }}
-                      </p>
+                    <p class="text-neutral-500">Net total</p>
+                    @if (isNetPending(session)) {
+                      <p class="mt-1 font-semibold text-amber-200">Pending</p>
                     } @else {
-                      <p class="text-neutral-500">Tables</p>
-                      <p class="mt-1 font-semibold text-white">
-                        {{ session.tables.length }}
+                      <p
+                        class="mt-1 font-semibold"
+                        [class.text-emerald-300]="adminNetTotal(session) >= 0"
+                        [class.text-red-300]="adminNetTotal(session) < 0"
+                      >
+                        {{ adminNetTotal(session) | currency: 'USD' : 'symbol' : '1.0-0' }}
                       </p>
                     }
                   </div>
@@ -115,7 +116,12 @@ export class SessionHistoryPage {
     [...this.store.sessions()].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   );
 
-  protected activeTableCount(session: PokerSession): number {
-    return session.tables.filter((table) => table.status === 'ACTIVE').length;
+  protected adminNetTotal(session: PokerSession): number {
+    const totals = this.store.totalsFor(session);
+    return totals.totalBuyIn - totals.totalCashOut;
+  }
+
+  protected isNetPending(session: PokerSession): boolean {
+    return this.store.totalsFor(session).activePlayers > 0;
   }
 }
