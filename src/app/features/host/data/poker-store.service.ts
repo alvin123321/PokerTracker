@@ -714,6 +714,12 @@ export class PokerStoreService implements OnDestroy {
   }
 
   async closeSession(sessionId: string): Promise<void> {
+    const currentSession = this.getSession(sessionId);
+
+    if (currentSession?.players.some((player) => player.status === 'ACTIVE')) {
+      throw new Error('Cash out all players before closing this session.');
+    }
+
     if (this.shouldUseSupabase()) {
       const { error } = await this.supabaseService.requireClient().rpc('close_session', {
         p_session_id: sessionId
@@ -727,10 +733,17 @@ export class PokerStoreService implements OnDestroy {
       return;
     }
 
+    const closedAt = new Date().toISOString();
+
     this.updateSession(sessionId, (session) => ({
       ...session,
       status: 'COMPLETED',
-      closedAt: new Date().toISOString()
+      closedAt,
+      tables: session.tables.map((table) => ({
+        ...table,
+        status: 'CLOSED',
+        closedAt: table.closedAt ?? closedAt
+      }))
     }));
   }
 
