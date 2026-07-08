@@ -20,8 +20,16 @@ interface DevelopmentSession {
   profile: UserProfile;
 }
 
+interface LocalRegisteredPlayerOption {
+  id: string;
+  username: string;
+  displayName: string | null;
+  role: 'MANAGER' | 'PLAYER';
+}
+
 const developmentSessionStorageKey = 'pokertrack.developmentSession';
 const legacyMockSessionStorageKey = 'pokertrack.mockSession';
+const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers.sessionTables.v2';
 
 const nowIso = () => new Date().toISOString();
 
@@ -289,7 +297,7 @@ export class AuthStateService {
     const developmentUser = developmentUsers[normalizedUsername];
 
     if (!developmentUser || developmentUser.password !== password) {
-      return null;
+      return this.tryLocalRegisteredDevelopmentSignIn(normalizedUsername, password);
     }
 
     const profile = {
@@ -304,6 +312,67 @@ export class AuthStateService {
     localStorage.removeItem(legacyMockSessionStorageKey);
 
     return profile;
+  }
+
+  private tryLocalRegisteredDevelopmentSignIn(
+    normalizedUsername: string,
+    password: string
+  ): UserProfile | null {
+    if (password !== '123456') {
+      return null;
+    }
+
+    const player = this.loadLocalRegisteredDevelopmentPlayers().find((registeredPlayer) => {
+      const displayName = registeredPlayer.displayName?.trim().toLowerCase() ?? '';
+      const username = registeredPlayer.username.trim().toLowerCase();
+      const displayNameSlug = displayName.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+
+      return (
+        normalizedUsername === username ||
+        normalizedUsername === displayName ||
+        normalizedUsername === displayNameSlug
+      );
+    });
+
+    if (!player) {
+      return null;
+    }
+
+    const profile: UserProfile = {
+      id: player.id,
+      displayName: player.displayName ?? player.username,
+      role: player.role,
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    };
+    const user = this.createDevelopmentUser(profile);
+
+    this.userSignal.set(user);
+    this.profileSignal.set(profile);
+    localStorage.setItem(developmentSessionStorageKey, JSON.stringify({ user, profile }));
+    localStorage.removeItem(legacyMockSessionStorageKey);
+
+    return profile;
+  }
+
+  private loadLocalRegisteredDevelopmentPlayers(): LocalRegisteredPlayerOption[] {
+    if (typeof localStorage === 'undefined') {
+      return [];
+    }
+
+    const rawPlayers = localStorage.getItem(localRegisteredPlayersStorageKey);
+
+    if (!rawPlayers) {
+      return [];
+    }
+
+    try {
+      return (JSON.parse(rawPlayers) as LocalRegisteredPlayerOption[]).filter(
+        (player) => player.id && player.username
+      );
+    } catch {
+      return [];
+    }
   }
 
   private toSupabaseEmail(loginName: string): string {

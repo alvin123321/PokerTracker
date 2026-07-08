@@ -155,6 +155,13 @@ const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
 const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers.sessionTables.v2';
 const localDeletedRegisteredPlayersStorageKey =
   'pokertrack.localDeletedRegisteredPlayers.sessionTables.v2';
+const developmentProductionSnapshotPath = '/snapshots/production-sync.json';
+
+interface DevelopmentProductionSnapshot {
+  syncedAt?: string;
+  sessions?: PokerSession[];
+  registeredPlayers?: RegisteredPlayerOption[];
+}
 
 @Injectable({
   providedIn: 'root'
@@ -227,6 +234,7 @@ export class PokerStoreService implements OnDestroy {
 
   async refreshHostSessions(): Promise<void> {
     if (!this.shouldUseSupabase()) {
+      await this.refreshDevelopmentProductionSnapshot();
       return;
     }
 
@@ -1351,6 +1359,40 @@ export class PokerStoreService implements OnDestroy {
 
     localStorage.setItem(localStorageKey, JSON.stringify(sessions));
     localStorage.removeItem(legacyLocalStorageKey);
+  }
+
+  private async refreshDevelopmentProductionSnapshot(): Promise<void> {
+    if (environment.production || typeof fetch === 'undefined') {
+      return;
+    }
+
+    this.setLoading(true);
+
+    try {
+      const response = await fetch(`${developmentProductionSnapshotPath}?t=${Date.now()}`, {
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const snapshot = (await response.json()) as DevelopmentProductionSnapshot;
+
+      if (Array.isArray(snapshot.sessions)) {
+        this.sessionsSignal.set(snapshot.sessions);
+        this.saveSessions(snapshot.sessions);
+      }
+
+      if (Array.isArray(snapshot.registeredPlayers)) {
+        this.localRegisteredPlayersSignal.set(snapshot.registeredPlayers);
+        this.saveLocalRegisteredPlayers(snapshot.registeredPlayers);
+      }
+    } catch {
+      // Missing or invalid local snapshots should not block development mode.
+    } finally {
+      this.setLoading(false);
+    }
   }
 
   private withDevelopmentPreviewSessions(sessions: PokerSession[]): PokerSession[] {

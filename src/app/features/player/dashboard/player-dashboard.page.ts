@@ -1,6 +1,13 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { LucideCalculator, LucideHistory, LucideHouse } from '@lucide/angular';
+import {
+  LucideArrowDownToLine,
+  LucideBanknoteArrowDown,
+  LucideCalculator,
+  LucideHistory,
+  LucideHouse,
+  LucideRefreshCcw
+} from '@lucide/angular';
 import { RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -37,9 +44,12 @@ interface PlayerActivityEntry {
   imports: [
     CurrencyPipe,
     DatePipe,
+    LucideArrowDownToLine,
+    LucideBanknoteArrowDown,
     LucideCalculator,
     LucideHistory,
     LucideHouse,
+    LucideRefreshCcw,
     RouterLink,
     PotCalculatorPage
   ],
@@ -181,14 +191,47 @@ interface PlayerActivityEntry {
                 <div class="activity-list">
                   @for (activity of recentActivity(); track activity.id) {
                     <a [routerLink]="['/player/sessions', activity.sessionId]" class="activity-row">
-                      <span class="activity-icon" [class.activity-icon-cashout]="activity.type === 'CASHOUT'">
-                        {{ activityIcon(activity.type) }}
+                      <span
+                        class="activity-icon"
+                        [class.activity-icon-buyin]="activity.type === 'BUYIN'"
+                        [class.activity-icon-rebuy]="activity.type === 'REBUY'"
+                        [class.activity-icon-cashout]="activity.type === 'CASHOUT'"
+                      >
+                        @switch (activity.type) {
+                          @case ('BUYIN') {
+                            <svg
+                              lucideArrowDownToLine
+                              [strokeWidth]="3"
+                              [absoluteStrokeWidth]="true"
+                              aria-hidden="true"
+                            ></svg>
+                          }
+                          @case ('REBUY') {
+                            <svg
+                              lucideRefreshCcw
+                              [strokeWidth]="3"
+                              [absoluteStrokeWidth]="true"
+                              aria-hidden="true"
+                            ></svg>
+                          }
+                          @case ('CASHOUT') {
+                            <svg
+                              lucideBanknoteArrowDown
+                              [strokeWidth]="3"
+                              [absoluteStrokeWidth]="true"
+                              aria-hidden="true"
+                            ></svg>
+                          }
+                        }
                       </span>
                       <span class="activity-copy">
                         <strong>{{ activityLabel(activity.type) }}</strong>
-                        <small>{{ activity.sessionName }}</small>
+                        <small>{{ activity.sessionName }} - {{ activity.createdAt | date: 'shortTime' }}</small>
                       </span>
-                      <span class="activity-amount">{{ activity.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                      <span class="activity-meta">
+                        <span class="activity-amount">{{ activity.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                        <small>{{ activity.createdAt | date: 'MMM d' }}</small>
+                      </span>
                     </a>
                   } @empty {
                     <p class="activity-empty">No activity yet.</p>
@@ -258,6 +301,10 @@ interface PlayerActivityEntry {
       .player-dashboard {
         display: grid;
         gap: 1rem;
+        padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+        font-family:
+          'Aptos Display', Aptos, Inter, ui-sans-serif, system-ui, -apple-system,
+          BlinkMacSystemFont, 'Segoe UI', sans-serif;
         animation: player-page-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
@@ -271,9 +318,7 @@ interface PlayerActivityEntry {
         background:
           linear-gradient(135deg, rgb(34 197 94 / 0.15), transparent 38%),
           rgb(255 255 255 / 0.045);
-        box-shadow:
-          0 18px 48px rgb(0 0 0 / 0.28),
-          inset 0 1px 0 rgb(255 255 255 / 0.06);
+        box-shadow: 0 18px 48px rgb(0 0 0 / 0.28);
         padding: 1rem;
       }
 
@@ -295,7 +340,7 @@ interface PlayerActivityEntry {
         background:
           radial-gradient(circle, rgb(255 255 255 / 0.14), transparent 54%),
           rgb(3 8 7 / 0.92);
-        box-shadow: 0 0 28px rgb(34 197 94 / 0.22);
+        box-shadow: 0 0 22px rgb(34 197 94 / 0.18);
         color: white;
         font-size: 1.08rem;
         font-weight: 900;
@@ -309,10 +354,9 @@ interface PlayerActivityEntry {
         margin: 0;
         overflow: hidden;
         color: white;
-        font-size: clamp(1.55rem, 8vw, 2.45rem);
-        font-weight: 850;
-        letter-spacing: 0;
-        line-height: 1;
+        font-size: 1.75rem;
+        font-weight: 780;
+        line-height: 1.04;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
@@ -329,7 +373,7 @@ interface PlayerActivityEntry {
 
       .player-net {
         display: grid;
-        min-width: 7.3rem;
+        min-width: 7rem;
         justify-items: end;
         gap: 0.18rem;
         border: 1px solid rgb(255 255 255 / 0.1);
@@ -342,14 +386,15 @@ interface PlayerActivityEntry {
       .metric-card span,
       .session-tile-stats span {
         color: rgb(161 161 170);
-        font-size: 0.76rem;
-        font-weight: 700;
+        font-size: 0.72rem;
+        font-weight: 760;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
       }
 
       .player-net strong {
-        font-size: 1.45rem;
-        font-weight: 750;
+        font-size: 1.36rem;
+        font-weight: 680;
         line-height: 1;
       }
 
@@ -364,14 +409,20 @@ interface PlayerActivityEntry {
       .player-tabs {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.55rem;
-        border: 1px solid rgb(255 255 255 / 0.09);
-        border-radius: 1rem;
-        background: rgb(0 0 0 / 0.24);
-        justify-self: center;
-        max-width: 18rem;
-        padding: 0.4rem;
+        gap: 0.6rem;
+        position: fixed;
+        z-index: 30;
+        right: 0;
+        bottom: 0;
+        left: 0;
         width: 100%;
+        border-top: 1px solid rgb(255 255 255 / 0.1);
+        background:
+          linear-gradient(180deg, rgb(3 8 7 / 0.56), rgb(3 8 7 / 0.96)),
+          rgb(3 8 7);
+        box-shadow: 0 -18px 46px rgb(0 0 0 / 0.42);
+        padding: 0.68rem 0.85rem calc(0.68rem + env(safe-area-inset-bottom, 0px));
+        backdrop-filter: blur(20px);
       }
 
       .player-tab {
@@ -380,14 +431,10 @@ interface PlayerActivityEntry {
         align-items: center;
         justify-content: center;
         border: 1px solid transparent;
-        border-radius: 0.75rem;
+        border-radius: 0.95rem;
         color: rgb(212 212 216);
-        transition:
-          border-color 190ms ease,
-          background-color 190ms ease,
-          color 190ms ease,
-          box-shadow 190ms ease,
-          transform 190ms ease;
+        background: rgb(255 255 255 / 0.035);
+        transition: all 190ms ease;
       }
 
       .player-tab:hover {
@@ -406,6 +453,24 @@ interface PlayerActivityEntry {
           rgb(255 255 255 / 0.045);
         box-shadow: 0 0 24px rgb(34 197 94 / 0.18);
         color: rgb(220 252 231);
+      }
+
+      @media (min-width: 640px) {
+        .player-dashboard {
+          padding-bottom: 0;
+        }
+
+        .player-tabs {
+          position: static;
+          justify-self: center;
+          max-width: 18rem;
+          border: 1px solid rgb(255 255 255 / 0.09);
+          border-radius: 1rem;
+          background: rgb(0 0 0 / 0.24);
+          box-shadow: none;
+          padding: 0.4rem;
+          backdrop-filter: none;
+        }
       }
 
       .player-alert {
@@ -448,7 +513,6 @@ interface PlayerActivityEntry {
         background:
           linear-gradient(145deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.025)),
           rgb(3 8 7 / 0.68);
-        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
       }
 
       .player-feature-card {
@@ -457,19 +521,6 @@ interface PlayerActivityEntry {
         overflow: hidden;
         padding: 1rem;
         position: relative;
-      }
-
-      .player-feature-card::before {
-        background: linear-gradient(90deg, rgb(34 197 94), transparent);
-        content: '';
-        height: 2px;
-        inset: 0 0 auto 0;
-        opacity: 0.55;
-        position: absolute;
-      }
-
-      .player-feature-card-active {
-        border-color: rgb(34 197 94 / 0.32);
       }
 
       .feature-topline,
@@ -510,7 +561,7 @@ interface PlayerActivityEntry {
         margin: 0;
         color: white;
         font-size: 1.35rem;
-        font-weight: 820;
+        font-weight: 760;
         line-height: 1.1;
       }
 
@@ -521,19 +572,10 @@ interface PlayerActivityEntry {
         color: rgb(220 252 231);
         flex: 0 0 auto;
         font-size: 0.86rem;
-        font-weight: 800;
+        font-weight: 760;
         padding: 0.62rem 0.86rem;
         text-decoration: none;
-        transition:
-          background-color 180ms ease,
-          border-color 180ms ease,
-          transform 180ms ease;
-      }
-
-      .feature-link:hover {
-        border-color: rgb(34 197 94 / 0.7);
-        background: rgb(34 197 94 / 0.22);
-        transform: translateY(-1px);
+        transition: all 180ms ease;
       }
 
       .player-metrics,
@@ -557,8 +599,8 @@ interface PlayerActivityEntry {
       .session-tile-stats strong {
         overflow: hidden;
         color: white;
-        font-size: clamp(1rem, 4.5vw, 1.42rem);
-        font-weight: 760;
+        font-size: 1.28rem;
+        font-weight: 680;
         line-height: 1.05;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -601,16 +643,15 @@ interface PlayerActivityEntry {
       }
 
       .activity-row {
+        position: relative;
         border: 1px solid rgb(255 255 255 / 0.08);
         border-radius: 0.85rem;
         background: rgb(0 0 0 / 0.22);
         color: white;
         padding: 0.72rem;
         text-decoration: none;
-        transition:
-          border-color 180ms ease,
-          background-color 180ms ease,
-          transform 180ms ease;
+        transition: all 180ms ease;
+        animation: activity-row-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .activity-row:hover {
@@ -621,15 +662,29 @@ interface PlayerActivityEntry {
 
       .activity-icon {
         display: grid;
-        height: 2.15rem;
-        width: 2.15rem;
+        height: 2.35rem;
+        width: 2.35rem;
         flex: 0 0 auto;
         place-items: center;
         border-radius: 999px;
+        border: 1px solid rgb(255 255 255 / 0.08);
         background: rgb(34 197 94 / 0.16);
         color: rgb(74 222 128);
-        font-size: 0.82rem;
-        font-weight: 900;
+      }
+
+      .activity-icon svg {
+        height: 1.15rem;
+        width: 1.15rem;
+      }
+
+      .activity-icon-buyin {
+        background: rgb(250 204 21 / 0.14);
+        color: rgb(253 224 71);
+      }
+
+      .activity-icon-rebuy {
+        background: rgb(34 197 94 / 0.16);
+        color: rgb(74 222 128);
       }
 
       .activity-icon-cashout {
@@ -641,13 +696,36 @@ interface PlayerActivityEntry {
         display: grid;
         min-width: 0;
         margin-right: auto;
+        gap: 0.1rem;
       }
 
-      .activity-copy strong,
+      .activity-copy strong {
+        color: white;
+        font-size: 0.98rem;
+        font-weight: 720;
+      }
+
+      .activity-copy small,
+      .activity-meta small {
+        overflow: hidden;
+        color: rgb(161 161 170);
+        font-size: 0.78rem;
+        font-weight: 560;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .activity-meta {
+        display: grid;
+        justify-items: end;
+        gap: 0.1rem;
+        flex: 0 0 auto;
+      }
+
       .activity-amount {
         color: white;
-        font-size: 0.95rem;
-        font-weight: 760;
+        font-size: 0.98rem;
+        font-weight: 680;
       }
 
       .activity-amount {
@@ -670,11 +748,7 @@ interface PlayerActivityEntry {
         gap: 0.9rem;
         padding: 1rem;
         text-decoration: none;
-        transition:
-          border-color 180ms ease,
-          background-color 180ms ease,
-          box-shadow 180ms ease,
-          transform 180ms ease;
+        transition: all 180ms ease;
       }
 
       .session-tile:hover {
@@ -709,15 +783,6 @@ interface PlayerActivityEntry {
 
         .player-session-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .player-feature-card,
-        .player-ledger-panel,
-        .calculator-player-panel,
-        .player-empty-card,
-        .session-tile {
-          border-radius: 1.15rem;
-          padding: 1.25rem;
         }
       }
 
@@ -770,28 +835,11 @@ interface PlayerActivityEntry {
         }
       }
 
-      @media (max-width: 360px) {
-        .player-identity {
-          gap: 0.65rem;
-        }
-
-        .player-chip {
-          height: 2.7rem;
-          width: 2.7rem;
-          font-size: 0.96rem;
-        }
-
-        .player-identity-copy p {
-          display: none;
-        }
-
-        .player-net {
-          min-width: 5.1rem;
-        }
-
-        .player-tabs {
-          gap: 0.4rem;
-          max-width: 15.5rem;
+      @media (prefers-reduced-motion: reduce) {
+        .player-dashboard,
+        .player-view,
+        .activity-row {
+          animation: none;
         }
       }
 
@@ -811,6 +859,18 @@ interface PlayerActivityEntry {
         from {
           opacity: 0;
           transform: translateY(0.25rem);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes activity-row-enter {
+        from {
+          opacity: 0;
+          transform: translateY(0.35rem);
         }
 
         to {
@@ -930,17 +990,6 @@ export class PlayerDashboardPage implements OnInit {
 
   protected statusLabel(entry: PlayerSessionEntry): string {
     return entry.player.status === 'ACTIVE' ? 'Active' : 'Closed';
-  }
-
-  protected activityIcon(type: PokerTransactionType): string {
-    switch (type) {
-      case 'BUYIN':
-        return 'BI';
-      case 'REBUY':
-        return 'RB';
-      case 'CASHOUT':
-        return 'CO';
-    }
   }
 
   protected activityLabel(type: PokerTransactionType): string {
