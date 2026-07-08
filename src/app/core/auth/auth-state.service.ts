@@ -30,6 +30,7 @@ interface LocalRegisteredPlayerOption {
 const developmentSessionStorageKey = 'pokertrack.developmentSession';
 const legacyMockSessionStorageKey = 'pokertrack.mockSession';
 const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers.sessionTables.v2';
+const developmentPasswordOverridesStorageKey = 'pokertrack.developmentPasswordOverrides.v1';
 
 const nowIso = () => new Date().toISOString();
 
@@ -192,6 +193,113 @@ export class AuthStateService {
     this.profileSignal.set(null);
   }
 
+  async updateDisplayName(displayName: string): Promise<UserProfile> {
+    const cleanDisplayName = displayName.trim().replace(/\s+/g, ' ');
+    const currentUser = this.userSignal();
+    const currentProfile = this.profileSignal();
+
+    if (!currentUser || !currentProfile) {
+      throw new Error('Sign in before updating your profile.');
+    }
+
+    if (!cleanDisplayName) {
+      throw new Error('Display name is required.');
+    }
+
+    if (cleanDisplayName.length > 80) {
+      throw new Error('Display name must be 80 characters or fewer.');
+    }
+
+    this.loadingSignal.set(true);
+    this.errorSignal.set(null);
+
+    try {
+      if (this.isConfigured) {
+        this.assertConfigured();
+
+        const { data, error } = await this.supabaseService
+          .requireClient()
+          .from('users')
+          .update({ display_name: cleanDisplayName })
+          .eq('id', currentUser.id)
+          .select('id,display_name,role,manager_host_id,created_at,updated_at')
+          .single<UserProfileRow>();
+
+        if (error) {
+          throw error;
+        }
+
+        const { error: authError } = await this.authService.updateUser({
+          data: {
+            display_name: cleanDisplayName
+          }
+        });
+
+        if (authError) {
+          throw authError;
+        }
+
+        const profile = this.mapProfile(data);
+        this.profileSignal.set(profile);
+        return profile;
+      }
+
+      const profile: UserProfile = {
+        ...currentProfile,
+        displayName: cleanDisplayName,
+        updatedAt: nowIso()
+      };
+      const user = this.createDevelopmentUser(profile);
+
+      this.userSignal.set(user);
+      this.profileSignal.set(profile);
+      localStorage.setItem(developmentSessionStorageKey, JSON.stringify({ user, profile }));
+      return profile;
+    } catch (error) {
+      this.errorSignal.set(this.toMessage(error));
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  async updatePassword(password: string): Promise<void> {
+    const currentUser = this.userSignal();
+    const currentProfile = this.profileSignal();
+
+    if (!currentUser || !currentProfile) {
+      throw new Error('Sign in before changing your password.');
+    }
+
+    if (password.length < 6) {
+      throw new Error('Password must be at least 6 characters.');
+    }
+
+    this.loadingSignal.set(true);
+    this.errorSignal.set(null);
+
+    try {
+      if (this.isConfigured) {
+        const { error } = await this.authService.updateUser({ password });
+
+        if (error) {
+          throw error;
+        }
+
+        await this.recordPasswordChange(currentUser.id);
+
+        return;
+      }
+
+      this.saveDevelopmentPasswordOverride(currentProfile.id, password);
+    } catch (error) {
+      this.errorSignal.set(this.toMessage(error));
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
   redirectPathForProfile(profile = this.profileSignal()): string {
     return profile?.role === 'HOST' || profile?.role === 'MANAGER'
       ? '/host/dashboard'
@@ -296,7 +404,13 @@ export class AuthStateService {
     const normalizedUsername = username.trim().toLowerCase();
     const developmentUser = developmentUsers[normalizedUsername];
 
-    if (!developmentUser || developmentUser.password !== password) {
+    const expectedPassword =
+      developmentUser && this.developmentPasswordOverride(developmentUser.profile.id);
+
+    if (
+      !developmentUser ||
+      (expectedPassword ?? developmentUser.password) !== password
+    ) {
       return this.tryLocalRegisteredDevelopmentSignIn(normalizedUsername, password);
     }
 
@@ -430,5 +544,50 @@ export class AuthStateService {
   private clearDevelopmentSession(): void {
     localStorage.removeItem(developmentSessionStorageKey);
     localStorage.removeItem(legacyMockSessionStorageKey);
+  }
+
+  private developmentPasswordOverride(profileId: string): string | null {
+    const rawOverrides = localStorage.getItem(developmentPasswordOverridesStorageKey);
+
+    if (!rawOverrides) {
+      return null;
+    }
+
+    try {
+      const overrides = JSON.parse(rawOverrides) as Record<string, string>;
+      return overrides[profileId] ?? null;
+    } catch {
+      localStorage.removeItem(developmentPasswordOverridesStorageKey);
+      return null;
+    }
+  }
+
+  private saveDevelopmentPasswordOverride(profileId: string, password: string): void {
+    const rawOverrides = localStorage.getItem(developmentPasswordOverridesStorageKey);
+    let overrides: Record<string, string> = {};
+
+    if (rawOverrides) {
+      try {
+        overrides = JSON.parse(rawOverrides) as Record<string, string>;
+      } catch {
+        overrides = {};
+      }
+    }
+
+    overrides[profileId] = password;
+    localStorage.setItem(developmentPasswordOverridesStorageKey, JSON.stringify(overrides));
+  }
+
+  private async recordPasswordChange(userId: string): Promise<void> {
+    const { error } = await this.supabaseService.requireClient().from('password_change_audit').insert({
+      target_user_id: userId,
+      changed_by: userId,
+      change_source: 'SELF_SERVICE',
+      note: 'Password changed from profile page.'
+    });
+
+    if (error) {
+      throw error;
+    }
   }
 }

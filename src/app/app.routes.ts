@@ -33,6 +33,10 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile.page').then((m) => m.ProfilePage)
+      },
+      {
         path: 'pot-calculator',
         loadComponent: () =>
           import('./features/host/tools/pot-calculator.page').then((m) => m.PotCalculatorPage)
@@ -90,6 +94,10 @@ export const routes: Routes = [
           import('./features/player/dashboard/player-dashboard.page').then(
             (m) => m.PlayerDashboardPage
           )
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile.page').then((m) => m.ProfilePage)
       },
       {
         path: 'sessions/:sessionId',

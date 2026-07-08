@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { LucideLogOut } from '@lucide/angular';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -8,6 +8,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
 } from '../../features/host/shared/confirmation-dialog.component';
+import { displayNameInitials } from '../../features/profile/profile.logic';
 
 @Component({
   selector: 'app-player-shell',
@@ -42,6 +43,10 @@ import {
               <span>Poker</span><span>Tracker</span>
             </span>
           </a>
+          <a routerLink="/player/profile" class="pokertrack-profile-chip" aria-label="Profile">
+            <span class="pokertrack-profile-avatar">{{ profileInitials() }}</span>
+            <span class="pokertrack-profile-name">{{ profileName() }}</span>
+          </a>
           <div class="host-shell-desktop-nav hidden min-w-0 items-center gap-2 text-sm sm:flex sm:justify-self-center">
             <button
               type="button"
@@ -69,6 +74,10 @@ import {
 })
 export class PlayerShellComponent {
   protected readonly authState = inject(AuthStateService);
+  protected readonly profileName = computed(
+    () => this.authState.profile()?.displayName ?? 'Profile'
+  );
+  protected readonly profileInitials = computed(() => displayNameInitials(this.profileName()));
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
 
