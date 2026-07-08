@@ -77,13 +77,17 @@ import { PokerSession, PokerStoreService } from '../data/poker-store.service';
                   </div>
                   <div>
                     <p class="text-neutral-500">Net total</p>
-                    <p
-                      class="mt-1 font-semibold"
-                      [class.text-emerald-300]="adminNetTotal(session) >= 0"
-                      [class.text-red-300]="adminNetTotal(session) < 0"
-                    >
-                      {{ adminNetTotal(session) | currency: 'USD' : 'symbol' : '1.0-0' }}
-                    </p>
+                    @if (isNetPending(session)) {
+                      <p class="mt-1 font-semibold text-amber-200">Pending</p>
+                    } @else {
+                      <p
+                        class="mt-1 font-semibold"
+                        [class.text-emerald-300]="adminNetTotal(session) >= 0"
+                        [class.text-red-300]="adminNetTotal(session) < 0"
+                      >
+                        {{ adminNetTotal(session) | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </p>
+                    }
                   </div>
                 </div>
               </div>
@@ -115,5 +119,9 @@ export class SessionHistoryPage {
   protected adminNetTotal(session: PokerSession): number {
     const totals = this.store.totalsFor(session);
     return totals.totalBuyIn - totals.totalCashOut;
+  }
+
+  protected isNetPending(session: PokerSession): boolean {
+    return this.store.totalsFor(session).activePlayers > 0;
   }
 }

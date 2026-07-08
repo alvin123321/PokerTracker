@@ -22,6 +22,7 @@ interface SessionTableGroup {
     @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
       @let adminNet = adminNetTotal(currentSession);
+      @let netPending = isNetPending(currentSession);
       <section class="space-y-5 sm:space-y-6">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -74,19 +75,25 @@ interface SessionTableGroup {
           </div>
           <div
             class="rounded-lg border p-3 sm:p-4"
-            [class.border-emerald-300/20]="adminNet >= 0"
-            [class.bg-emerald-300/[0.06]]="adminNet >= 0"
-            [class.border-red-300/20]="adminNet < 0"
-            [class.bg-red-300/[0.06]]="adminNet < 0"
+            [class.border-amber-300/20]="netPending"
+            [class.bg-amber-300/[0.06]]="netPending"
+            [class.border-emerald-300/20]="!netPending && adminNet >= 0"
+            [class.bg-emerald-300/[0.06]]="!netPending && adminNet >= 0"
+            [class.border-red-300/20]="!netPending && adminNet < 0"
+            [class.bg-red-300/[0.06]]="!netPending && adminNet < 0"
           >
             <p class="text-sm text-neutral-400">Net total</p>
-            <p
-              class="mt-1 text-2xl font-semibold sm:mt-2"
-              [class.text-emerald-300]="adminNet >= 0"
-              [class.text-red-300]="adminNet < 0"
-            >
-              {{ adminNet | currency: 'USD' : 'symbol' : '1.0-0' }}
-            </p>
+            @if (netPending) {
+              <p class="mt-1 text-2xl font-semibold text-amber-200 sm:mt-2">Pending</p>
+            } @else {
+              <p
+                class="mt-1 text-2xl font-semibold sm:mt-2"
+                [class.text-emerald-300]="adminNet >= 0"
+                [class.text-red-300]="adminNet < 0"
+              >
+                {{ adminNet | currency: 'USD' : 'symbol' : '1.0-0' }}
+              </p>
+            }
           </div>
         </div>
 
@@ -96,15 +103,11 @@ interface SessionTableGroup {
           </div>
         }
 
-        <section class="rounded-lg border border-white/10 bg-white/[0.04]">
-          <div class="border-b border-white/10 px-4 py-3">
-            <h2 class="text-sm font-semibold uppercase text-neutral-500">Player detail</h2>
-          </div>
-          <div class="space-y-3 p-3 sm:p-4">
+        <div class="space-y-3">
             @for (tableGroup of tableGroups(); track tableGroup.tableId) {
               <section class="overflow-hidden rounded-xl border border-emerald-300/15 bg-neutral-950/80">
                 <div class="flex items-center justify-between border-b border-white/10 bg-emerald-300/[0.04] px-3 py-2 sm:px-4">
-                  <h3 class="text-base font-semibold text-white">{{ tableGroup.tableName }}</h3>
+                  <h2 class="text-base font-semibold text-white">{{ tableGroup.tableName }}</h2>
                   <span class="text-xs font-semibold text-emerald-300">
                     {{ tableGroup.players.length }} player{{ tableGroup.players.length === 1 ? '' : 's' }}
                   </span>
@@ -121,22 +124,13 @@ interface SessionTableGroup {
                       >
                         <div class="min-w-0">
                           <div class="relative grid min-h-8 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:min-h-0 sm:flex-wrap sm:items-center">
-                            @if (player.status === 'ACTIVE') {
-                              <span
-                                class="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400"
-                                aria-hidden="true"
+                            <span
+                              class="summary-toggle-icon grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400"
+                              [class.summary-toggle-icon-open]="isPlayerExpanded(player.id)"
+                              aria-hidden="true"
+                            >
                               >
-                                {{ isPlayerExpanded(player.id) ? 'v' : '>' }}
-                              </span>
-                            } @else {
-                              <span class="h-7 w-7 sm:hidden" aria-hidden="true"></span>
-                              <span
-                                class="hidden h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-sm font-bold text-neutral-400 sm:grid"
-                                aria-hidden="true"
-                              >
-                                {{ isPlayerExpanded(player.id) ? 'v' : '>' }}
-                              </span>
-                            }
+                            </span>
                             <h4 class="absolute left-1/2 max-w-[70%] -translate-x-1/2 truncate text-center font-semibold text-white sm:static sm:max-w-none sm:translate-x-0 sm:text-left">
                               {{ player.name }}
                             </h4>
@@ -232,8 +226,7 @@ interface SessionTableGroup {
                 No players were added to this session.
               </div>
             }
-          </div>
-        </section>
+        </div>
       </section>
     } @else {
       <section class="rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
@@ -257,9 +250,9 @@ interface SessionTableGroup {
         visibility: hidden;
         pointer-events: none;
         transition:
-          grid-template-rows 260ms ease-in-out,
-          opacity 220ms ease-in-out,
-          visibility 0ms linear 260ms;
+          grid-template-rows 360ms ease-in-out,
+          opacity 300ms ease-in-out,
+          visibility 0ms linear 360ms;
       }
 
       .summary-detail-panel-open {
@@ -268,8 +261,8 @@ interface SessionTableGroup {
         visibility: visible;
         pointer-events: auto;
         transition:
-          grid-template-rows 260ms ease-in-out,
-          opacity 220ms ease-in-out;
+          grid-template-rows 360ms ease-in-out,
+          opacity 300ms ease-in-out;
       }
 
       .summary-detail-panel-inner {
@@ -277,9 +270,9 @@ interface SessionTableGroup {
         overflow: hidden;
         transform: translateY(-0.25rem);
         transition:
-          padding 240ms ease-in-out,
-          transform 240ms ease-in-out,
-          border-color 240ms ease-in-out;
+          padding 320ms ease-in-out,
+          transform 320ms ease-in-out,
+          border-color 320ms ease-in-out;
       }
 
       .summary-detail-panel-open .summary-detail-panel-inner {
@@ -290,6 +283,19 @@ interface SessionTableGroup {
         border-width: 0;
         padding-top: 0;
         padding-bottom: 0;
+      }
+
+      .summary-toggle-icon {
+        transition:
+          transform 260ms ease-in-out,
+          color 260ms ease-in-out,
+          border-color 260ms ease-in-out;
+      }
+
+      .summary-toggle-icon-open {
+        transform: rotate(90deg);
+        border-color: rgb(52 211 153 / 0.35);
+        color: rgb(110 231 183);
       }
     `
   ]
@@ -335,6 +341,10 @@ export class SessionSummaryPage {
   protected adminNetTotal(currentSession: PokerSession): number {
     const totals = this.store.totalsFor(currentSession);
     return totals.totalBuyIn - totals.totalCashOut;
+  }
+
+  protected isNetPending(currentSession: PokerSession): boolean {
+    return this.store.totalsFor(currentSession).activePlayers > 0;
   }
 
   protected togglePlayer(playerId: string): void {
