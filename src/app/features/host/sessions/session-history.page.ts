@@ -76,10 +76,17 @@ import { PokerSession, PokerStoreService } from '../data/poker-store.service';
                     </p>
                   </div>
                   <div>
-                    <p class="text-neutral-500">Active tables</p>
-                    <p class="mt-1 font-semibold text-white">
-                      {{ activeTableCount(session) }}
-                    </p>
+                    @if (session.status === 'ACTIVE') {
+                      <p class="text-neutral-500">Active tables</p>
+                      <p class="mt-1 font-semibold text-white">
+                        {{ activeTableCount(session) }}
+                      </p>
+                    } @else {
+                      <p class="text-neutral-500">Tables</p>
+                      <p class="mt-1 font-semibold text-white">
+                        {{ session.tables.length }}
+                      </p>
+                    }
                   </div>
                 </div>
               </div>

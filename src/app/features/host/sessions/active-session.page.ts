@@ -90,7 +90,7 @@ import {
           </div>
 
           <div class="session-action-bar">
-            @if (!isHistoryView) {
+            @if (!isHistoryView && currentSession.status === 'ACTIVE') {
               <button
                 type="button"
                 [disabled]="isBusy()"
@@ -118,7 +118,7 @@ import {
                 }
               </button>
             }
-            @if (canDelete()) {
+            @if (canDelete() && currentSession.status === 'ACTIVE') {
               <button
                 type="button"
                 [disabled]="isBusy() || !canCloseSession(currentSession)"
@@ -177,7 +177,7 @@ import {
         </div>
 
         <section class="space-y-3">
-          @if (!isHistoryView) {
+          @if (!isHistoryView && currentSession.status === 'ACTIVE') {
           <div class="flex justify-end">
               <button
                 type="button"
@@ -198,7 +198,7 @@ import {
               <p class="mt-2 text-sm text-neutral-400">
                 {{ isHistoryView ? 'Tables added during the session will appear here.' : 'A session can contain multiple tables. Add a table before adding players.' }}
               </p>
-              @if (!isHistoryView) {
+              @if (!isHistoryView && currentSession.status === 'ACTIVE') {
                 <button
                   type="button"
                   [disabled]="isBusy()"
@@ -260,7 +260,7 @@ import {
                     @if (playersForTable(currentSession, table.id).length === 0) {
                       <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-6 text-center sm:p-8">
                         <p class="text-lg font-semibold text-white">No players at {{ table.name }}</p>
-                        @if (!isHistoryView) {
+                        @if (!isHistoryView && currentSession.status === 'ACTIVE') {
                           <button
                             type="button"
                             class="mt-5 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
@@ -297,7 +297,7 @@ import {
                 </article>
               }
             </div>
-            @if (!isHistoryView) {
+            @if (!isHistoryView && currentSession.status === 'ACTIVE') {
               <div class="pt-1 text-center">
                 <button
                   type="button"

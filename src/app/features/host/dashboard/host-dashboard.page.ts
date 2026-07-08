@@ -485,56 +485,6 @@ class TableNameDialogComponent {
         </section>
       }
 
-      @if (store.completedSessions().length > 0) {
-        <section class="space-y-4">
-          <h2 class="text-xl font-semibold text-white">Completed sessions</h2>
-
-          <div class="grid gap-3">
-            @for (session of store.completedSessions(); track session.id) {
-              @let totals = store.totalsFor(session);
-              <a
-                [routerLink]="['/host/sessions', session.id, 'summary']"
-                class="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 transition hover:border-emerald-300/40 hover:bg-white/[0.06] sm:flex-row sm:items-center sm:justify-between sm:p-5"
-              >
-                <div class="flex min-w-0 items-center gap-3">
-                  <span class="shrink-0 text-lg font-bold leading-none text-emerald-300">
-                    &check;
-                  </span>
-                  <div class="min-w-0">
-                    <h3 class="truncate text-base font-semibold text-white">{{ session.name }}</h3>
-                    <p class="mt-1 text-sm text-neutral-400">
-                      {{ session.sessionDate | date: 'mediumDate' }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-3 gap-2 text-center text-sm sm:min-w-80">
-                  <div class="rounded-lg bg-black/20 px-3 py-2">
-                    <p class="text-xs uppercase text-neutral-500">Players</p>
-                    <p class="mt-1 font-semibold text-white">{{ totals.totalPlayers }}</p>
-                  </div>
-                  <div class="rounded-lg bg-black/20 px-3 py-2">
-                    <p class="text-xs uppercase text-neutral-500">Buy-in</p>
-                    <p class="mt-1 font-semibold text-white">
-                      {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                    </p>
-                  </div>
-                  <div class="rounded-lg bg-black/20 px-3 py-2">
-                    <p class="text-xs uppercase text-neutral-500">Net</p>
-                    <p
-                      class="mt-1 font-semibold"
-                      [class.text-emerald-300]="totals.totalNet >= 0"
-                      [class.text-red-300]="totals.totalNet < 0"
-                    >
-                      {{ totals.totalNet | currency: 'USD' : 'symbol' : '1.0-0' }}
-                    </p>
-                  </div>
-                </div>
-              </a>
-            }
-          </div>
-        </section>
-      }
     </section>
   `,
   styles: [

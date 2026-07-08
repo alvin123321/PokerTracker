@@ -50,17 +50,23 @@ import { PokerStoreService, PokerTransaction } from '../data/poker-store.service
           </div>
           <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
             <p class="text-sm text-neutral-400">Total buy-in</p>
-            <p class="mt-1 text-2xl font-semibold text-white sm:mt-2">
+            <p class="mt-1 text-2xl font-semibold text-sky-200 sm:mt-2">
               {{ totals.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
             </p>
           </div>
-          <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:block sm:p-4">
-            <p class="text-sm text-neutral-400">Total cash out</p>
-            <p class="mt-1 text-2xl font-semibold text-white sm:mt-2">
+          <div class="rounded-lg border border-amber-300/20 bg-amber-300/[0.06] p-3 sm:p-4">
+            <p class="text-sm text-amber-100/75">Total cashed out</p>
+            <p class="mt-1 text-2xl font-semibold text-amber-200 sm:mt-2">
               {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
             </p>
           </div>
-          <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
+          <div
+            class="rounded-lg border p-3 sm:p-4"
+            [class.border-emerald-300/20]="totals.totalNet >= 0"
+            [class.bg-emerald-300/[0.06]]="totals.totalNet >= 0"
+            [class.border-red-300/20]="totals.totalNet < 0"
+            [class.bg-red-300/[0.06]]="totals.totalNet < 0"
+          >
             <p class="text-sm text-neutral-400">Net total</p>
             <p
               class="mt-1 text-2xl font-semibold sm:mt-2"
