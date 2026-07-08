@@ -4,6 +4,7 @@ import { Subject, Subscription, auditTime } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { SupabaseService } from '../../../core/supabase/supabase.service';
+import { environment } from '../../../../environments/environment';
 
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
@@ -1290,11 +1291,12 @@ export class PokerStoreService implements OnDestroy {
     const raw = localStorage.getItem(localStorageKey) ?? localStorage.getItem(legacyLocalStorageKey);
 
     if (!raw) {
-      return [];
+      return environment.production ? [] : this.createDevelopmentPreviewSessions();
     }
 
     try {
-      return JSON.parse(raw) as PokerSession[];
+      const sessions = JSON.parse(raw) as PokerSession[];
+      return environment.production ? sessions : this.withDevelopmentPreviewSessions(sessions);
     } catch {
       localStorage.removeItem(localStorageKey);
       localStorage.removeItem(legacyLocalStorageKey);
@@ -1349,6 +1351,200 @@ export class PokerStoreService implements OnDestroy {
 
     localStorage.setItem(localStorageKey, JSON.stringify(sessions));
     localStorage.removeItem(legacyLocalStorageKey);
+  }
+
+  private withDevelopmentPreviewSessions(sessions: PokerSession[]): PokerSession[] {
+    const hasPlayerPreview = sessions.some((session) =>
+      session.players.some((player) => player.userId === 'dev-player')
+    );
+
+    if (hasPlayerPreview) {
+      return sessions;
+    }
+
+    return [...this.createDevelopmentPreviewSessions(), ...sessions];
+  }
+
+  private createDevelopmentPreviewSessions(): PokerSession[] {
+    const activeSessionId = 'dev-preview-session-july-game';
+    const activeTableId = 'dev-preview-table-main';
+    const completedSessionId = 'dev-preview-session-june-game';
+    const completedTableId = 'dev-preview-table-june-main';
+
+    return [
+      {
+        id: activeSessionId,
+        name: 'July 7 Game',
+        sessionDate: '2026-07-07',
+        status: 'ACTIVE',
+        createdAt: '2026-07-07T18:30:00.000Z',
+        closedAt: null,
+        tables: [
+          {
+            id: activeTableId,
+            sessionId: activeSessionId,
+            name: 'Main Table',
+            status: 'ACTIVE',
+            tableNumber: 1,
+            createdAt: '2026-07-07T18:30:00.000Z',
+            closedAt: null
+          }
+        ],
+        players: [
+          {
+            id: 'dev-preview-player-current',
+            playerRecordId: 'dev-preview-record-current',
+            tableId: activeTableId,
+            userId: 'dev-player',
+            name: 'Player',
+            status: 'ACTIVE',
+            totalBuyIn: 500,
+            cashOut: 0,
+            net: -500,
+            joinedAt: '2026-07-07T18:36:00.000Z',
+            completedAt: null
+          },
+          {
+            id: 'dev-preview-player-gene',
+            playerRecordId: 'dev-preview-record-gene',
+            tableId: activeTableId,
+            userId: null,
+            name: 'Gene',
+            status: 'ACTIVE',
+            totalBuyIn: 300,
+            cashOut: 0,
+            net: -300,
+            joinedAt: '2026-07-07T18:34:00.000Z',
+            completedAt: null
+          },
+          {
+            id: 'dev-preview-player-maxi',
+            playerRecordId: 'dev-preview-record-maxi',
+            tableId: activeTableId,
+            userId: null,
+            name: 'Maxi',
+            status: 'COMPLETED',
+            totalBuyIn: 400,
+            cashOut: 720,
+            net: 320,
+            joinedAt: '2026-07-07T18:32:00.000Z',
+            completedAt: '2026-07-07T20:15:00.000Z'
+          }
+        ],
+        transactions: [
+          {
+            id: 'dev-preview-tx-current-buyin',
+            sessionId: activeSessionId,
+            tableId: activeTableId,
+            playerId: 'dev-preview-player-current',
+            type: 'BUYIN',
+            amount: 300,
+            createdAt: '2026-07-07T18:36:00.000Z',
+            comment: 'Opening buy-in'
+          },
+          {
+            id: 'dev-preview-tx-current-rebuy',
+            sessionId: activeSessionId,
+            tableId: activeTableId,
+            playerId: 'dev-preview-player-current',
+            type: 'REBUY',
+            amount: 200,
+            createdAt: '2026-07-07T19:18:00.000Z',
+            comment: 'Second bullet'
+          },
+          {
+            id: 'dev-preview-tx-gene-buyin',
+            sessionId: activeSessionId,
+            tableId: activeTableId,
+            playerId: 'dev-preview-player-gene',
+            type: 'BUYIN',
+            amount: 300,
+            createdAt: '2026-07-07T18:34:00.000Z'
+          },
+          {
+            id: 'dev-preview-tx-maxi-buyin',
+            sessionId: activeSessionId,
+            tableId: activeTableId,
+            playerId: 'dev-preview-player-maxi',
+            type: 'BUYIN',
+            amount: 400,
+            createdAt: '2026-07-07T18:32:00.000Z'
+          },
+          {
+            id: 'dev-preview-tx-maxi-cashout',
+            sessionId: activeSessionId,
+            tableId: activeTableId,
+            playerId: 'dev-preview-player-maxi',
+            type: 'CASHOUT',
+            amount: 720,
+            createdAt: '2026-07-07T20:15:00.000Z'
+          }
+        ]
+      },
+      {
+        id: completedSessionId,
+        name: 'June 30 Game',
+        sessionDate: '2026-06-30',
+        status: 'COMPLETED',
+        createdAt: '2026-06-30T18:20:00.000Z',
+        closedAt: '2026-06-30T23:05:00.000Z',
+        tables: [
+          {
+            id: completedTableId,
+            sessionId: completedSessionId,
+            name: 'Main Table',
+            status: 'CLOSED',
+            tableNumber: 1,
+            createdAt: '2026-06-30T18:20:00.000Z',
+            closedAt: '2026-06-30T23:05:00.000Z'
+          }
+        ],
+        players: [
+          {
+            id: 'dev-preview-player-current-closed',
+            playerRecordId: 'dev-preview-record-current',
+            tableId: completedTableId,
+            userId: 'dev-player',
+            name: 'Player',
+            status: 'COMPLETED',
+            totalBuyIn: 450,
+            cashOut: 650,
+            net: 200,
+            joinedAt: '2026-06-30T18:28:00.000Z',
+            completedAt: '2026-06-30T22:42:00.000Z'
+          }
+        ],
+        transactions: [
+          {
+            id: 'dev-preview-tx-current-closed-buyin',
+            sessionId: completedSessionId,
+            tableId: completedTableId,
+            playerId: 'dev-preview-player-current-closed',
+            type: 'BUYIN',
+            amount: 300,
+            createdAt: '2026-06-30T18:28:00.000Z'
+          },
+          {
+            id: 'dev-preview-tx-current-closed-rebuy',
+            sessionId: completedSessionId,
+            tableId: completedTableId,
+            playerId: 'dev-preview-player-current-closed',
+            type: 'REBUY',
+            amount: 150,
+            createdAt: '2026-06-30T20:02:00.000Z'
+          },
+          {
+            id: 'dev-preview-tx-current-closed-cashout',
+            sessionId: completedSessionId,
+            tableId: completedTableId,
+            playerId: 'dev-preview-player-current-closed',
+            type: 'CASHOUT',
+            amount: 650,
+            createdAt: '2026-06-30T22:42:00.000Z'
+          }
+        ]
+      }
+    ];
   }
 
   private saveLocalRegisteredPlayers(players: RegisteredPlayerOption[]): void {

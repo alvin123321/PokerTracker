@@ -1,140 +1,99 @@
 import { Component, inject } from '@angular/core';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { LucideLogOut } from '@lucide/angular';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 
 import { AuthStateService } from '../auth/auth-state.service';
+import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData
+} from '../../features/host/shared/confirmation-dialog.component';
 
 @Component({
   selector: 'app-player-shell',
-  imports: [RouterLink, RouterOutlet],
+  imports: [LucideLogOut, MatDialogModule, RouterLink, RouterOutlet],
   template: `
-    <main class="player-shell min-h-dvh text-neutral-100">
-      <header class="player-shell-header">
-        <nav class="player-shell-nav mx-auto grid max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-3 py-3 sm:px-5 sm:py-4">
-          <span aria-hidden="true"></span>
-          <a routerLink="/player/dashboard" class="player-shell-brand" aria-label="PokerTracker player dashboard">
-            <span class="player-shell-brand-mark">&spades;</span>
-            <span class="player-shell-brand-text">Poker<span>Tracker</span></span>
-          </a>
-          <button type="button" class="player-shell-signout justify-self-end" (click)="signOut()">
-            Sign out
+    <main class="min-h-dvh bg-neutral-950 text-neutral-100">
+      <header class="border-b border-white/10 bg-neutral-950/90 backdrop-blur">
+        <nav class="host-shell-nav mx-auto grid max-w-7xl items-center gap-3 px-3 py-3 sm:px-5 sm:py-4">
+          <button
+            type="button"
+            class="pokertrack-mobile-signout sm:hidden"
+            aria-label="Sign out"
+            (click)="signOut()"
+          >
+            <svg
+              lucideLogOut
+              class="pokertrack-nav-icon pokertrack-signout-left-icon"
+              [strokeWidth]="3"
+              [absoluteStrokeWidth]="true"
+              aria-hidden="true"
+            ></svg>
           </button>
+          <a
+            routerLink="/player/dashboard"
+            class="pokertrack-brand host-shell-brand justify-self-center"
+            aria-label="Poker Tracker player dashboard"
+          >
+            <span class="pokertrack-brand-mark" aria-hidden="true">
+              <span class="pokertrack-brand-suit">&spades;</span>
+            </span>
+            <span class="pokertrack-brand-name">
+              <span>Poker</span><span>Tracker</span>
+            </span>
+          </a>
+          <div class="host-shell-desktop-nav hidden min-w-0 items-center gap-2 text-sm sm:flex sm:justify-self-center">
+            <button
+              type="button"
+              class="pokertrack-nav-link min-w-0 rounded-md border border-white/10 px-2 py-2 text-neutral-300 sm:shrink-0 sm:px-3"
+              (click)="signOut()"
+            >
+              Sign out
+            </button>
+          </div>
         </nav>
       </header>
 
-      <div class="mx-auto w-full max-w-5xl px-3 py-4 sm:px-5 sm:py-8">
+      <div class="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-8">
         <router-outlet />
       </div>
     </main>
   `,
   styles: [
     `
-      .player-shell {
-        background:
-          radial-gradient(circle at 50% 0%, rgb(34 197 94 / 0.16), transparent 34rem),
-          radial-gradient(circle at 12% 18%, rgb(16 185 129 / 0.1), transparent 20rem),
-          #030807;
-      }
-
-      .player-shell-header {
-        border-bottom: 1px solid rgb(255 255 255 / 0.1);
-        background: rgb(3 8 7 / 0.86);
-        backdrop-filter: blur(18px);
-      }
-
-      .player-shell-brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.65rem;
-        color: white;
-        text-decoration: none;
-        transform-origin: center;
-        transition:
-          transform 180ms ease,
-          filter 180ms ease;
-      }
-
-      .player-shell-brand:hover {
-        filter: drop-shadow(0 0 18px rgb(34 197 94 / 0.32));
-        transform: translateY(-1px);
-      }
-
-      .player-shell-brand-mark {
-        display: inline-grid;
-        height: 2.35rem;
-        width: 2.35rem;
-        place-items: center;
-        border: 1px solid rgb(34 197 94 / 0.48);
-        border-radius: 0.7rem;
-        background:
-          linear-gradient(145deg, rgb(34 197 94 / 0.28), rgb(3 8 7 / 0.9)),
-          rgb(3 8 7 / 0.92);
-        box-shadow: 0 0 22px rgb(34 197 94 / 0.18);
-        color: rgb(74 222 128);
-        font-size: 1.75rem;
-        line-height: 1;
-      }
-
-      .player-shell-brand-text {
-        font-size: clamp(1.45rem, 5vw, 2rem);
-        font-weight: 800;
-        letter-spacing: 0;
-        text-shadow: 0 8px 24px rgb(0 0 0 / 0.48);
-      }
-
-      .player-shell-brand-text span {
-        color: rgb(34 197 94);
-      }
-
-      .player-shell-signout {
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 999px;
-        background: rgb(255 255 255 / 0.04);
-        color: rgb(212 212 216);
-        font-size: 0.82rem;
-        font-weight: 700;
-        padding: 0.58rem 0.78rem;
-        transition:
-          border-color 180ms ease,
-          background-color 180ms ease,
-          color 180ms ease,
-          transform 180ms ease;
-      }
-
-      .player-shell-signout:hover {
-        border-color: rgb(34 197 94 / 0.45);
-        background: rgb(34 197 94 / 0.1);
-        color: white;
-        transform: translateY(-1px);
-      }
-
-      .player-shell-signout:active {
-        transform: translateY(0) scale(0.98);
-      }
-
-      @media (max-width: 430px) {
-        .player-shell-signout {
-          font-size: 0;
-          height: 2.2rem;
-          width: 2.2rem;
-          padding: 0;
-          position: relative;
-        }
-
-        .player-shell-signout::before {
-          content: '<';
-          font-size: 1rem;
-          line-height: 1;
-        }
+      main {
+        overflow-x: clip;
       }
     `
   ]
 })
 export class PlayerShellComponent {
   protected readonly authState = inject(AuthStateService);
+  private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
 
-  protected async signOut(): Promise<void> {
-    await this.authState.signOut();
-    await this.router.navigateByUrl('/login');
+  protected signOut(): void {
+    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+      ConfirmationDialogComponent,
+      {
+        data: {
+          title: 'Sign out?',
+          message: 'You will need to sign in again before viewing your table.',
+          confirmLabel: 'Sign out',
+          cancelLabel: 'Stay',
+          tone: 'primary'
+        },
+        panelClass: 'pokertrack-dialog-panel'
+      }
+    );
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      await this.authState.signOut();
+      await this.router.navigateByUrl('/login');
+    });
   }
 }

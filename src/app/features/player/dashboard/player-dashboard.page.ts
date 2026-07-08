@@ -1,5 +1,6 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { LucideCalculator, LucideHistory, LucideHouse } from '@lucide/angular';
 import { RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -33,7 +34,15 @@ interface PlayerActivityEntry {
 
 @Component({
   selector: 'app-player-dashboard-page',
-  imports: [CurrencyPipe, DatePipe, RouterLink, PotCalculatorPage],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    LucideCalculator,
+    LucideHistory,
+    LucideHouse,
+    RouterLink,
+    PotCalculatorPage
+  ],
   template: `
     <section class="player-dashboard">
       <header class="player-hero">
@@ -57,11 +66,41 @@ interface PlayerActivityEntry {
             type="button"
             class="player-tab"
             [class.player-tab-active]="activeTab() === tab.id"
+            [attr.aria-label]="tab.label"
             [attr.aria-selected]="activeTab() === tab.id"
+            [title]="tab.label"
             (click)="selectTab(tab.id)"
           >
-            <span class="player-tab-icon" aria-hidden="true">{{ tab.icon }}</span>
-            <span>{{ tab.label }}</span>
+            @switch (tab.id) {
+              @case ('overview') {
+                <svg
+                  lucideHouse
+                  class="pokertrack-nav-icon"
+                  [strokeWidth]="3"
+                  [absoluteStrokeWidth]="true"
+                  aria-hidden="true"
+                ></svg>
+              }
+              @case ('sessions') {
+                <svg
+                  lucideHistory
+                  class="pokertrack-nav-icon"
+                  [strokeWidth]="3"
+                  [absoluteStrokeWidth]="true"
+                  aria-hidden="true"
+                ></svg>
+              }
+              @case ('calculator') {
+                <svg
+                  lucideCalculator
+                  class="pokertrack-nav-icon"
+                  [strokeWidth]="3"
+                  [absoluteStrokeWidth]="true"
+                  aria-hidden="true"
+                ></svg>
+              }
+            }
+            <span class="sr-only">{{ tab.label }}</span>
           </button>
         }
       </nav>
@@ -325,24 +364,24 @@ interface PlayerActivityEntry {
       .player-tabs {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.5rem;
+        gap: 0.55rem;
         border: 1px solid rgb(255 255 255 / 0.09);
-        border-radius: 999px;
+        border-radius: 1rem;
         background: rgb(0 0 0 / 0.24);
-        padding: 0.35rem;
+        justify-self: center;
+        max-width: 18rem;
+        padding: 0.4rem;
+        width: 100%;
       }
 
       .player-tab {
-        display: inline-flex;
-        min-height: 2.75rem;
+        display: inline-grid;
+        min-height: 3rem;
         align-items: center;
         justify-content: center;
-        gap: 0.45rem;
         border: 1px solid transparent;
-        border-radius: 999px;
+        border-radius: 0.75rem;
         color: rgb(212 212 216);
-        font-size: 0.9rem;
-        font-weight: 760;
         transition:
           border-color 190ms ease,
           background-color 190ms ease,
@@ -367,17 +406,6 @@ interface PlayerActivityEntry {
           rgb(255 255 255 / 0.045);
         box-shadow: 0 0 24px rgb(34 197 94 / 0.18);
         color: rgb(220 252 231);
-      }
-
-      .player-tab-icon {
-        display: inline-grid;
-        height: 1.55rem;
-        width: 1.55rem;
-        place-items: center;
-        border-radius: 999px;
-        background: rgb(255 255 255 / 0.08);
-        font-size: 0.78rem;
-        font-weight: 900;
       }
 
       .player-alert {
@@ -714,15 +742,7 @@ interface PlayerActivityEntry {
         }
 
         .player-tab {
-          gap: 0.28rem;
-          min-height: 2.55rem;
-          font-size: 0.78rem;
-        }
-
-        .player-tab-icon {
-          height: 1.32rem;
-          width: 1.32rem;
-          font-size: 0.68rem;
+          min-height: 2.65rem;
         }
 
         .feature-heading {
@@ -769,8 +789,9 @@ interface PlayerActivityEntry {
           min-width: 5.1rem;
         }
 
-        .player-tab span:last-child {
-          font-size: 0.72rem;
+        .player-tabs {
+          gap: 0.4rem;
+          max-width: 15.5rem;
         }
       }
 
@@ -804,10 +825,10 @@ export class PlayerDashboardPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   protected readonly store = inject(PokerStoreService);
 
-  protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string; icon: string }> = [
-    { id: 'overview', label: 'Overview', icon: 'OV' },
-    { id: 'sessions', label: 'Sessions', icon: 'SE' },
-    { id: 'calculator', label: 'Calc', icon: '$' }
+  protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string }> = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'sessions', label: 'Sessions' },
+    { id: 'calculator', label: 'Calculator' }
   ];
   protected readonly activeTab = signal<PlayerDashboardTab>('overview');
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
