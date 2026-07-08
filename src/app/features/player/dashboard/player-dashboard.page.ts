@@ -8,7 +8,7 @@ import {
   LucideHouse,
   LucideRefreshCcw
 } from '@lucide/angular';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PotCalculatorPage } from '../../host/tools/pot-calculator.page';
@@ -55,21 +55,6 @@ interface PlayerActivityEntry {
   ],
   template: `
     <section class="player-dashboard">
-      <header class="player-hero">
-        <div class="player-identity">
-          <div class="player-chip" aria-hidden="true">{{ playerInitials() }}</div>
-          <div class="player-identity-copy">
-            <h1>{{ playerName() }}</h1>
-            <p>{{ playerSummary() }}</p>
-          </div>
-        </div>
-
-        <div class="player-net" [class.player-net-positive]="realizedNet() >= 0" [class.player-net-negative]="realizedNet() < 0">
-          <span>Net</span>
-          <strong>{{ realizedNet() | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
-        </div>
-      </header>
-
       <nav class="player-tabs" aria-label="Player dashboard">
         @for (tab of tabs; track tab.id) {
           <button
@@ -110,7 +95,7 @@ interface PlayerActivityEntry {
                 ></svg>
               }
             }
-            <span class="sr-only">{{ tab.label }}</span>
+            <span class="player-tab-label">{{ tab.label }}</span>
           </button>
         }
       </nav>
@@ -132,25 +117,29 @@ interface PlayerActivityEntry {
           @case ('overview') {
             <section class="player-view player-view-overview">
               @if (featuredEntry(); as entry) {
-                <article class="player-feature-card" [class.player-feature-card-active]="entry.player.status === 'ACTIVE'">
-                  <div class="feature-topline">
-                    <span class="feature-status" [class.feature-status-active]="entry.player.status === 'ACTIVE'">
-                      {{ statusLabel(entry) }}
-                    </span>
-                    <span>{{ entry.session.sessionDate | date: 'MMM d, y' }}</span>
-                  </div>
-
+                <article
+                  class="player-feature-card"
+                  [class.player-feature-card-active]="entry.player.status === 'ACTIVE'"
+                  [class.player-feature-card-open]="isFeaturedExpanded(entry)"
+                  [attr.aria-expanded]="isFeaturedExpanded(entry)"
+                  (click)="toggleFeaturedDetails(entry)"
+                >
                   <div class="feature-heading">
                     <div>
                       <h2>{{ entry.session.name }}</h2>
-                      <p>{{ entry.rebuyCount + 1 }} total buy-ins</p>
                     </div>
-                    <a [routerLink]="['/player/sessions', entry.session.id]" class="feature-link">Details</a>
+                    <a
+                      [routerLink]="['/player/sessions', entry.session.id]"
+                      class="feature-toggle-label"
+                      (click)="$event.stopPropagation()"
+                    >
+                      Detail
+                    </a>
                   </div>
 
                   <div class="player-metrics">
                     <div class="metric-card metric-buyin">
-                      <span>Buy-in</span>
+                      <span>Total buy in</span>
                       <strong>{{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
                     </div>
                     <div class="metric-card metric-cashout">
@@ -164,7 +153,7 @@ interface PlayerActivityEntry {
                       </strong>
                     </div>
                     <div class="metric-card" [class.metric-net-positive]="entry.player.net >= 0" [class.metric-net-negative]="entry.player.net < 0">
-                      <span>Result</span>
+                      <span>Net</span>
                       <strong>
                         @if (entry.player.status === 'COMPLETED') {
                           {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
@@ -172,6 +161,28 @@ interface PlayerActivityEntry {
                           Open
                         }
                       </strong>
+                    </div>
+                  </div>
+
+                  <div class="feature-detail-panel" [attr.aria-hidden]="!isFeaturedExpanded(entry)">
+                    <div class="feature-detail-panel-inner">
+                      <div class="feature-detail-heading">
+                        <span>Buy-in history</span>
+                      </div>
+                      <div class="feature-buyin-list">
+                        @for (transaction of buyInRows(entry); track transaction.id) {
+                          <div
+                            class="feature-buyin-row"
+                            [class.feature-buyin-row-rebuy]="transaction.type === 'REBUY'"
+                          >
+                            <span class="feature-buyin-type">{{ activityLabel(transaction.type) }}</span>
+                            <span class="feature-buyin-time">{{ transaction.createdAt | date: 'shortTime' }}</span>
+                            <strong>{{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                          </div>
+                        } @empty {
+                          <p class="activity-empty">No buy-in history yet.</p>
+                        }
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -185,7 +196,6 @@ interface PlayerActivityEntry {
               <section class="player-ledger-panel">
                 <div class="panel-heading">
                   <h2>Recent</h2>
-                  <span>{{ recentActivity().length }}</span>
                 </div>
 
                 <div class="activity-list">
@@ -307,62 +317,6 @@ interface PlayerActivityEntry {
           BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
 
-      .player-hero {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 1.1rem;
-        background:
-          linear-gradient(135deg, rgb(34 197 94 / 0.15), transparent 38%),
-          rgb(255 255 255 / 0.045);
-        box-shadow: 0 18px 48px rgb(0 0 0 / 0.28);
-        padding: 1rem;
-      }
-
-      .player-identity {
-        display: flex;
-        min-width: 0;
-        align-items: center;
-        gap: 0.9rem;
-      }
-
-      .player-chip {
-        display: grid;
-        height: 3.45rem;
-        width: 3.45rem;
-        flex: 0 0 auto;
-        place-items: center;
-        border: 2px solid rgb(34 197 94 / 0.62);
-        border-radius: 999px;
-        background:
-          radial-gradient(circle, rgb(255 255 255 / 0.14), transparent 54%),
-          rgb(3 8 7 / 0.92);
-        box-shadow: 0 0 22px rgb(34 197 94 / 0.18);
-        color: white;
-        font-size: 1.08rem;
-        font-weight: 900;
-      }
-
-      .player-identity-copy {
-        min-width: 0;
-      }
-
-      .player-identity-copy h1 {
-        margin: 0;
-        overflow: hidden;
-        color: white;
-        font-size: 1.75rem;
-        font-weight: 780;
-        line-height: 1.04;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .player-identity-copy p,
-      .feature-topline,
-      .feature-heading p,
       .panel-heading span,
       .session-tile-top p,
       .activity-copy small {
@@ -370,18 +324,6 @@ interface PlayerActivityEntry {
         font-size: 0.9rem;
       }
 
-      .player-net {
-        display: grid;
-        min-width: 7rem;
-        justify-items: end;
-        gap: 0.18rem;
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 0.95rem;
-        background: rgb(0 0 0 / 0.28);
-        padding: 0.72rem 0.85rem;
-      }
-
-      .player-net span,
       .metric-card span,
       .session-tile-stats span {
         color: rgb(161 161 170);
@@ -389,20 +331,6 @@ interface PlayerActivityEntry {
         font-weight: 760;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-      }
-
-      .player-net strong {
-        font-size: 1.36rem;
-        font-weight: 680;
-        line-height: 1;
-      }
-
-      .player-net-positive strong {
-        color: rgb(74 222 128);
-      }
-
-      .player-net-negative strong {
-        color: rgb(252 165 165);
       }
 
       .player-tabs {
@@ -454,6 +382,10 @@ interface PlayerActivityEntry {
         color: rgb(220 252 231);
       }
 
+      .player-tab-label {
+        display: none;
+      }
+
       @media (min-width: 640px) {
         .player-dashboard {
           padding-bottom: 0;
@@ -469,6 +401,21 @@ interface PlayerActivityEntry {
           box-shadow: none;
           padding: 0.4rem;
           backdrop-filter: none;
+        }
+
+        .player-tab {
+          min-height: 2.8rem;
+          padding: 0 1rem;
+          font-size: 0.96rem;
+          font-weight: 760;
+        }
+
+        .player-tabs .pokertrack-nav-icon {
+          display: none;
+        }
+
+        .player-tab-label {
+          display: inline;
         }
       }
 
@@ -520,9 +467,10 @@ interface PlayerActivityEntry {
         overflow: hidden;
         padding: 1rem;
         position: relative;
+        cursor: pointer;
+        transition: all 190ms ease;
       }
 
-      .feature-topline,
       .feature-heading,
       .session-tile-top,
       .activity-row {
@@ -532,7 +480,6 @@ interface PlayerActivityEntry {
         gap: 0.8rem;
       }
 
-      .feature-status,
       .session-tile-top span {
         border: 1px solid rgb(255 255 255 / 0.12);
         border-radius: 999px;
@@ -543,7 +490,6 @@ interface PlayerActivityEntry {
         padding: 0.32rem 0.58rem;
       }
 
-      .feature-status-active,
       .session-tile-active .session-tile-top span {
         border-color: rgb(34 197 94 / 0.46);
         color: rgb(74 222 128);
@@ -551,6 +497,11 @@ interface PlayerActivityEntry {
 
       .feature-heading {
         align-items: flex-end;
+      }
+
+      .player-feature-card:hover {
+        border-color: rgb(34 197 94 / 0.34);
+        transform: translateY(-1px);
       }
 
       .feature-heading h2,
@@ -564,7 +515,7 @@ interface PlayerActivityEntry {
         line-height: 1.1;
       }
 
-      .feature-link {
+      .feature-toggle-label {
         border: 1px solid rgb(34 197 94 / 0.42);
         border-radius: 999px;
         background: rgb(34 197 94 / 0.14);
@@ -575,6 +526,80 @@ interface PlayerActivityEntry {
         padding: 0.62rem 0.86rem;
         text-decoration: none;
         transition: all 180ms ease;
+      }
+
+      .player-feature-card-open .feature-toggle-label {
+        border-color: rgb(74 222 128 / 0.62);
+        background: rgb(34 197 94 / 0.22);
+      }
+
+      .feature-detail-panel {
+        display: grid;
+        grid-template-rows: 0fr;
+        opacity: 0;
+        transform: translateY(-0.25rem);
+        transition: all 420ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .player-feature-card-open .feature-detail-panel {
+        grid-template-rows: 1fr;
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .feature-detail-panel-inner {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .feature-detail-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid rgb(255 255 255 / 0.09);
+        padding-top: 0.9rem;
+      }
+
+      .feature-buyin-list {
+        display: grid;
+        gap: 0.48rem;
+        margin-top: 0.65rem;
+      }
+
+      .feature-buyin-row {
+        display: grid;
+        grid-template-columns: minmax(4.9rem, 0.8fr) minmax(4.2rem, 0.7fr) minmax(4rem, 0.65fr);
+        align-items: center;
+        gap: 0.55rem;
+        border: 1px solid rgb(56 189 248 / 0.22);
+        border-radius: 0.78rem;
+        background: rgb(14 165 233 / 0.11);
+        padding: 0.64rem 0.7rem;
+      }
+
+      .feature-buyin-row-rebuy {
+        border-color: rgb(34 197 94 / 0.26);
+        background: rgb(34 197 94 / 0.11);
+      }
+
+      .feature-buyin-type {
+        color: rgb(186 230 253);
+        font-size: 0.78rem;
+        font-weight: 820;
+      }
+
+      .feature-buyin-row-rebuy .feature-buyin-type {
+        color: rgb(134 239 172);
+      }
+
+      .feature-buyin-time {
+        color: rgb(161 161 170);
+        font-size: 0.78rem;
+        text-align: center;
+      }
+
+      .feature-buyin-row strong {
+        text-align: right;
       }
 
       .player-metrics,
@@ -786,25 +811,6 @@ interface PlayerActivityEntry {
       }
 
       @media (max-width: 560px) {
-        .player-hero {
-          align-items: stretch;
-          padding: 0.8rem;
-        }
-
-        .player-chip {
-          height: 3rem;
-          width: 3rem;
-        }
-
-        .player-net {
-          min-width: 5.9rem;
-          padding: 0.6rem 0.65rem;
-        }
-
-        .player-net strong {
-          font-size: 1.1rem;
-        }
-
         .player-tab {
           min-height: 2.65rem;
         }
@@ -839,6 +845,11 @@ interface PlayerActivityEntry {
         .activity-row {
           animation: none;
         }
+
+        .player-feature-card,
+        .feature-detail-panel {
+          transition: none;
+        }
       }
 
       @keyframes player-view-enter {
@@ -869,21 +880,17 @@ interface PlayerActivityEntry {
 })
 export class PlayerDashboardPage implements OnInit {
   private readonly authState = inject(AuthStateService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly store = inject(PokerStoreService);
 
   protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string }> = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'sessions', label: 'Sessions' },
-    { id: 'calculator', label: 'Calculator' }
+    { id: 'calculator', label: 'Calculator' },
+    { id: 'overview', label: 'Home' },
+    { id: 'sessions', label: 'History' }
   ];
   protected readonly activeTab = signal<PlayerDashboardTab>('overview');
+  protected readonly expandedFeatureKey = signal<string | null>(null);
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
-  protected readonly playerInitials = computed(() => {
-    const words = this.playerName().trim().split(/\s+/).filter(Boolean);
-    const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase() ?? '').join('');
-
-    return initials || 'PT';
-  });
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {
     const userId = this.authState.user()?.id ?? null;
     const targetName = this.playerName().trim().toLowerCase();
@@ -892,9 +899,7 @@ export class PlayerDashboardPage implements OnInit {
       .sessions()
       .flatMap((session) =>
         session.players
-          .filter((player) =>
-            userId ? player.userId === userId : player.name.trim().toLowerCase() === targetName
-          )
+          .filter((player) => this.playerMatchesLogin(player, userId, targetName))
           .map((player) => {
             const transactions = session.transactions
               .filter((transaction) => transaction.playerId === player.id)
@@ -919,31 +924,6 @@ export class PlayerDashboardPage implements OnInit {
     this.entries().filter((entry) => entry.player.status === 'ACTIVE')
   );
   protected readonly featuredEntry = computed(() => this.activeEntries()[0] ?? this.entries()[0] ?? null);
-  protected readonly playerSummary = computed(() => {
-    const activeCount = this.activeEntries().length;
-    const totalCount = this.entries().length;
-
-    if (activeCount > 0) {
-      return `${activeCount} active table${activeCount === 1 ? '' : 's'}`;
-    }
-
-    if (totalCount > 0) {
-      return `${totalCount} session${totalCount === 1 ? '' : 's'}`;
-    }
-
-    return 'Ready for the next table';
-  });
-  protected readonly totalBuyIn = computed(() =>
-    this.entries().reduce((sum, entry) => sum + entry.player.totalBuyIn, 0)
-  );
-  protected readonly totalCashOut = computed(() =>
-    this.entries().reduce((sum, entry) => sum + entry.player.cashOut, 0)
-  );
-  protected readonly realizedNet = computed(() =>
-    this.entries()
-      .filter((entry) => entry.player.status === 'COMPLETED')
-      .reduce((sum, entry) => sum + entry.player.net, 0)
-  );
   protected readonly recentActivity = computed<PlayerActivityEntry[]>(() =>
     this.entries()
       .flatMap((entry) =>
@@ -963,6 +943,8 @@ export class PlayerDashboardPage implements OnInit {
   );
 
   async ngOnInit(): Promise<void> {
+    this.applyInitialTab();
+
     try {
       await this.store.refreshSessions();
     } catch {
@@ -972,6 +954,44 @@ export class PlayerDashboardPage implements OnInit {
 
   protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
+  }
+
+  private playerMatchesLogin(player: SessionPlayer, userId: string | null, targetName: string): boolean {
+    if (player.userId) {
+      return player.userId === userId;
+    }
+
+    return player.name.trim().toLowerCase() === targetName;
+  }
+
+  private applyInitialTab(): void {
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+
+    if (tab === 'history' || tab === 'sessions') {
+      this.activeTab.set('sessions');
+      return;
+    }
+
+    if (tab === 'calculator') {
+      this.activeTab.set('calculator');
+    }
+  }
+
+  protected isFeaturedExpanded(entry: PlayerSessionEntry): boolean {
+    return this.expandedFeatureKey() === this.entryKey(entry);
+  }
+
+  protected toggleFeaturedDetails(entry: PlayerSessionEntry): void {
+    const key = this.entryKey(entry);
+    this.expandedFeatureKey.set(this.expandedFeatureKey() === key ? null : key);
+  }
+
+  protected buyInRows(entry: PlayerSessionEntry): PokerTransaction[] {
+    return entry.transactions.filter(
+      (transaction) =>
+        !transaction.deletedAt &&
+        (transaction.type === 'BUYIN' || transaction.type === 'REBUY')
+    );
   }
 
   protected statusLabel(entry: PlayerSessionEntry): string {
@@ -987,5 +1007,9 @@ export class PlayerDashboardPage implements OnInit {
       case 'CASHOUT':
         return 'Cash out';
     }
+  }
+
+  private entryKey(entry: PlayerSessionEntry): string {
+    return `${entry.session.id}:${entry.player.id}`;
   }
 }
