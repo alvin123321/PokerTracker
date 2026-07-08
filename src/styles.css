@@ -112,6 +112,324 @@ button:disabled {
   }
 }
 
+@keyframes login-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes login-card-settle-left {
+  0% {
+    opacity: 0;
+    transform: translate(0.38rem, -0.18rem) rotate(-18deg) scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes login-card-settle-right {
+  0% {
+    opacity: 0;
+    transform: translate(-0.32rem, 0.12rem) rotate(18deg) scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes login-shell-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes login-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-copy-in {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateX(-0.45rem);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateX(0);
+  }
+}
+
+@keyframes login-title-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 24% 0);
+    transform: translateY(0.42rem);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-proof-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.45rem) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    filter: blur(7px);
+    transform: translateY(0.65rem) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-error-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-0.25rem) translateX(0);
+  }
+
+  45% {
+    opacity: 1;
+    transform: translateY(0) translateX(-0.16rem);
+  }
+
+  75% {
+    opacity: 1;
+    transform: translateY(0) translateX(0.08rem);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+}
+
+@keyframes login-submit-loading {
+  0%,
+  100% {
+    box-shadow:
+      0 0.9rem 2rem rgb(5 150 105 / 0.12),
+      inset 0 1px 0 rgb(255 255 255 / 0.2);
+  }
+
+  50% {
+    box-shadow:
+      0 1rem 2.3rem rgb(5 150 105 / 0.3),
+      0 0 0 3px rgb(52 211 153 / 0.13),
+      inset 0 1px 0 rgb(255 255 255 / 0.32);
+  }
+}
+
+@keyframes login-loading-card-in {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(0.5rem) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-shell-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+.login-shell {
+  --login-font-modern: Bahnschrift, Aptos, Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --login-font-digital: 'OCR A Extended', 'Agency FB', 'Bahnschrift SemiCondensed', Consolas,
+    'Courier New', monospace;
+  font-family: var(--login-font-modern);
+  font-optical-sizing: auto;
+}
+
+.login-shell .pokertrack-brand-name,
+.login-title {
+  font-family: var(--login-font-modern);
+  font-weight: 800;
+}
+
+.login-subtitle,
+.login-proof-card,
+.login-input {
+  font-family: var(--login-font-modern);
+}
+
+.login-subtitle {
+  font-weight: 500;
+}
+
+.login-proof-card {
+  color: rgb(212 212 212);
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.42;
+}
+
+.login-version,
+.login-card-kicker,
+.login-card-head h2,
+.login-field label,
+.login-submit {
+  font-family: var(--login-font-digital);
+}
+
+.login-version {
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 12px rgb(52 211 153 / 0.24);
+}
+
+.login-card-kicker {
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-shadow: 0 0 16px rgb(52 211 153 / 0.28);
+}
+
+.login-card-head h2 {
+  font-size: 2.55rem;
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0.08em;
+  text-shadow:
+    0 0 18px rgb(52 211 153 / 0.22),
+    0 0 1px rgb(255 255 255 / 0.65);
+  text-transform: uppercase;
+}
+
+.login-field label {
+  font-size: 1.08rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.login-input {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.login-submit {
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-submit-loading {
+  font-size: 1.08rem;
+  letter-spacing: 0.05em;
+}
+
+.login-submit::after {
+  content: '';
+  position: absolute;
+  inset: -30% -35%;
+  z-index: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 25%,
+    rgb(255 255 255 / 0.14) 48%,
+    transparent 72%
+  );
+  opacity: 0;
+  transform: translateX(-62%) skewX(-18deg);
+  transition:
+    opacity 180ms var(--login-ease-out),
+    transform 360ms var(--login-ease-expo);
+}
+
+.login-submit-label,
+.login-submit .login-spinner {
+  position: relative;
+  z-index: 1;
+}
+
+.login-submit:hover:not(:disabled)::after {
+  opacity: 1;
+  transform: translateX(62%) skewX(-18deg);
+}
+
+@media (max-width: 639px) {
+  .login-shell.login-shell .login-card-kicker {
+    display: none;
+  }
+
+  .login-shell.login-shell.login-shell .login-card-head h2 {
+    margin-top: 0;
+    color: rgb(74 222 128);
+    font-size: 2.15rem;
+    text-shadow:
+      0 0 10px rgb(74 222 128 / 0.52),
+      0 0 28px rgb(16 185 129 / 0.36),
+      0 0 1px rgb(255 255 255 / 0.72);
+  }
+
+  .login-shell.login-shell .login-brand-row .login-brand .pokertrack-brand-mark::after {
+    animation: deck-shuffle 2.2s 120ms ease-in-out infinite;
+  }
+
+}
+
+@media (max-width: 639px) and (prefers-reduced-motion: reduce) {
+  .login-shell.login-shell .login-brand-row .login-brand .pokertrack-brand-mark::after,
+  .login-shell.login-shell.login-shell .login-card-head h2 {
+    animation: none;
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;

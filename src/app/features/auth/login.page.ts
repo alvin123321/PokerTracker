@@ -10,99 +10,112 @@ import { UserProfile } from '../../core/models/user.model';
   imports: [ReactiveFormsModule],
   template: `
     <main
-      class="login-shell min-h-dvh bg-neutral-950 text-neutral-50"
+      class="login-shell min-h-dvh overflow-hidden bg-neutral-950 text-neutral-50"
       [class.login-shell-leaving]="isLeaving()"
     >
       <section
-        class="mx-auto grid min-h-dvh w-full max-w-6xl items-center gap-8 px-5 py-8 sm:gap-10 sm:py-10 lg:grid-cols-[1.1fr_0.9fr]"
+        class="login-stage mx-auto grid min-h-dvh w-full max-w-6xl items-center gap-6 px-4 py-4 sm:gap-8 sm:px-6 sm:py-8 lg:grid-cols-[1.04fr_0.96fr]"
       >
         <div class="login-copy">
-          <div class="flex items-center gap-3">
-            <p class="text-sm font-medium uppercase tracking-[0.2em] text-emerald-300">PokerTrack</p>
-            <span class="rounded-full border border-emerald-300/30 px-2.5 py-1 text-xs font-semibold text-emerald-100">
+          <div class="login-brand-row">
+            <div class="pokertrack-brand login-brand">
+              <span class="pokertrack-brand-mark" aria-hidden="true">
+                <span class="pokertrack-brand-suit">&spades;</span>
+              </span>
+              <span class="pokertrack-brand-name">
+                <span>Poker</span><span>Tracker</span>
+              </span>
+            </div>
+            <span class="login-version">
               v1.1
             </span>
           </div>
-          <h1 class="mt-4 max-w-2xl text-4xl font-semibold leading-tight text-white md:text-6xl">
-            Live poker session management for fast-moving hosts.
+          <h1 class="login-title">
+            Table control starts here.
           </h1>
-          <p class="mt-5 max-w-xl text-base leading-7 text-neutral-300">
-            Sign in to continue to your host or player dashboard.
+          <p class="login-subtitle">
+            Sign in to manage live sessions, member ledgers, rebuys, and cash-outs without slowing down the game.
           </p>
-          <div class="mt-6 hidden grid-cols-3 gap-3 text-sm text-neutral-400 sm:grid">
-            <div class="rounded-lg border border-white/10 bg-white/[0.035] p-3">
+          <div class="login-proof-grid">
+            <div class="login-proof-card" style="--motion-index: 0">
               <p class="font-semibold text-white">Fast</p>
-              <p class="mt-1">One-tap rebuy flow.</p>
+              <p class="mt-1">One-tap table actions.</p>
             </div>
-            <div class="rounded-lg border border-white/10 bg-white/[0.035] p-3">
+            <div class="login-proof-card" style="--motion-index: 1">
               <p class="font-semibold text-white">Private</p>
-              <p class="mt-1">Player-only history.</p>
+              <p class="mt-1">Player-only ledgers.</p>
             </div>
-            <div class="rounded-lg border border-white/10 bg-white/[0.035] p-3">
+            <div class="login-proof-card" style="--motion-index: 2">
               <p class="font-semibold text-white">Live</p>
-              <p class="mt-1">Synced to Supabase.</p>
+              <p class="mt-1">Synced session state.</p>
             </div>
           </div>
         </div>
 
         <form
-          class="login-card rounded-lg border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/30 backdrop-blur sm:p-6"
+          class="login-card"
           [formGroup]="form"
           (ngSubmit)="submit()"
+          novalidate
         >
-          <div class="space-y-1">
-            <h2 class="text-xl font-semibold text-white">Sign in</h2>
-            <p class="text-sm text-neutral-400">Use your PokerTrack login name to continue.</p>
+          <div class="login-card-head">
+            <p class="login-card-kicker">Table access</p>
+            <h2>Sign in</h2>
           </div>
 
-          @if (authState.isDevelopmentAuthEnabled) {
-            <div class="mt-5 rounded-lg border border-emerald-300/30 bg-emerald-300/10 p-4 text-sm text-emerald-50">
-              Development login: admin1223/admin1223 for host, player123/player123 for player.
-            </div>
-          }
-
           @if (errorMessage()) {
-            <div class="mt-5 rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
+            <div id="login-error" class="login-error" role="alert">
               {{ errorMessage() }}
             </div>
           }
 
-          <label class="mt-6 block text-sm font-medium text-neutral-200" for="username">Login name</label>
-          <input
-            id="username"
-            type="text"
-            autocomplete="username"
-            formControlName="username"
-            class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-300"
-            placeholder="admin1223"
-          />
+          <div class="login-field">
+            <label for="username">Login name</label>
+            <input
+              id="username"
+              type="text"
+              autocomplete="username"
+              autocapitalize="none"
+              formControlName="username"
+              class="login-input"
+              placeholder="admin1223"
+              spellcheck="false"
+              [attr.aria-invalid]="errorMessage() ? 'true' : null"
+              [attr.aria-describedby]="errorMessage() ? 'login-error' : null"
+            />
+          </div>
 
-          <label class="mt-4 block text-sm font-medium text-neutral-200" for="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autocomplete="current-password"
-            formControlName="password"
-            class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none transition placeholder:text-neutral-600 focus:border-emerald-300"
-            placeholder="Password"
-          />
+          <div class="login-field">
+            <label for="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+              formControlName="password"
+              class="login-input"
+              placeholder="Password"
+              [attr.aria-invalid]="errorMessage() ? 'true' : null"
+              [attr.aria-describedby]="errorMessage() ? 'login-error' : null"
+            />
+          </div>
 
           <button
             type="submit"
             [disabled]="form.invalid || authState.loading() || welcomeName() || isLeaving()"
-            class="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 shadow-lg shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-emerald-300 hover:shadow-emerald-900/40 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400 disabled:shadow-none"
+            [class.login-submit-loading]="authState.loading() || welcomeName() || isLeaving()"
+            class="login-submit"
           >
             @if (welcomeName()) {
               <span class="login-spinner border-neutral-400 border-t-transparent" aria-hidden="true"></span>
-              Welcome...
+              <span class="login-submit-label">Welcome...</span>
             } @else if (isLeaving()) {
               <span class="login-spinner border-neutral-400 border-t-transparent" aria-hidden="true"></span>
-              Opening dashboard...
+              <span class="login-submit-label">Opening dashboard...</span>
             } @else if (authState.loading()) {
               <span class="login-spinner border-neutral-400 border-t-transparent" aria-hidden="true"></span>
-              Signing in...
+              <span class="login-submit-label">Signing in...</span>
             } @else {
-              Sign in
+              <span class="login-submit-label">Sign in</span>
             }
           </button>
         </form>
@@ -114,7 +127,7 @@ import { UserProfile } from '../../core/models/user.model';
           aria-live="polite"
           aria-busy="true"
         >
-          <div class="rounded-xl border border-emerald-300/20 bg-neutral-950/95 px-6 py-5 text-center shadow-2xl shadow-black/50">
+          <div class="login-loading-card">
             <div class="deck-shuffle mx-auto mb-4" aria-hidden="true">
               <span></span>
               <span></span>
@@ -130,19 +143,297 @@ import { UserProfile } from '../../core/models/user.model';
   styles: [
     `
       .login-shell {
-        animation: login-shell-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        position: relative;
+        --login-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --login-ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        background:
+          linear-gradient(140deg, rgb(16 185 129 / 0.14), transparent 30rem),
+          linear-gradient(180deg, #06100d 0%, #07100d 42%, #030504 100%);
+        isolation: isolate;
+        animation: login-shell-in 280ms var(--login-ease-out) both;
+      }
+
+      .login-shell::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background-image:
+          linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgb(255 255 255 / 0.028) 1px, transparent 1px);
+        background-size: 4rem 4rem;
+        mask-image: linear-gradient(180deg, rgb(0 0 0 / 0.72), transparent 70%);
+      }
+
+      .login-stage {
+        position: relative;
+        align-content: center;
       }
 
       .login-copy {
-        animation: login-panel-in 480ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        padding-block: 0.3rem;
+        text-align: center;
+        animation: login-copy-in 380ms 70ms var(--login-ease-out) both;
+      }
+
+      .login-brand-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.85rem;
+        min-width: 0;
+      }
+
+      .login-brand {
+        pointer-events: none;
+      }
+
+      .login-brand .pokertrack-brand-mark::before {
+        transform-origin: 70% 80%;
+        animation: login-card-settle-left 520ms 80ms var(--login-ease-expo) both;
+      }
+
+      .login-brand .pokertrack-brand-mark::after {
+        transform-origin: 35% 80%;
+        animation: login-card-settle-right 520ms 120ms var(--login-ease-expo) both;
+      }
+
+      .login-brand .pokertrack-brand-name {
+        font-size: 1.55rem;
+      }
+
+      .login-version {
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.75rem;
+        border: 1px solid rgb(110 231 183 / 0.28);
+        border-radius: 9999px;
+        background: rgb(6 78 59 / 0.18);
+        padding: 0.22rem 0.62rem;
+        color: rgb(209 250 229);
+        font-size: 0.74rem;
+      }
+
+      .login-title {
+        max-width: 11.4ch;
+        margin: 1.9rem auto 0.35rem;
+        font-size: 4.35rem;
+        line-height: 1;
+        letter-spacing: 0;
+        text-wrap: balance;
+        animation: login-title-in 430ms 120ms var(--login-ease-expo) both;
+      }
+
+      .login-subtitle {
+        max-width: 34rem;
+        margin: 1.05rem auto 0;
+        color: rgb(229 229 229 / 0.86);
+        font-size: 1.08rem;
+        line-height: 1.58;
+        letter-spacing: 0.01em;
+        text-wrap: pretty;
+        animation: login-panel-in 340ms 180ms var(--login-ease-out) both;
+      }
+
+      .login-proof-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.8rem;
+        margin-top: 1.65rem;
+      }
+
+      .login-proof-card {
+        min-height: 5.85rem;
+        border: 1px solid rgb(255 255 255 / 0.1);
+        border-radius: 0.5rem;
+        background:
+          linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.025)),
+          rgb(10 10 10 / 0.35);
+        padding: 0.9rem;
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+        animation: login-proof-in 340ms calc(210ms + (var(--motion-index, 0) * 55ms))
+          var(--login-ease-out) both;
+        transition:
+          border-color 180ms var(--login-ease-out),
+          background-color 180ms var(--login-ease-out),
+          transform 180ms var(--login-ease-out),
+          box-shadow 180ms var(--login-ease-out);
+      }
+
+      .login-proof-card:hover {
+        border-color: rgb(52 211 153 / 0.35);
+        background-color: rgb(6 78 59 / 0.08);
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.06),
+          0 0.75rem 1.4rem rgb(0 0 0 / 0.16);
+        transform: translateY(-1px);
       }
 
       .login-card {
-        animation: login-panel-in 520ms 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        width: 100%;
+        max-width: 30rem;
+        justify-self: center;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.5rem;
+        background:
+          radial-gradient(circle at 50% 0%, rgb(52 211 153 / 0.14), transparent 15rem),
+          linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.035)),
+          rgb(13 17 16 / 0.86);
+        box-shadow:
+          0 1.5rem 4rem rgb(0 0 0 / 0.36),
+          inset 0 1px 0 rgb(255 255 255 / 0.07);
+        padding: 1.45rem;
+        text-align: center;
+        animation: login-card-in 420ms 120ms var(--login-ease-expo) both;
+      }
+
+      .login-card-head {
+        text-align: center;
+      }
+
+      .login-card-kicker {
+        margin: 0;
+        color: rgb(110 231 183);
+        text-transform: uppercase;
+      }
+
+      .login-card-head h2 {
+        margin: 0.28rem 0 0;
+        color: white;
+      }
+
+      .login-error {
+        margin-top: 1rem;
+        border-radius: 0.5rem;
+        padding: 0.85rem 0.95rem;
+        font-size: 0.875rem;
+        line-height: 1.45;
+        border: 1px solid rgb(248 113 113 / 0.34);
+        background: rgb(127 29 29 / 0.28);
+        color: rgb(254 226 226);
+        animation: login-error-in 190ms var(--login-ease-out) both;
+      }
+
+      .login-field {
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 1rem;
+      }
+
+      .login-field label {
+        color: rgb(229 229 229);
+        text-align: center;
+        transition:
+          color 160ms var(--login-ease-out),
+          transform 160ms var(--login-ease-out);
+      }
+
+      .login-field:focus-within label {
+        color: rgb(167 243 208);
+        transform: translateY(-1px);
+      }
+
+      .login-input {
+        width: 100%;
+        min-height: 3.1rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.5rem;
+        background: rgb(4 6 7 / 0.74);
+        color: white;
+        padding: 0.82rem 0.95rem;
+        text-align: center;
+        outline: none;
+        transition:
+          border-color 170ms var(--login-ease-out),
+          box-shadow 170ms var(--login-ease-out),
+          background-color 170ms var(--login-ease-out),
+          transform 170ms var(--login-ease-out);
+      }
+
+      .login-input::placeholder {
+        color: rgb(163 163 163 / 0.62);
+      }
+
+      .login-input:hover {
+        border-color: rgb(255 255 255 / 0.2);
+        background: rgb(8 12 12 / 0.86);
+      }
+
+      .login-input:focus-visible {
+        border-color: rgb(52 211 153);
+        box-shadow:
+          0 0 0 3px rgb(52 211 153 / 0.18),
+          0 0 22px rgb(16 185 129 / 0.12);
+        transform: translateY(-1px);
+      }
+
+      .login-input[aria-invalid='true'] {
+        border-color: rgb(248 113 113 / 0.5);
+        box-shadow: 0 0 0 1px rgb(248 113 113 / 0.12);
+      }
+
+      .login-submit {
+        position: relative;
+        display: flex;
+        min-height: 3rem;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        border: 1px solid rgb(110 231 183 / 0.42);
+        border-radius: 0.5rem;
+        background:
+          linear-gradient(180deg, rgb(52 211 153), rgb(22 163 74)),
+          rgb(52 211 153);
+        color: rgb(5 15 12);
+        margin-top: 1.2rem;
+        padding: 0.82rem 1.2rem;
+        isolation: isolate;
+        overflow: hidden;
+        box-shadow:
+          0 0.9rem 2rem rgb(5 150 105 / 0.2),
+          inset 0 1px 0 rgb(255 255 255 / 0.3);
+        transition:
+          transform 150ms var(--login-ease-out),
+          box-shadow 180ms var(--login-ease-out),
+          background 180ms var(--login-ease-out),
+          border-color 180ms var(--login-ease-out),
+          color 180ms var(--login-ease-out);
+      }
+
+      .login-submit:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: rgb(167 243 208 / 0.65);
+        box-shadow:
+          0 1.05rem 2.25rem rgb(5 150 105 / 0.28),
+          0 0 0 3px rgb(52 211 153 / 0.12),
+          inset 0 1px 0 rgb(255 255 255 / 0.36);
+      }
+
+      .login-submit:active:not(:disabled) {
+        transform: translateY(0) scale(0.985);
+      }
+
+      .login-submit:focus-visible {
+        outline: none;
+        box-shadow:
+          0 0 0 3px rgb(10 10 10),
+          0 0 0 6px rgb(52 211 153 / 0.72);
+      }
+
+      .login-submit:disabled {
+        border-color: rgb(255 255 255 / 0.08);
+        background: rgb(38 38 38);
+        color: rgb(163 163 163);
+        box-shadow: none;
+      }
+
+      .login-submit-loading {
+        animation: login-submit-loading 980ms ease-in-out infinite;
       }
 
       .login-shell-leaving {
-        animation: login-shell-out 280ms cubic-bezier(0.4, 0, 1, 1) both;
+        animation: login-shell-out 240ms cubic-bezier(0.7, 0, 0.84, 0) both;
       }
 
       .login-spinner {
@@ -155,45 +446,127 @@ import { UserProfile } from '../../core/models/user.model';
         animation: login-spinner 700ms linear infinite;
       }
 
-      @keyframes login-spinner {
-        to {
-          transform: rotate(360deg);
+      .login-loading-card {
+        border: 1px solid rgb(110 231 183 / 0.22);
+        border-radius: 0.75rem;
+        background:
+          linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.025)),
+          rgb(10 10 10 / 0.96);
+        padding: 1.25rem 1.5rem;
+        text-align: center;
+        box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 0.5);
+        animation: login-loading-card-in 260ms var(--login-ease-expo) both;
+      }
+
+      @media (min-width: 640px) {
+        .login-card {
+          padding: 1.55rem;
         }
       }
 
-      @keyframes login-shell-in {
-        from {
-          opacity: 0;
+      @media (max-width: 639px) {
+        .login-stage {
+          gap: 1rem;
+          padding-top: 0.8rem;
+          padding-bottom: 0.8rem;
         }
 
-        to {
-          opacity: 1;
+        .login-brand .pokertrack-brand-name {
+          font-size: 1.32rem;
+        }
+
+        .login-brand .pokertrack-brand-mark {
+          width: 2.72rem;
+          height: 2.3rem;
+        }
+
+        .login-title {
+          max-width: 14ch;
+          margin-top: 1.05rem;
+          margin-bottom: 1.1rem;
+          font-size: 2.2rem;
+          line-height: 1.08;
+        }
+
+        .login-subtitle {
+          display: none;
+        }
+
+        .login-proof-grid {
+          display: none;
+        }
+
+        .login-card {
+          max-width: 23rem;
+          padding: 0.95rem;
+        }
+
+        .login-field {
+          margin-top: 0.75rem;
+        }
+
+        .login-input,
+        .login-submit {
+          min-height: 2.75rem;
+        }
+
+        .login-submit {
+          margin-top: 0.9rem;
         }
       }
 
-      @keyframes login-panel-in {
-        from {
-          opacity: 0;
-          transform: translateY(0.75rem);
+      @media (max-width: 359px) {
+        .login-stage {
+          gap: 0.75rem;
+          padding-left: 0.85rem;
+          padding-right: 0.85rem;
         }
 
-        to {
-          opacity: 1;
-          transform: translateY(0);
+        .login-title {
+          font-size: 1.95rem;
+        }
+
+        .login-subtitle {
+          font-size: 0.88rem;
+        }
+
+        .login-card {
+          padding: 0.82rem;
+        }
+
+        .login-input,
+        .login-submit {
+          min-height: 2.65rem;
         }
       }
 
-      @keyframes login-shell-out {
-        from {
-          opacity: 1;
-          transform: scale(1);
+      @media (prefers-reduced-motion: reduce) {
+        .login-shell,
+        .login-copy,
+        .login-card,
+        .login-shell-leaving,
+        .login-title,
+        .login-subtitle,
+        .login-proof-card,
+        .login-error,
+        .login-submit,
+        .login-submit-loading,
+        .login-submit::after,
+        .login-loading-card,
+        .login-brand .pokertrack-brand-mark::before,
+        .login-brand .pokertrack-brand-mark::after,
+        .login-input {
+          animation: none;
+          transition: none;
         }
 
-        to {
-          opacity: 0;
-          transform: scale(0.985);
+        .login-spinner,
+        .deck-shuffle span {
+          animation-duration: 1ms;
+          animation-iteration-count: 1;
         }
       }
+
     `
   ]
 })
