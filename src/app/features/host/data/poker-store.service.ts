@@ -155,6 +155,8 @@ const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
 const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers.sessionTables.v2';
 const localDeletedRegisteredPlayersStorageKey =
   'pokertrack.localDeletedRegisteredPlayers.sessionTables.v2';
+const developmentProductionSnapshotAppliedAtStorageKey =
+  'pokertrack.productionSnapshot.appliedAt.sessionTables.v2';
 const developmentProductionSnapshotPath = '/snapshots/production-sync.json';
 
 interface DevelopmentProductionSnapshot {
@@ -1378,6 +1380,20 @@ export class PokerStoreService implements OnDestroy {
       }
 
       const snapshot = (await response.json()) as DevelopmentProductionSnapshot;
+      const snapshotVersion = snapshot.syncedAt?.trim() || 'production-sync-snapshot';
+      const appliedVersion = localStorage.getItem(developmentProductionSnapshotAppliedAtStorageKey);
+      const hasLocalSessionData = Boolean(
+        localStorage.getItem(localStorageKey) ?? localStorage.getItem(legacyLocalStorageKey)
+      );
+
+      if (appliedVersion === snapshotVersion) {
+        return;
+      }
+
+      if (!appliedVersion && hasLocalSessionData) {
+        localStorage.setItem(developmentProductionSnapshotAppliedAtStorageKey, snapshotVersion);
+        return;
+      }
 
       if (Array.isArray(snapshot.sessions)) {
         this.sessionsSignal.set(snapshot.sessions);
@@ -1388,6 +1404,8 @@ export class PokerStoreService implements OnDestroy {
         this.localRegisteredPlayersSignal.set(snapshot.registeredPlayers);
         this.saveLocalRegisteredPlayers(snapshot.registeredPlayers);
       }
+
+      localStorage.setItem(developmentProductionSnapshotAppliedAtStorageKey, snapshotVersion);
     } catch {
       // Missing or invalid local snapshots should not block development mode.
     } finally {
