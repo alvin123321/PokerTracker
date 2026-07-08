@@ -5,7 +5,12 @@ import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angu
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
-import { PokerSession, PokerStoreService, SessionPlayer } from '../data/poker-store.service';
+import {
+  defaultPokerTableName,
+  PokerSession,
+  PokerStoreService,
+  SessionPlayer
+} from '../data/poker-store.service';
 import {
   AddPlayerDialogComponent,
   AddPlayerDialogData,
@@ -1190,7 +1195,7 @@ export class HostDashboardPage implements OnDestroy {
       TableNameDialogComponent,
       {
         autoFocus: 'first-tabbable',
-        data: { tableName: `Table ${nextNumber}` },
+        data: { tableName: defaultPokerTableName(nextNumber) },
         panelClass: 'pokertrack-dialog-panel'
       }
     );
