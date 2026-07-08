@@ -3,7 +3,7 @@ import { Component, OnInit, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
-import { PokerStoreService, PokerTransaction } from '../../host/data/poker-store.service';
+import { PokerStoreService, PokerTransaction, SessionPlayer } from '../../host/data/poker-store.service';
 
 interface PlayerLedgerRow {
   transaction: PokerTransaction;
@@ -16,11 +16,10 @@ interface PlayerLedgerRow {
   template: `
     @if (player(); as currentPlayer) {
       @if (session(); as currentSession) {
-        <section class="space-y-5 sm:space-y-6">
+        <section class="space-y-5 pb-24 sm:space-y-6 sm:pb-0">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <a routerLink="/player/dashboard" class="text-sm font-semibold text-sky-300">&larr; My Sessions</a>
-              <div class="mt-3 flex flex-wrap items-center gap-3">
+              <div class="flex flex-wrap items-center gap-3">
                 <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
                 <span
                   class="rounded-full px-3 py-1 text-xs font-semibold"
@@ -36,9 +35,6 @@ interface PlayerLedgerRow {
                 {{ currentSession.sessionDate | date: 'mediumDate' }} · Player {{ playerName() }}
               </p>
             </div>
-            <div class="rounded-lg border border-sky-300/20 bg-sky-300/10 px-4 py-3 text-sm font-semibold text-sky-100">
-              Your private session detail
-            </div>
           </div>
 
           @if (store.error()) {
@@ -47,20 +43,20 @@ interface PlayerLedgerRow {
             </div>
           }
 
-          <div class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          <div class="grid grid-cols-2 gap-3 md:max-w-3xl md:gap-4">
             <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
-              <p class="text-sm text-neutral-400">My buy-ins</p>
+              <p class="text-sm text-neutral-400">Total buy in</p>
               <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
                 {{ currentPlayer.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
               </p>
             </div>
-            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
-              <p class="text-sm text-neutral-400">Rebuys</p>
-              <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ rebuyCount() }}</p>
-            </div>
-            <div class="hidden rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:block sm:p-5">
-              <p class="text-sm text-neutral-400">My cash out</p>
-              <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
+            <div class="rounded-lg border border-emerald-300/20 bg-emerald-300/[0.08] p-3 sm:p-5">
+              <p class="text-sm text-neutral-400">Cashed out</p>
+              <p
+                class="mt-1 text-2xl font-semibold sm:mt-2 sm:text-3xl"
+                [class.text-emerald-300]="currentPlayer.status === 'COMPLETED'"
+                [class.text-neutral-400]="currentPlayer.status !== 'COMPLETED'"
+              >
                 @if (currentPlayer.status === 'COMPLETED') {
                   {{ currentPlayer.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                 } @else {
@@ -69,7 +65,11 @@ interface PlayerLedgerRow {
               </p>
             </div>
             <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
-              <p class="text-sm text-neutral-400">My net</p>
+              <p class="text-sm text-neutral-400">Rebuys</p>
+              <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">{{ rebuyCount() }}</p>
+            </div>
+            <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
+              <p class="text-sm text-neutral-400">Net</p>
               <p
                 class="mt-1 text-2xl font-semibold sm:mt-2 sm:text-3xl"
                 [class.text-emerald-300]="currentPlayer.net >= 0"
@@ -92,27 +92,26 @@ interface PlayerLedgerRow {
           }
 
           <div class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-            <div class="flex flex-col gap-1 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <h2 class="text-lg font-semibold text-white">My transaction ledger</h2>
-              <p class="text-sm text-neutral-500">{{ ledgerRows().length }} transaction(s)</p>
+            <div class="border-b border-white/10 px-4 py-3">
+              <h2 class="text-lg font-semibold text-white">Game history</h2>
             </div>
 
-            <div class="hidden grid-cols-[0.8fr_0.8fr_0.8fr_0.9fr_1.2fr] gap-3 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase text-neutral-500 md:grid">
+            <div class="hidden grid-cols-[0.8fr_0.8fr_0.8fr_0.9fr] gap-3 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase text-neutral-500 md:grid">
               <span>Type</span>
               <span>Time</span>
               <span>Amount</span>
               <span>Running buy-in</span>
-              <span>Comment</span>
             </div>
 
             @for (row of ledgerRows(); track row.transaction.id) {
               <div
-                class="grid gap-3 border-b border-white/5 px-3 py-4 text-sm last:border-b-0 sm:px-4 md:grid-cols-[0.8fr_0.8fr_0.8fr_0.9fr_1.2fr] md:items-center"
+                class="grid gap-3 border-b border-white/5 px-3 py-4 text-sm last:border-b-0 sm:px-4 md:grid-cols-[0.8fr_0.8fr_0.8fr_0.9fr] md:items-center"
                 [class.opacity-60]="row.transaction.deletedAt"
               >
                 <span
                   class="text-xs font-semibold uppercase"
-                  [class.text-sky-300]="row.transaction.type !== 'CASHOUT'"
+                  [class.text-sky-300]="row.transaction.type === 'BUYIN'"
+                  [class.text-amber-300]="row.transaction.type === 'REBUY'"
                   [class.text-emerald-300]="row.transaction.type === 'CASHOUT'"
                   [class.text-neutral-500]="row.transaction.deletedAt"
                   [class.line-through]="row.transaction.deletedAt"
@@ -154,26 +153,44 @@ interface PlayerLedgerRow {
                     {{ row.runningBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                   </span>
                 </div>
-                <div class="grid grid-cols-2 gap-3 md:block">
-                  <span class="text-neutral-500 md:hidden">Comment</span>
-                  <span
-                    class="text-neutral-400"
-                    [class.text-neutral-500]="row.transaction.deletedAt"
-                    [class.line-through]="row.transaction.deletedAt"
-                  >
-                    @if (row.transaction.comment) {
+                @if (row.transaction.comment) {
+                  <div class="grid grid-cols-2 gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 md:col-span-4">
+                    <span class="text-neutral-500">Note</span>
+                    <span
+                      class="text-neutral-400"
+                      [class.text-neutral-500]="row.transaction.deletedAt"
+                      [class.line-through]="row.transaction.deletedAt"
+                    >
                       {{ row.transaction.comment }}
-                    } @else {
-                      <span class="text-neutral-600">No comment</span>
-                    }
-                  </span>
-                </div>
+                    </span>
+                  </div>
+                }
               </div>
             } @empty {
               <div class="px-4 py-8 text-center text-sm text-neutral-500">
                 No transactions have been recorded for you in this session.
               </div>
             }
+          </div>
+
+          <div class="hidden sm:flex">
+            <a
+              routerLink="/player/dashboard"
+              [queryParams]="{ tab: 'history' }"
+              class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-neutral-100 transition duration-200 ease-out hover:border-emerald-300/40 hover:bg-emerald-300/10 hover:text-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300/50"
+            >
+              Back to history
+            </a>
+          </div>
+
+          <div class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-neutral-950/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-18px_40px_rgba(0,0,0,0.45)] backdrop-blur sm:hidden">
+            <a
+              routerLink="/player/dashboard"
+              [queryParams]="{ tab: 'history' }"
+              class="flex min-h-12 w-full items-center justify-center rounded-2xl border border-emerald-300/35 bg-emerald-300/10 text-base font-semibold text-emerald-100 transition duration-200 ease-out active:scale-[0.98] active:bg-emerald-300/20"
+            >
+              Back to history
+            </a>
           </div>
         </section>
       }
@@ -208,9 +225,8 @@ export class PlayerSessionDetailPage implements OnInit {
     const userId = this.authState.user()?.id ?? null;
     const targetName = this.playerName().trim().toLowerCase();
 
-    return this.session()?.players.find(
-      (player) =>
-        userId ? player.userId === userId : player.name.trim().toLowerCase() === targetName
+    return this.session()?.players.find((player) =>
+      this.playerMatchesLogin(player, userId, targetName)
     );
   });
   protected readonly transactions = computed(() => {
@@ -260,5 +276,17 @@ export class PlayerSessionDetailPage implements OnInit {
     } catch {
       // The store exposes the error state; keep the page render path simple.
     }
+  }
+
+  private playerMatchesLogin(
+    player: SessionPlayer,
+    userId: string | null,
+    targetName: string
+  ): boolean {
+    if (player.userId) {
+      return player.userId === userId;
+    }
+
+    return player.name.trim().toLowerCase() === targetName;
   }
 }
