@@ -667,9 +667,7 @@ interface PlayerActivityEntry {
         flex: 0 0 auto;
         place-items: center;
         border-radius: 999px;
-        border: 1px solid rgb(255 255 255 / 0.08);
-        background: rgb(34 197 94 / 0.16);
-        color: rgb(74 222 128);
+        border: 1px solid transparent;
       }
 
       .activity-icon svg {
@@ -678,18 +676,20 @@ interface PlayerActivityEntry {
       }
 
       .activity-icon-buyin {
-        background: rgb(250 204 21 / 0.14);
-        color: rgb(253 224 71);
+        border-color: #38bdf852;
+        background: #0ea5e929;
+        color: #7dd3fc;
       }
 
       .activity-icon-rebuy {
-        background: rgb(34 197 94 / 0.16);
-        color: rgb(74 222 128);
+        background: #22c55e29;
+        color: #4ade80;
       }
 
       .activity-icon-cashout {
-        background: rgb(245 158 11 / 0.16);
-        color: rgb(251 191 36);
+        border-color: #fbbf2457;
+        background: #f59e0b29;
+        color: #fbbf24;
       }
 
       .activity-copy {
