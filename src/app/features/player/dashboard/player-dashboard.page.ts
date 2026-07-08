@@ -301,7 +301,7 @@ interface PlayerActivityEntry {
       .player-dashboard {
         display: grid;
         gap: 1rem;
-        padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(5.85rem + env(safe-area-inset-bottom, 0px));
         font-family:
           'Aptos Display', Aptos, Inter, ui-sans-serif, system-ui, -apple-system,
           BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -413,7 +413,7 @@ interface PlayerActivityEntry {
         position: fixed;
         z-index: 30;
         right: 0;
-        bottom: 0;
+        bottom: env(safe-area-inset-bottom, 0px);
         left: 0;
         width: 100%;
         border-top: 1px solid rgb(255 255 255 / 0.1);
@@ -421,7 +421,7 @@ interface PlayerActivityEntry {
           linear-gradient(180deg, rgb(3 8 7 / 0.56), rgb(3 8 7 / 0.96)),
           rgb(3 8 7);
         box-shadow: 0 -18px 46px rgb(0 0 0 / 0.42);
-        padding: 0.68rem 0.85rem calc(0.68rem + env(safe-area-inset-bottom, 0px));
+        padding: 0.68rem 0.85rem;
         backdrop-filter: blur(20px);
       }
 
