@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -6,6 +6,7 @@ import { AuthStateService } from '../../core/auth/auth-state.service';
 import {
   displayNameInitials,
   normalizeDisplayName,
+  passwordUpdatedToastMessage,
   validatePasswordChange
 } from './profile.logic';
 
@@ -18,7 +19,9 @@ import {
         <a [routerLink]="backLink()" class="profile-back-link">&larr; Back</a>
 
         <header class="profile-hero">
-          <div class="profile-avatar-large" aria-hidden="true">{{ initials() }}</div>
+          <div class="profile-avatar-large" aria-hidden="true">
+            <span>{{ initials() }}</span>
+          </div>
           <div class="profile-hero-copy">
             <p class="profile-role">{{ roleLabel() }}</p>
             <h1>{{ currentProfile.displayName ?? 'PokerTrack Member' }}</h1>
@@ -52,7 +55,10 @@ import {
             </label>
 
             <button type="submit" class="profile-primary-button" [disabled]="authState.loading()">
-              {{ authState.loading() ? 'Saving...' : 'Save name' }}
+              @if (savingName()) {
+                <span class="profile-button-spinner" aria-hidden="true"></span>
+              }
+              <span>{{ savingName() ? 'Saving' : 'Save name' }}</span>
             </button>
           </form>
 
@@ -80,19 +86,37 @@ import {
               />
             </label>
 
-            <button type="submit" class="profile-primary-button" [disabled]="authState.loading()">
-              {{ authState.loading() ? 'Updating...' : 'Change password' }}
+            <button
+              type="submit"
+              class="profile-primary-button"
+              [disabled]="authState.loading()"
+              [attr.aria-busy]="savingPassword()"
+            >
+              @if (savingPassword()) {
+                <span class="profile-button-spinner" aria-hidden="true"></span>
+              }
+              <span>{{ savingPassword() ? 'Updating' : 'Change password' }}</span>
             </button>
           </form>
         </div>
+
+        @if (passwordToastVisible()) {
+          <div class="profile-toast" role="status" aria-live="polite">
+            {{ passwordUpdatedToastMessage() }}
+          </div>
+        }
       </section>
     }
   `,
   styles: [
     `
       .profile-page {
+        position: relative;
         display: grid;
         gap: 1rem;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          sans-serif;
         animation: profile-page-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
@@ -115,25 +139,51 @@ import {
       .profile-hero {
         display: flex;
         align-items: center;
-        gap: 1rem;
-        padding: 1rem;
+        gap: 1.1rem;
+        padding: 1.05rem;
       }
 
       .profile-avatar-large {
-        display: grid;
-        height: 4.5rem;
-        width: 4.5rem;
+        position: relative;
+        display: flex;
+        height: 4.8rem;
+        width: 4.8rem;
         flex: 0 0 auto;
-        place-items: center;
-        border: 1px solid rgb(52 211 153 / 0.42);
-        border-radius: 1.3rem;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgb(134 239 172 / 0.52);
+        border-radius: 999px;
         background:
-          radial-gradient(circle at 30% 20%, rgb(74 222 128 / 0.34), transparent 42%),
-          linear-gradient(160deg, rgb(16 185 129 / 0.24), rgb(255 255 255 / 0.035));
-        box-shadow: 0 0 28px rgb(16 185 129 / 0.16);
-        color: rgb(220 252 231);
-        font-size: 1.35rem;
-        font-weight: 850;
+          radial-gradient(circle at 50% 50%, rgb(15 23 42 / 0.98) 0 58%, transparent 59%),
+          conic-gradient(
+            from 215deg,
+            rgb(20 184 166 / 0.88),
+            rgb(34 197 94),
+            rgb(190 242 100 / 0.88),
+            rgb(20 184 166 / 0.88)
+          );
+        box-shadow:
+          0 0 0 4px rgb(3 8 7),
+          0 0 34px rgb(34 197 94 / 0.18);
+        color: rgb(236 253 245);
+        font-size: 1.22rem;
+        font-weight: 760;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .profile-avatar-large::after {
+        content: '';
+        position: absolute;
+        inset: 0.58rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: inherit;
+      }
+
+      .profile-avatar-large span {
+        position: relative;
+        z-index: 1;
+        transform: translateX(0.04em);
       }
 
       .profile-hero-copy {
@@ -143,8 +193,10 @@ import {
       .profile-role {
         margin: 0 0 0.35rem;
         color: rgb(52 211 153);
-        font-size: 0.78rem;
-        font-weight: 850;
+        font-size: 0.8rem;
+        font-weight: 760;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
 
       .profile-hero h1,
@@ -156,8 +208,10 @@ import {
       }
 
       .profile-hero h1 {
-        font-size: 1.55rem;
+        font-size: 1.65rem;
+        font-weight: 720;
         line-height: 1.08;
+        text-wrap: balance;
       }
 
       .profile-hero p,
@@ -178,7 +232,8 @@ import {
       }
 
       .profile-panel h2 {
-        font-size: 1.12rem;
+        font-size: 1.16rem;
+        font-weight: 720;
       }
 
       .profile-field {
@@ -189,7 +244,7 @@ import {
       .profile-field span {
         color: rgb(212 212 216);
         font-size: 0.88rem;
-        font-weight: 720;
+        font-weight: 650;
       }
 
       .profile-field input {
@@ -214,6 +269,10 @@ import {
       }
 
       .profile-primary-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
         min-height: 3rem;
         border: 1px solid rgb(34 197 94 / 0.42);
         border-radius: 0.9rem;
@@ -221,7 +280,7 @@ import {
           linear-gradient(180deg, rgb(34 197 94 / 0.98), rgb(22 163 74 / 0.92)),
           rgb(34 197 94);
         color: rgb(3 7 18);
-        font-weight: 820;
+        font-weight: 720;
         transition:
           transform 180ms ease,
           filter 180ms ease,
@@ -238,7 +297,16 @@ import {
 
       .profile-primary-button:disabled {
         cursor: not-allowed;
-        opacity: 0.62;
+        opacity: 0.74;
+      }
+
+      .profile-button-spinner {
+        height: 1rem;
+        width: 1rem;
+        border: 2px solid rgb(3 7 18 / 0.24);
+        border-top-color: rgb(3 7 18 / 0.92);
+        border-radius: 999px;
+        animation: profile-spinner 680ms linear infinite;
       }
 
       .profile-alert {
@@ -260,6 +328,29 @@ import {
         color: rgb(254 202 202);
       }
 
+      .profile-toast {
+        position: fixed;
+        left: 50%;
+        bottom: calc(1rem + env(safe-area-inset-bottom));
+        z-index: 60;
+        width: min(calc(100vw - 2rem), 22rem);
+        transform: translateX(-50%);
+        border: 1px solid rgb(74 222 128 / 0.32);
+        border-radius: 999px;
+        background:
+          linear-gradient(135deg, rgb(20 184 166 / 0.2), rgb(34 197 94 / 0.12)),
+          rgb(3 8 7 / 0.96);
+        box-shadow:
+          0 18px 44px rgb(0 0 0 / 0.34),
+          0 0 28px rgb(34 197 94 / 0.16);
+        color: rgb(220 252 231);
+        font-size: 0.92rem;
+        font-weight: 690;
+        padding: 0.78rem 1rem;
+        text-align: center;
+        animation: profile-toast-lifecycle 2.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
       @media (min-width: 760px) {
         .profile-page {
           gap: 1.25rem;
@@ -277,9 +368,15 @@ import {
       @media (prefers-reduced-motion: reduce) {
         .profile-page,
         .profile-field input,
-        .profile-primary-button {
+        .profile-primary-button,
+        .profile-button-spinner,
+        .profile-toast {
           animation: none;
           transition: none;
+        }
+
+        .profile-toast {
+          opacity: 1;
         }
       }
 
@@ -294,15 +391,44 @@ import {
           transform: translateY(0);
         }
       }
+
+      @keyframes profile-spinner {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes profile-toast-lifecycle {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, 0.55rem) scale(0.98);
+        }
+
+        14%,
+        78% {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1);
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate(-50%, 0.4rem) scale(0.98);
+        }
+      }
     `
   ]
 })
-export class ProfilePage {
+export class ProfilePage implements OnDestroy {
   protected readonly authState = inject(AuthStateService);
   protected readonly profile = this.authState.profile;
   protected readonly statusMessage = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly savingName = signal(false);
+  protected readonly savingPassword = signal(false);
+  protected readonly passwordToastVisible = signal(false);
+  protected readonly passwordUpdatedToastMessage = passwordUpdatedToastMessage;
   protected readonly initials = computed(() => displayNameInitials(this.profile()?.displayName));
+  private passwordToastTimeout: ReturnType<typeof setTimeout> | null = null;
   protected readonly roleLabel = computed(() => {
     const role = this.profile()?.role;
 
@@ -342,6 +468,12 @@ export class ProfilePage {
     this.nameForm.controls.displayName.setValue(this.profile()?.displayName ?? '');
   }
 
+  ngOnDestroy(): void {
+    if (this.passwordToastTimeout) {
+      clearTimeout(this.passwordToastTimeout);
+    }
+  }
+
   protected async saveName(): Promise<void> {
     this.statusMessage.set(null);
     this.errorMessage.set(null);
@@ -349,11 +481,14 @@ export class ProfilePage {
     const displayName = normalizeDisplayName(this.nameForm.controls.displayName.value);
 
     try {
+      this.savingName.set(true);
       await this.authState.updateDisplayName(displayName);
       this.nameForm.controls.displayName.setValue(displayName);
       this.statusMessage.set('Name updated.');
     } catch (error) {
       this.errorMessage.set(error instanceof Error ? error.message : 'Unable to update name.');
+    } finally {
+      this.savingName.set(false);
     }
   }
 
@@ -370,11 +505,29 @@ export class ProfilePage {
     }
 
     try {
+      this.savingPassword.set(true);
       await this.authState.updatePassword(password);
       this.passwordForm.reset({ password: '', confirmPassword: '' });
-      this.statusMessage.set('Password changed.');
+      this.showPasswordToast();
     } catch (error) {
       this.errorMessage.set(error instanceof Error ? error.message : 'Unable to change password.');
+    } finally {
+      this.savingPassword.set(false);
     }
+  }
+
+  private showPasswordToast(): void {
+    if (this.passwordToastTimeout) {
+      clearTimeout(this.passwordToastTimeout);
+    }
+
+    this.passwordToastVisible.set(false);
+
+    requestAnimationFrame(() => {
+      this.passwordToastVisible.set(true);
+      this.passwordToastTimeout = setTimeout(() => {
+        this.passwordToastVisible.set(false);
+      }, 2850);
+    });
   }
 }

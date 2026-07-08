@@ -1,6 +1,7 @@
 import {
   displayNameInitials,
   normalizeDisplayName,
+  passwordUpdatedToastMessage,
   validatePasswordChange
 } from './profile.logic';
 
@@ -22,5 +23,9 @@ describe('profile logic', () => {
     );
     expect(validatePasswordChange('123456', '654321')).toBe('Passwords do not match.');
     expect(validatePasswordChange('123456', '123456')).toBeNull();
+  });
+
+  it('uses direct password update confirmation copy', () => {
+    expect(passwordUpdatedToastMessage()).toBe('Your password has been updated.');
   });
 });

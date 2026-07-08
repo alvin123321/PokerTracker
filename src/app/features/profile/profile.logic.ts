@@ -33,3 +33,7 @@ export function validatePasswordChange(password: string, confirmPassword: string
 
   return null;
 }
+
+export function passwordUpdatedToastMessage(): string {
+  return 'Your password has been updated.';
+}
