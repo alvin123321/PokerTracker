@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import {
+  defaultPokerTableName,
   PokerStoreService,
   PokerSession,
   PokerTable,
@@ -1009,7 +1010,7 @@ export class ActiveSessionPage implements OnDestroy {
     }
 
     const nextNumber = (this.session()?.tables.length ?? 0) + 1;
-    const name = `Table ${nextNumber}`;
+    const name = defaultPokerTableName(nextNumber);
 
     let createdTableId: string | null = null;
     const succeeded = await this.runAction('add-table', async () => {

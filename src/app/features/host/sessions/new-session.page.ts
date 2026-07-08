@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
@@ -29,7 +30,7 @@ import { PokerStoreService } from '../data/poker-store.service';
           id="sessionName"
           formControlName="name"
           class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-emerald-300"
-          placeholder="Friday Night Poker"
+          placeholder="July 15 Game"
         />
 
         <label class="mt-5 block text-sm font-medium text-neutral-200" for="sessionDate">Date</label>
@@ -67,19 +68,38 @@ import { PokerStoreService } from '../data/poker-store.service';
 export class NewSessionPage {
   private readonly store = inject(PokerStoreService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly defaultSessionDate = this.today();
+  private lastGeneratedSessionName = this.defaultSessionName(this.defaultSessionDate);
+
   protected readonly saving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
   protected readonly form = new FormGroup({
-    name: new FormControl('Friday Night Poker', {
+    name: new FormControl(this.lastGeneratedSessionName, {
       nonNullable: true,
       validators: [Validators.required]
     }),
-    sessionDate: new FormControl(this.today(), {
+    sessionDate: new FormControl(this.defaultSessionDate, {
       nonNullable: true,
       validators: [Validators.required]
     })
   });
+
+  constructor() {
+    this.form.controls.sessionDate.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((sessionDate) => {
+        const currentName = this.form.controls.name.value.trim();
+        const nextGeneratedName = this.defaultSessionName(sessionDate);
+
+        if (!currentName || currentName === this.lastGeneratedSessionName) {
+          this.form.controls.name.setValue(nextGeneratedName);
+        }
+
+        this.lastGeneratedSessionName = nextGeneratedName;
+      });
+  }
 
   protected async createSession(): Promise<void> {
     if (this.form.invalid || this.saving()) {
@@ -107,6 +127,17 @@ export class NewSessionPage {
     const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
 
     return offsetDate.toISOString().slice(0, 10);
+  }
+
+  private defaultSessionName(sessionDate: string): string {
+    const [year, month, day] = sessionDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const label = new Intl.DateTimeFormat('en-US', {
+      month: 'long',
+      day: 'numeric'
+    }).format(date);
+
+    return `${label} Game`;
   }
 
   private toMessage(error: unknown): string {

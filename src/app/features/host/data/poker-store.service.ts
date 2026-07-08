@@ -10,6 +10,18 @@ export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
 export type PokerPlayerStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTransactionType = 'BUYIN' | 'REBUY' | 'CASHOUT';
 
+export function defaultPokerTableName(tableNumber: number): string {
+  if (tableNumber === 1) {
+    return 'Main Table';
+  }
+
+  if (tableNumber === 2) {
+    return 'Side Table';
+  }
+
+  return `Table ${Math.max(3, tableNumber)}`;
+}
+
 export interface PokerTransaction {
   id: string;
   sessionId: string;
