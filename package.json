@@ -8,6 +8,7 @@
     "build:prod": "npx -p node@22 -c \"node ./node_modules/@angular/cli/bin/ng build --configuration production\"",
     "test:ci": "npx -p node@22 -c \"node ./node_modules/@angular/cli/bin/ng test --watch=false --browsers=ChromeHeadless\"",
     "vercel-build": "npm run build:prod",
+    "reset-account-password": "node scripts/reset-account-password.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

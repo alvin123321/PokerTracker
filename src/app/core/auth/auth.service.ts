@@ -1,5 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { AuthChangeEvent, Session, SignInWithPasswordCredentials } from '@supabase/supabase-js';
+import {
+  AuthChangeEvent,
+  Session,
+  SignInWithPasswordCredentials,
+  UserAttributes
+} from '@supabase/supabase-js';
 
 import { SupabaseService } from '../supabase/supabase.service';
 
@@ -17,6 +22,10 @@ export class AuthService {
 
   signInWithPassword(credentials: SignInWithPasswordCredentials) {
     return this.supabaseService.requireClient().auth.signInWithPassword(credentials);
+  }
+
+  updateUser(attributes: UserAttributes) {
+    return this.supabaseService.requireClient().auth.updateUser(attributes);
   }
 
   signOut() {

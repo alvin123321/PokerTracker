@@ -598,6 +598,60 @@ app-host-shell main {
   text-shadow: 0 0 20px rgb(16 185 129 / 0.24);
 }
 
+.pokertrack-profile-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 0.5rem;
+  min-width: 0;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.035);
+  color: rgb(229 229 229);
+  padding: 0.28rem;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.pokertrack-profile-chip:hover {
+  border-color: rgb(52 211 153 / 0.42);
+  background: rgb(16 185 129 / 0.08);
+  box-shadow: 0 0 18px rgb(16 185 129 / 0.13);
+  transform: translateY(-1px);
+}
+
+.pokertrack-profile-chip:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.pokertrack-profile-avatar {
+  display: grid;
+  height: 1.95rem;
+  width: 1.95rem;
+  place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 25%, rgb(74 222 128 / 0.36), transparent 42%),
+    linear-gradient(160deg, rgb(16 185 129 / 0.22), rgb(255 255 255 / 0.04));
+  color: rgb(220 252 231);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.pokertrack-profile-name {
+  display: none;
+  max-width: 9rem;
+  overflow: hidden;
+  padding-right: 0.55rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
 .pokertrack-nav-link {
   position: relative;
   isolation: isolate;
@@ -706,6 +760,18 @@ app-host-shell main {
     grid-column: 1;
     grid-row: 1;
     justify-self: center;
+  }
+
+  .pokertrack-profile-chip {
+    grid-column: 1;
+    grid-row: 1;
+    position: absolute;
+    right: 1.25rem;
+    top: 0.95rem;
+  }
+
+  .pokertrack-profile-name {
+    display: inline;
   }
 
   .host-shell-desktop-nav {
