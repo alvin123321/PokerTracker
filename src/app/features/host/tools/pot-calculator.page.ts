@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 
 interface PotPlayerInput {
   id: string;
@@ -17,13 +17,15 @@ interface SidePotResult {
   selector: 'app-pot-calculator-page',
   imports: [CurrencyPipe],
   template: `
-    <section class="pot-calculator-page space-y-5 sm:space-y-6">
-      <div class="pot-calculator-heading flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">Poker tool</p>
-          <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Pot Calculator</h1>
+    <section class="pot-calculator-page space-y-5 sm:space-y-6" [class.pot-calculator-compact]="compact()">
+      @if (!compact()) {
+        <div class="pot-calculator-heading flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">Poker tool</p>
+            <h1 class="mt-2 text-2xl font-semibold text-white sm:text-3xl">Pot Calculator</h1>
+          </div>
         </div>
-      </div>
+      }
 
       <section class="rounded-xl border border-emerald-300/20 bg-emerald-300/[0.035]">
         <div class="border-b border-emerald-300/15 px-4 py-3 sm:px-5">
@@ -121,6 +123,10 @@ interface SidePotResult {
         animation: pot-calculator-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
+      .pot-calculator-compact {
+        animation: none;
+      }
+
       .pot-player-row,
       .pot-result-row {
         animation: pot-calculator-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -157,6 +163,8 @@ interface SidePotResult {
   ]
 })
 export class PotCalculatorPage {
+  readonly compact = input(false);
+
   private nextPlayerNumber = 4;
 
   protected readonly players = signal<PotPlayerInput[]>(this.defaultPlayers());
