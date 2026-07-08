@@ -18,7 +18,7 @@ export function displayNameInitials(displayName: string | null | undefined): str
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-export function validatePasswordChange(password: string, confirmPassword: string): string | null {
+export function validatePasswordChange(password: string): string | null {
   if (!password) {
     return 'Enter a new password.';
   }
@@ -27,13 +27,13 @@ export function validatePasswordChange(password: string, confirmPassword: string
     return 'Password must be at least 6 characters.';
   }
 
-  if (password !== confirmPassword) {
-    return 'Passwords do not match.';
-  }
-
   return null;
 }
 
 export function passwordUpdatedToastMessage(): string {
-  return 'Your password has been updated.';
+  return 'Password is updated.';
+}
+
+export function nameChangedToastMessage(): string {
+  return 'Name is changed.';
 }

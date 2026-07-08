@@ -1,10 +1,17 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
 import { AuthStateService } from '../../core/auth/auth-state.service';
 import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData
+} from '../host/shared/confirmation-dialog.component';
+import {
   displayNameInitials,
+  nameChangedToastMessage,
   normalizeDisplayName,
   passwordUpdatedToastMessage,
   validatePasswordChange
@@ -12,10 +19,23 @@ import {
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [MatDialogModule, ReactiveFormsModule, RouterLink],
   template: `
     @if (profile(); as currentProfile) {
       <section class="profile-page">
+        @if (profileActionLoading()) {
+          <div class="pokertrack-sync-overlay profile-loading-overlay">
+            <div class="profile-loading-card">
+              <div class="deck-shuffle mx-auto mb-4" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <p>{{ profileLoadingMessage() }}</p>
+            </div>
+          </div>
+        }
+
         <a [routerLink]="backLink()" class="profile-back-link">&larr; Back</a>
 
         <header class="profile-hero">
@@ -55,10 +75,7 @@ import {
             </label>
 
             <button type="submit" class="profile-primary-button" [disabled]="authState.loading()">
-              @if (savingName()) {
-                <span class="profile-button-spinner" aria-hidden="true"></span>
-              }
-              <span>{{ savingName() ? 'Saving' : 'Save name' }}</span>
+              <span>Save name</span>
             </button>
           </form>
 
@@ -77,32 +94,20 @@ import {
               />
             </label>
 
-            <label class="profile-field">
-              <span>Confirm password</span>
-              <input
-                type="password"
-                autocomplete="new-password"
-                formControlName="confirmPassword"
-              />
-            </label>
-
             <button
               type="submit"
               class="profile-primary-button"
               [disabled]="authState.loading()"
               [attr.aria-busy]="savingPassword()"
             >
-              @if (savingPassword()) {
-                <span class="profile-button-spinner" aria-hidden="true"></span>
-              }
-              <span>{{ savingPassword() ? 'Updating' : 'Change password' }}</span>
+              <span>Change password</span>
             </button>
           </form>
         </div>
 
-        @if (passwordToastVisible()) {
+        @if (profileToastMessage()) {
           <div class="profile-toast" role="status" aria-live="polite">
-            {{ passwordUpdatedToastMessage() }}
+            {{ profileToastMessage() }}
           </div>
         }
       </section>
@@ -118,6 +123,34 @@ import {
           Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
           sans-serif;
         animation: profile-page-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .profile-loading-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: grid;
+        place-items: center;
+        background: rgb(10 10 10 / 0.52);
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
+      }
+
+      .profile-loading-card {
+        min-width: min(18rem, calc(100vw - 3rem));
+        border: 1px solid rgb(110 231 183 / 0.22);
+        border-radius: 1rem;
+        background: rgb(10 10 10 / 0.92);
+        box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 0.48);
+        padding: 1.25rem 1.5rem;
+        text-align: center;
+      }
+
+      .profile-loading-card p {
+        margin: 0;
+        color: white;
+        font-size: 1rem;
+        font-weight: 700;
       }
 
       .profile-back-link {
@@ -300,15 +333,6 @@ import {
         opacity: 0.74;
       }
 
-      .profile-button-spinner {
-        height: 1rem;
-        width: 1rem;
-        border: 2px solid rgb(3 7 18 / 0.24);
-        border-top-color: rgb(3 7 18 / 0.92);
-        border-radius: 999px;
-        animation: profile-spinner 680ms linear infinite;
-      }
-
       .profile-alert {
         border-radius: 0.9rem;
         padding: 0.85rem 1rem;
@@ -331,12 +355,12 @@ import {
       .profile-toast {
         position: fixed;
         left: 50%;
-        bottom: calc(1rem + env(safe-area-inset-bottom));
-        z-index: 60;
+        top: 50%;
+        z-index: 70;
         width: min(calc(100vw - 2rem), 22rem);
-        transform: translateX(-50%);
+        transform: translate(-50%, -50%);
         border: 1px solid rgb(74 222 128 / 0.32);
-        border-radius: 999px;
+        border-radius: 1rem;
         background:
           linear-gradient(135deg, rgb(20 184 166 / 0.2), rgb(34 197 94 / 0.12)),
           rgb(3 8 7 / 0.96);
@@ -346,9 +370,9 @@ import {
         color: rgb(220 252 231);
         font-size: 0.92rem;
         font-weight: 690;
-        padding: 0.78rem 1rem;
+        padding: 1rem 1.1rem;
         text-align: center;
-        animation: profile-toast-lifecycle 2.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: profile-toast-lifecycle 3.2s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       @media (min-width: 760px) {
@@ -369,7 +393,7 @@ import {
         .profile-page,
         .profile-field input,
         .profile-primary-button,
-        .profile-button-spinner,
+        .profile-loading-overlay,
         .profile-toast {
           animation: none;
           transition: none;
@@ -392,43 +416,41 @@ import {
         }
       }
 
-      @keyframes profile-spinner {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
       @keyframes profile-toast-lifecycle {
         0% {
           opacity: 0;
-          transform: translate(-50%, 0.55rem) scale(0.98);
+          transform: translate(-50%, calc(-50% + 0.55rem)) scale(0.98);
         }
 
         14%,
         78% {
           opacity: 1;
-          transform: translate(-50%, 0) scale(1);
+          transform: translate(-50%, -50%) scale(1);
         }
 
         100% {
           opacity: 0;
-          transform: translate(-50%, 0.4rem) scale(0.98);
+          transform: translate(-50%, calc(-50% + 0.4rem)) scale(0.98);
         }
       }
     `
   ]
 })
 export class ProfilePage implements OnDestroy {
+  private readonly dialog = inject(MatDialog);
   protected readonly authState = inject(AuthStateService);
   protected readonly profile = this.authState.profile;
   protected readonly statusMessage = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly savingName = signal(false);
   protected readonly savingPassword = signal(false);
-  protected readonly passwordToastVisible = signal(false);
-  protected readonly passwordUpdatedToastMessage = passwordUpdatedToastMessage;
+  protected readonly profileToastMessage = signal<string | null>(null);
+  protected readonly profileActionLoading = computed(() => this.savingName() || this.savingPassword());
+  protected readonly profileLoadingMessage = computed(() =>
+    this.savingName() ? 'Saving name...' : 'Updating password...'
+  );
   protected readonly initials = computed(() => displayNameInitials(this.profile()?.displayName));
-  private passwordToastTimeout: ReturnType<typeof setTimeout> | null = null;
+  private profileToastTimeout: ReturnType<typeof setTimeout> | null = null;
   protected readonly roleLabel = computed(() => {
     const role = this.profile()?.role;
 
@@ -457,10 +479,6 @@ export class ProfilePage implements OnDestroy {
     password: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.minLength(6)]
-    }),
-    confirmPassword: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required]
     })
   });
 
@@ -469,8 +487,8 @@ export class ProfilePage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.passwordToastTimeout) {
-      clearTimeout(this.passwordToastTimeout);
+    if (this.profileToastTimeout) {
+      clearTimeout(this.profileToastTimeout);
     }
   }
 
@@ -480,11 +498,27 @@ export class ProfilePage implements OnDestroy {
 
     const displayName = normalizeDisplayName(this.nameForm.controls.displayName.value);
 
+    if (this.nameForm.invalid || !displayName) {
+      this.nameForm.markAllAsTouched();
+      this.errorMessage.set('Display name is required.');
+      return;
+    }
+
+    const confirmed = await this.confirmProfileAction({
+      title: 'Save name?',
+      message: `Change your display name to ${displayName}?`,
+      confirmLabel: 'Save name'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     try {
       this.savingName.set(true);
       await this.authState.updateDisplayName(displayName);
       this.nameForm.controls.displayName.setValue(displayName);
-      this.statusMessage.set('Name updated.');
+      this.showProfileToast(nameChangedToastMessage());
     } catch (error) {
       this.errorMessage.set(error instanceof Error ? error.message : 'Unable to update name.');
     } finally {
@@ -496,19 +530,29 @@ export class ProfilePage implements OnDestroy {
     this.statusMessage.set(null);
     this.errorMessage.set(null);
 
-    const { password, confirmPassword } = this.passwordForm.getRawValue();
-    const validationMessage = validatePasswordChange(password, confirmPassword);
+    const { password } = this.passwordForm.getRawValue();
+    const validationMessage = validatePasswordChange(password);
 
     if (validationMessage) {
       this.errorMessage.set(validationMessage);
       return;
     }
 
+    const confirmed = await this.confirmProfileAction({
+      title: 'Change password?',
+      message: 'You will use the new password the next time you sign in.',
+      confirmLabel: 'Change password'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     try {
       this.savingPassword.set(true);
       await this.authState.updatePassword(password);
-      this.passwordForm.reset({ password: '', confirmPassword: '' });
-      this.showPasswordToast();
+      this.passwordForm.reset({ password: '' });
+      this.showProfileToast(passwordUpdatedToastMessage());
     } catch (error) {
       this.errorMessage.set(error instanceof Error ? error.message : 'Unable to change password.');
     } finally {
@@ -516,18 +560,33 @@ export class ProfilePage implements OnDestroy {
     }
   }
 
-  private showPasswordToast(): void {
-    if (this.passwordToastTimeout) {
-      clearTimeout(this.passwordToastTimeout);
+  private async confirmProfileAction(data: ConfirmationDialogData): Promise<boolean> {
+    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+      ConfirmationDialogComponent,
+      {
+        data: {
+          ...data,
+          tone: 'primary'
+        },
+        panelClass: 'pokertrack-dialog-panel'
+      }
+    );
+
+    return Boolean(await firstValueFrom(dialogRef.afterClosed()));
+  }
+
+  private showProfileToast(message: string): void {
+    if (this.profileToastTimeout) {
+      clearTimeout(this.profileToastTimeout);
     }
 
-    this.passwordToastVisible.set(false);
+    this.profileToastMessage.set(null);
 
     requestAnimationFrame(() => {
-      this.passwordToastVisible.set(true);
-      this.passwordToastTimeout = setTimeout(() => {
-        this.passwordToastVisible.set(false);
-      }, 2850);
+      this.profileToastMessage.set(message);
+      this.profileToastTimeout = setTimeout(() => {
+        this.profileToastMessage.set(null);
+      }, 3250);
     });
   }
 }

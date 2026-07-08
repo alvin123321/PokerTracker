@@ -1,5 +1,6 @@
 import {
   displayNameInitials,
+  nameChangedToastMessage,
   normalizeDisplayName,
   passwordUpdatedToastMessage,
   validatePasswordChange
@@ -17,15 +18,13 @@ describe('profile logic', () => {
   });
 
   it('requires a strong matching new password', () => {
-    expect(validatePasswordChange('', '')).toBe('Enter a new password.');
-    expect(validatePasswordChange('12345', '12345')).toBe(
-      'Password must be at least 6 characters.'
-    );
-    expect(validatePasswordChange('123456', '654321')).toBe('Passwords do not match.');
-    expect(validatePasswordChange('123456', '123456')).toBeNull();
+    expect(validatePasswordChange('')).toBe('Enter a new password.');
+    expect(validatePasswordChange('12345')).toBe('Password must be at least 6 characters.');
+    expect(validatePasswordChange('123456')).toBeNull();
   });
 
-  it('uses direct password update confirmation copy', () => {
-    expect(passwordUpdatedToastMessage()).toBe('Your password has been updated.');
+  it('uses direct profile update confirmation copy', () => {
+    expect(passwordUpdatedToastMessage()).toBe('Password is updated.');
+    expect(nameChangedToastMessage()).toBe('Name is changed.');
   });
 });
