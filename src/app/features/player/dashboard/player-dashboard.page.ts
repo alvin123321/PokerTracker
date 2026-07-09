@@ -1,5 +1,6 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
   LucideArrowDownToLine,
   LucideBanknoteArrowDown,
@@ -10,9 +11,14 @@ import {
   LucideRefreshCcw
 } from '@lucide/angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PotCalculatorPage } from '../../host/tools/pot-calculator.page';
+import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData
+} from '../../host/shared/confirmation-dialog.component';
 import {
   CALL_TIME_LIMIT,
   PokerSession,
@@ -46,6 +52,7 @@ interface PlayerActivityEntry {
   imports: [
     CurrencyPipe,
     DatePipe,
+    MatDialogModule,
     LucideArrowDownToLine,
     LucideBanknoteArrowDown,
     LucideCalculator,
@@ -135,25 +142,43 @@ interface PlayerActivityEntry {
                       <h2>{{ entry.session.name }}</h2>
                     </div>
                     <div class="feature-heading-actions">
+                      <a
+                        [routerLink]="['/player/sessions', entry.session.id]"
+                        class="feature-toggle-label"
+                        (click)="$event.stopPropagation()"
+                      >
+                        Detail
+                      </a>
+                    </div>
+                  </div>
+
+                  @if (activeCall || shouldShowCallTime(entry)) {
+                    <div class="player-call-time-stage" (click)="$event.stopPropagation()">
                       @if (activeCall) {
-                        <div class="call-time-mini-ring" [class.call-time-mini-ring-active]="isMyClock">
-                          <svg viewBox="0 0 44 44" aria-hidden="true">
-                            <circle class="call-time-ring-track" cx="22" cy="22" r="18"></circle>
-                            <circle
-                              class="call-time-ring-progress"
-                              cx="22"
-                              cy="22"
-                              r="18"
-                              pathLength="1"
-                              [attr.stroke-dashoffset]="1 - store.timeCallProgressFor(activeCall)"
-                            ></circle>
-                          </svg>
-                          <span>{{ store.secondsRemainingFor(activeCall) }}</span>
+                        <div class="player-call-time-live">
+                          <div
+                            class="call-time-mini-ring call-time-mini-ring-hero"
+                            [class.call-time-mini-ring-active]="isMyClock"
+                          >
+                            <svg viewBox="0 0 44 44" aria-hidden="true">
+                              <circle class="call-time-ring-track" cx="22" cy="22" r="18"></circle>
+                              <circle
+                                class="call-time-ring-progress"
+                                cx="22"
+                                cy="22"
+                                r="18"
+                                pathLength="1"
+                                [attr.stroke-dashoffset]="1 - store.timeCallProgressFor(activeCall)"
+                              ></circle>
+                            </svg>
+                            <span>{{ store.secondsRemainingFor(activeCall) }}</span>
+                          </div>
+                          <p>{{ isMyClock ? 'Your clock is running' : 'Table clock running' }}</p>
                         </div>
                       } @else if (shouldShowCallTime(entry)) {
                         <button
                           type="button"
-                          class="player-call-time-orb"
+                          class="player-call-time-orb player-call-time-orb-hero"
                           [class.player-call-time-orb-loading]="isRequesting(entry.player.id)"
                           [disabled]="isRequesting(entry.player.id) || !store.canRequestTimeCall(entry.session, entry.player)"
                           aria-label="Call time"
@@ -166,25 +191,9 @@ interface PlayerActivityEntry {
                             [absoluteStrokeWidth]="true"
                             aria-hidden="true"
                           ></svg>
-                          <span>{{ remainingCalls }}/{{ callTimeLimit }}</span>
+                          <strong>{{ remainingCalls }}/{{ callTimeLimit }}</strong>
                         </button>
                       }
-                      <a
-                        [routerLink]="['/player/sessions', entry.session.id]"
-                        class="feature-toggle-label"
-                        (click)="$event.stopPropagation()"
-                      >
-                        Detail
-                      </a>
-                    </div>
-                  </div>
-
-                  @if (activeCall) {
-                    <div
-                      class="player-call-time-status"
-                      [class.player-call-time-status-active]="isMyClock"
-                    >
-                      <span>{{ isMyClock ? 'Your clock is running' : 'Table clock running' }}</span>
                     </div>
                   }
 
@@ -213,7 +222,7 @@ interface PlayerActivityEntry {
                         @if (entry.player.status === 'COMPLETED') {
                           {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                         } @else {
-                          Open
+                          .
                         }
                       </strong>
                     </div>
@@ -337,7 +346,7 @@ interface PlayerActivityEntry {
                         @if (entry.player.status === 'COMPLETED') {
                           {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                         } @else {
-                          Open
+                          .
                         }
                       </strong>
                     </div>
@@ -559,54 +568,6 @@ interface PlayerActivityEntry {
         align-items: center;
         gap: 0.55rem;
         flex: 0 0 auto;
-      }
-
-      .player-call-time-orb {
-        display: inline-grid;
-        min-height: 2.9rem;
-        min-width: 3.35rem;
-        place-items: center;
-        border: 1px solid rgb(34 197 94 / 0.48);
-        border-radius: 1rem;
-        background:
-          linear-gradient(150deg, rgb(34 197 94 / 0.22), rgb(20 184 166 / 0.08)),
-          rgb(255 255 255 / 0.045);
-        color: rgb(220 252 231);
-        box-shadow: 0 0 24px rgb(34 197 94 / 0.16);
-        transition:
-          border-color 180ms ease,
-          box-shadow 180ms ease,
-          transform 180ms ease;
-      }
-
-      .player-call-time-orb:not(:disabled):hover {
-        border-color: rgb(74 222 128 / 0.72);
-        box-shadow: 0 0 30px rgb(34 197 94 / 0.24);
-        transform: translateY(-1px);
-      }
-
-      .player-call-time-orb:active {
-        transform: scale(0.97);
-      }
-
-      .player-call-time-orb:disabled {
-        cursor: not-allowed;
-        opacity: 0.46;
-      }
-
-      .player-call-time-orb svg {
-        height: 1.25rem;
-        width: 1.25rem;
-      }
-
-      .player-call-time-orb span {
-        font-size: 0.72rem;
-        font-weight: 820;
-        line-height: 1;
-      }
-
-      .player-call-time-orb-loading svg {
-        animation: player-clock-spin 760ms linear infinite;
       }
 
       .player-call-time-status,
@@ -975,6 +936,7 @@ interface PlayerActivityEntry {
         .session-tile-stats span {
           font-size: 0.68rem;
         }
+
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -1013,17 +975,13 @@ interface PlayerActivityEntry {
         }
       }
 
-      @keyframes player-clock-spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
     `
   ]
 })
 export class PlayerDashboardPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(MatDialog);
   protected readonly store = inject(PokerStoreService);
   protected readonly callTimeLimit = CALL_TIME_LIMIT;
   protected readonly pendingTimeCallPlayerId = signal<string | null>(null);
@@ -1151,6 +1109,12 @@ export class PlayerDashboardPage implements OnInit {
       return;
     }
 
+    const confirmed = await this.confirmTimeCall(entry);
+
+    if (!confirmed) {
+      return;
+    }
+
     this.actionError.set(null);
     this.pendingTimeCallPlayerId.set(entry.player.id);
 
@@ -1162,6 +1126,25 @@ export class PlayerDashboardPage implements OnInit {
     } finally {
       this.pendingTimeCallPlayerId.set(null);
     }
+  }
+
+  private async confirmTimeCall(entry: PlayerSessionEntry): Promise<boolean> {
+    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+      ConfirmationDialogComponent,
+      {
+        data: {
+          title: 'Call time?',
+          message: `Start a 30 second clock for ${entry.session.name}.`,
+          confirmLabel: 'Start Clock',
+          cancelLabel: 'Cancel',
+          tone: 'primary',
+          details: [`You have ${this.store.remainingTimeCallsForPlayer(entry.session, entry.player.id)} of ${this.callTimeLimit} calls left.`]
+        },
+        panelClass: 'pokertrack-dialog-panel'
+      }
+    );
+
+    return Boolean(await firstValueFrom(dialogRef.afterClosed()));
   }
 
   protected buyInRows(entry: PlayerSessionEntry): PokerTransaction[] {
