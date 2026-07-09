@@ -2223,6 +2223,110 @@ h3 {
   transform: none;
 }
 
+.dashboard-player-row {
+  width: 100%;
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 3.5%), transparent 46%),
+    rgb(2 6 23 / 28%);
+  transition:
+    background 180ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.dashboard-player-row:hover {
+  background:
+    linear-gradient(90deg, rgb(52 211 153 / 8%), transparent 48%),
+    rgb(2 6 23 / 34%);
+}
+
+.dashboard-player-row-open {
+  border-color: rgb(52 211 153 / 0.28);
+  background:
+    linear-gradient(90deg, rgb(52 211 153 / 11%), transparent 52%),
+    rgb(2 6 23 / 38%);
+  box-shadow: inset 0 0 0 1px rgb(52 211 153 / 0.12);
+}
+
+.dashboard-player-timeline {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    grid-template-rows 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms ease,
+    visibility 0ms linear 280ms;
+}
+
+.dashboard-player-timeline-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    grid-template-rows 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms ease;
+}
+
+.dashboard-player-timeline-inner {
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid rgb(52 211 153 / 0.14);
+  padding: 0.75rem;
+}
+
+.dashboard-player-timeline:not(.dashboard-player-timeline-open) .dashboard-player-timeline-inner {
+  border-width: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.dashboard-timeline-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 0.55rem;
+  background: rgb(255 255 255 / 0.035);
+  padding: 0.65rem 0.75rem;
+}
+
+.dashboard-timeline-item-buyin {
+  border-color: rgb(52 211 153 / 0.22);
+  background:
+    linear-gradient(135deg, rgb(16 185 129 / 0.12), transparent 62%),
+    rgb(255 255 255 / 0.035);
+  color: rgb(110 231 183);
+}
+
+.dashboard-timeline-item-rebuy {
+  border-color: rgb(56 189 248 / 0.24);
+  background:
+    linear-gradient(135deg, rgb(14 165 233 / 0.13), transparent 62%),
+    rgb(255 255 255 / 0.035);
+  color: rgb(125 211 252);
+}
+
+.action-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 9999px;
+  animation: action-spinner 700ms linear infinite;
+}
+
+@keyframes action-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .dashboard-rebuy-glow {
   animation: dashboard-rebuy-glow 1.5s ease-in-out both;
 }

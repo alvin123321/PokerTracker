@@ -5,6 +5,8 @@ import { Subject, Subscription, auditTime } from 'rxjs';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { SupabaseService } from '../../../core/supabase/supabase.service';
 import { environment } from '../../../../environments/environment';
+import { removeSessionPlayerFromSession } from './session-player-removal.logic';
+import { removeSessionTableFromSession } from './session-table-removal.logic';
 
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
@@ -196,6 +198,11 @@ interface DeleteRegisteredPlayerResponse {
   ok: boolean;
 }
 
+interface ResetRegisteredPlayerPasswordResponse {
+  ok: boolean;
+  temporaryPassword: string;
+}
+
 interface LocalSharedState {
   sessions?: PokerSession[];
   registeredPlayers?: RegisteredPlayerOption[];
@@ -207,6 +214,7 @@ const legacyLocalStorageKey = 'pokertrack.mockPokerStore';
 const localRegisteredPlayersStorageKey = 'pokertrack.localRegisteredPlayers.sessionTables.v2';
 const localDeletedRegisteredPlayersStorageKey =
   'pokertrack.localDeletedRegisteredPlayers.sessionTables.v2';
+const developmentPasswordOverridesStorageKey = 'pokertrack.developmentPasswordOverrides.v1';
 const developmentProductionSnapshotAppliedAtStorageKey =
   'pokertrack.productionSnapshot.appliedAt.sessionTables.v2';
 const developmentProductionSnapshotPath = '/snapshots/production-sync.json';
@@ -501,6 +509,23 @@ export class PokerStoreService implements OnDestroy {
     }));
 
     return table;
+  }
+
+  async deleteTable(sessionId: string, tableId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService.requireClient().rpc('delete_session_table', {
+        p_table_id: tableId
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    this.updateSession(sessionId, (session) => removeSessionTableFromSession(session, tableId));
   }
 
   async listRegisteredPlayers(): Promise<RegisteredPlayerOption[]> {
@@ -873,6 +898,25 @@ export class PokerStoreService implements OnDestroy {
     this.updateSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
   }
 
+  async removeSessionPlayer(sessionId: string, sessionPlayerId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService.requireClient().rpc('remove_session_player', {
+        p_session_player_id: sessionPlayerId
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    this.updateSession(sessionId, (session) =>
+      removeSessionPlayerFromSession(session, sessionPlayerId)
+    );
+  }
+
   totalsFor(session: PokerSession | undefined): SessionTotals {
     const players = session?.players ?? [];
 
@@ -1018,6 +1062,31 @@ export class PokerStoreService implements OnDestroy {
     }
 
     await this.refreshHostSessions();
+  }
+
+  async resetRegisteredPlayerPassword(userId: string): Promise<string> {
+    if (!this.shouldUseSupabase()) {
+      this.saveDevelopmentPasswordOverride(userId, '123456');
+      return '123456';
+    }
+
+    const { data, error } = await this.supabaseService
+      .requireClient()
+      .functions.invoke<ResetRegisteredPlayerPasswordResponse>('reset-registered-player-password', {
+        body: {
+          userId
+        }
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.ok) {
+      throw new Error('Unable to reset player password.');
+    }
+
+    return data.temporaryPassword;
   }
 
   async setRegisteredPlayerRole(userId: string, role: 'MANAGER' | 'PLAYER'): Promise<void> {
@@ -1647,7 +1716,14 @@ export class PokerStoreService implements OnDestroy {
       this.queueRealtimeRefresh();
     };
 
-    for (const table of ['sessions', 'players', 'session_players', 'transactions', 'time_calls']) {
+    for (const table of [
+      'sessions',
+      'session_tables',
+      'players',
+      'session_players',
+      'transactions',
+      'time_calls'
+    ]) {
       channel.on(
         'postgres_changes',
         {
@@ -2203,6 +2279,26 @@ export class PokerStoreService implements OnDestroy {
 
     localStorage.setItem(localDeletedRegisteredPlayersStorageKey, JSON.stringify(ids));
     void this.saveLocalSharedState({ deletedRegisteredPlayerIds: ids });
+  }
+
+  private saveDevelopmentPasswordOverride(profileId: string, password: string): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    const rawOverrides = localStorage.getItem(developmentPasswordOverridesStorageKey);
+    let overrides: Record<string, string> = {};
+
+    if (rawOverrides) {
+      try {
+        overrides = JSON.parse(rawOverrides) as Record<string, string>;
+      } catch {
+        overrides = {};
+      }
+    }
+
+    overrides[profileId] = password;
+    localStorage.setItem(developmentPasswordOverridesStorageKey, JSON.stringify(overrides));
   }
 
   private shouldUseLocalSharedData(): boolean {
