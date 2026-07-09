@@ -170,6 +170,12 @@ interface TimeCallRow {
   resolved_by: string | null;
 }
 
+interface TimeCallRealtimePayload {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new?: Partial<TimeCallRow>;
+  old?: Partial<TimeCallRow>;
+}
+
 interface RegisteredPlayerRow {
   id: string;
   username?: string | null;
@@ -233,6 +239,7 @@ export class PokerStoreService implements OnDestroy {
   private realtimeChannel: RealtimeChannel | null = null;
   private realtimeUserKey: string | null = null;
   private loadedSupabaseUserId: string | null = null;
+  private serverTimeOffsetMs = 0;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
   private localSharedPollTimer: ReturnType<typeof setInterval> | null = null;
   private readonly expiringTimeCallIds = new Set<string>();
@@ -325,6 +332,8 @@ export class PokerStoreService implements OnDestroy {
     this.setError(null);
 
     try {
+      await this.syncServerClock();
+
       const client = this.supabaseService.requireClient();
       const { data: sessionRows, error: sessionsError } = await client
         .from('sessions')
@@ -1037,7 +1046,7 @@ export class PokerStoreService implements OnDestroy {
         throw new Error(this.timeCallSetupMessage());
       }
 
-      const { error } = await this.supabaseService.requireClient().rpc('request_time_call', {
+      const { data, error } = await this.supabaseService.requireClient().rpc('request_time_call', {
         p_session_id: sessionId,
         p_session_player_id: sessionPlayerId
       });
@@ -1051,7 +1060,14 @@ export class PokerStoreService implements OnDestroy {
         throw error;
       }
 
-      await this.refreshHostSessions();
+      await this.syncServerClock();
+
+      if (data) {
+        this.upsertTimeCall(this.mapTimeCall(data as TimeCallRow));
+      } else {
+        await this.refreshHostSessions();
+      }
+
       return;
     }
 
@@ -1112,7 +1128,7 @@ export class PokerStoreService implements OnDestroy {
         throw new Error(this.timeCallSetupMessage());
       }
 
-      const { error } = await this.supabaseService.requireClient().rpc('resolve_time_call', {
+      const { data, error } = await this.supabaseService.requireClient().rpc('resolve_time_call', {
         p_time_call_id: timeCallId,
         p_status: status
       });
@@ -1126,11 +1142,17 @@ export class PokerStoreService implements OnDestroy {
         throw error;
       }
 
-      await this.refreshHostSessions();
+      if (data) {
+        this.upsertTimeCall(this.mapTimeCall(data as TimeCallRow));
+      } else {
+        await this.refreshHostSessions();
+      }
+
       return;
     }
 
-    const resolvedAt = new Date().toISOString();
+    const now = this.serverNowMs();
+    const resolvedAt = new Date(now).toISOString();
     const resolvedBy = this.authState.user()?.id ?? null;
 
     this.updateSessions((sessions) =>
@@ -1141,7 +1163,7 @@ export class PokerStoreService implements OnDestroy {
             return timeCall;
           }
 
-          if (status === 'EXPIRED' && new Date(timeCall.expiresAt).getTime() > Date.now()) {
+          if (status === 'EXPIRED' && new Date(timeCall.expiresAt).getTime() > now) {
             return timeCall;
           }
 
@@ -1197,7 +1219,7 @@ export class PokerStoreService implements OnDestroy {
   }
 
   secondsRemainingFor(timeCall: TimeCall | undefined): number {
-    const now = this.nowSignal();
+    const now = this.serverNowMs();
 
     if (!timeCall || timeCall.status !== 'RUNNING') {
       return 0;
@@ -1207,7 +1229,7 @@ export class PokerStoreService implements OnDestroy {
   }
 
   timeCallProgressFor(timeCall: TimeCall | undefined): number {
-    const now = this.nowSignal();
+    const now = this.serverNowMs();
 
     if (!timeCall) {
       return 0;
@@ -1229,6 +1251,120 @@ export class PokerStoreService implements OnDestroy {
     return (
       session.players.find((player) => player.id === timeCall.sessionPlayerId)?.name ??
       'Unknown player'
+    );
+  }
+
+  private serverNowMs(): number {
+    return this.nowSignal() + this.serverTimeOffsetMs;
+  }
+
+  private async syncServerClock(): Promise<void> {
+    if (!this.shouldUseSupabase()) {
+      this.serverTimeOffsetMs = 0;
+      return;
+    }
+
+    try {
+      const requestedAt = Date.now();
+      const { data, error } = await this.supabaseService.requireClient().rpc('get_server_now');
+      const receivedAt = Date.now();
+
+      if (error || !data) {
+        return;
+      }
+
+      const serverNow = new Date(data as string).getTime();
+      const estimatedLocalNow = requestedAt + (receivedAt - requestedAt) / 2;
+      this.serverTimeOffsetMs = serverNow - estimatedLocalNow;
+    } catch {
+      // Existing deployments may not have the helper RPC yet; local time remains the fallback.
+    }
+  }
+
+  private upsertTimeCall(timeCall: TimeCall): boolean {
+    let didUpdate = false;
+
+    this.updateSessions((sessions) =>
+      sessions.map((session) => {
+        if (session.id !== timeCall.sessionId) {
+          return session;
+        }
+
+        didUpdate = true;
+        const timeCalls = session.timeCalls ?? [];
+        const existingIndex = timeCalls.findIndex((item) => item.id === timeCall.id);
+        const nextTimeCalls =
+          existingIndex >= 0
+            ? timeCalls.map((item) => (item.id === timeCall.id ? timeCall : item))
+            : [...timeCalls, timeCall];
+
+        return {
+          ...session,
+          timeCalls: nextTimeCalls
+        };
+      })
+    );
+
+    return didUpdate;
+  }
+
+  private removeTimeCall(timeCallId: string): boolean {
+    let didUpdate = false;
+
+    this.updateSessions((sessions) =>
+      sessions.map((session) => {
+        const nextTimeCalls = (session.timeCalls ?? []).filter((timeCall) => timeCall.id !== timeCallId);
+
+        if (nextTimeCalls.length === (session.timeCalls ?? []).length) {
+          return session;
+        }
+
+        didUpdate = true;
+        return {
+          ...session,
+          timeCalls: nextTimeCalls
+        };
+      })
+    );
+
+    return didUpdate;
+  }
+
+  private handleTimeCallRealtimePayload(payload: TimeCallRealtimePayload): void {
+    void this.syncServerClock();
+
+    if (payload.eventType === 'DELETE') {
+      const id = payload.old?.id;
+
+      if (!id || !this.removeTimeCall(id)) {
+        this.queueRealtimeRefresh();
+      }
+
+      return;
+    }
+
+    const record = payload.new;
+
+    if (!this.isTimeCallRow(record)) {
+      this.queueRealtimeRefresh();
+      return;
+    }
+
+    if (!this.upsertTimeCall(this.mapTimeCall(record))) {
+      this.queueRealtimeRefresh();
+    }
+  }
+
+  private isTimeCallRow(row: Partial<TimeCallRow> | undefined): row is TimeCallRow {
+    return Boolean(
+      row?.id &&
+        row.session_id &&
+        row.session_player_id &&
+        row.status &&
+        row.started_at &&
+        row.expires_at &&
+        Object.prototype.hasOwnProperty.call(row, 'resolved_at') &&
+        Object.prototype.hasOwnProperty.call(row, 'resolved_by')
     );
   }
 
@@ -1351,7 +1487,7 @@ export class PokerStoreService implements OnDestroy {
       .filter(
         (timeCall) =>
           timeCall.status === 'RUNNING' &&
-          new Date(timeCall.expiresAt).getTime() <= Date.now()
+          new Date(timeCall.expiresAt).getTime() <= this.serverNowMs()
       );
 
     if (dueCalls.length === 0) {
@@ -1381,8 +1517,8 @@ export class PokerStoreService implements OnDestroy {
   }
 
   private expireTimeCalls(timeCalls: TimeCall[]): TimeCall[] {
-    const now = Date.now();
-    const resolvedAt = new Date().toISOString();
+    const now = this.serverNowMs();
+    const resolvedAt = new Date(now).toISOString();
 
     return timeCalls.map((timeCall) =>
       timeCall.status === 'RUNNING' && new Date(timeCall.expiresAt).getTime() <= now
@@ -1500,7 +1636,16 @@ export class PokerStoreService implements OnDestroy {
 
     const client = this.supabaseService.requireClient();
     const channel = client.channel(`pokertrack-session-sync:${userKey}`);
-    const handleChange = () => this.queueRealtimeRefresh();
+    const handleChange = (payload: unknown) => {
+      const table = (payload as { table?: string }).table;
+
+      if (table === 'time_calls') {
+        this.handleTimeCallRealtimePayload(payload as TimeCallRealtimePayload);
+        return;
+      }
+
+      this.queueRealtimeRefresh();
+    };
 
     for (const table of ['sessions', 'players', 'session_players', 'transactions', 'time_calls']) {
       channel.on(
