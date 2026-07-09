@@ -321,12 +321,12 @@ import {
               >
                 <div class="lg:hidden">
                   <div
-                    class="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2"
+                    class="grid cursor-pointer grid-cols-2 items-center gap-2 px-3 py-2.5"
                     (click)="togglePlayer(player.id)"
                   >
                     <button
                       type="button"
-                      class="min-w-0 text-left"
+                      class="col-span-2 min-w-0 rounded-lg bg-white/[0.025] px-3 py-2 text-left transition hover:bg-white/[0.045]"
                       (click)="$event.stopPropagation(); togglePlayer(player.id)"
                     >
                       <span class="flex min-w-0 items-center gap-2">
@@ -353,7 +353,7 @@ import {
                       <button
                         type="button"
                         [disabled]="isBusy()"
-                        class="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-400 px-3 py-1.5 text-xs font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                        class="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md bg-emerald-400 px-3 py-2 text-xs font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
                         (click)="$event.stopPropagation(); openRebuyDialog(player)"
                       >
                         @if (isPending(playerAction('rebuy', player.id))) {
@@ -367,7 +367,8 @@ import {
                     <button
                       type="button"
                       [disabled]="isBusy()"
-                      class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                      class="inline-flex min-h-10 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                      [class.col-span-2]="player.status === 'COMPLETED'"
                       (click)="$event.stopPropagation(); openCashOutDialog(player)"
                     >
                       @if (isPending(playerAction('cash-out', player.id))) {
@@ -500,14 +501,34 @@ import {
                       </div>
                     }
 
-                    <div class="mb-3 flex items-center justify-between gap-3">
-                      <p class="text-sm font-semibold text-white">Buy-in timeline</p>
-                      <p class="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-xs font-semibold text-emerald-100 lg:hidden">
-                        Total re-buys {{ activeBuyInCount(player.id) }}
-                      </p>
-                      <p class="hidden text-xs text-neutral-500 lg:block">
-                        {{ canDelete() ? 'Host can edit or delete buy-ins' : 'Managers can edit buy-ins' }}
-                      </p>
+                    <div class="player-detail-toolbar mb-3">
+                      <div class="min-w-0">
+                        <p class="text-sm font-semibold text-white">Buy-in timeline</p>
+                        <p class="hidden text-xs text-neutral-500 lg:block">
+                          {{ canDelete() ? 'Host can edit or delete buy-ins' : 'Managers can edit buy-ins' }}
+                        </p>
+                      </div>
+                      <div class="player-detail-toolbar-actions">
+                        <p class="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-xs font-semibold text-emerald-100 lg:hidden">
+                          Total re-buys {{ activeBuyInCount(player.id) }}
+                        </p>
+                        @if (canRemovePlayer(currentSession, player)) {
+                          <button
+                            type="button"
+                            [disabled]="isBusy()"
+                            class="session-player-remove-button"
+                            (click)="confirmRemoveSessionPlayer(player)"
+                          >
+                            @if (isPending(playerAction('remove-player', player.id))) {
+                              <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
+                              Removing...
+                            } @else {
+                              <span class="trash-icon" aria-hidden="true"></span>
+                              Remove player
+                            }
+                          </button>
+                        }
+                      </div>
                     </div>
 
                     <div class="space-y-2">
@@ -794,6 +815,70 @@ import {
         padding-bottom: 0;
       }
 
+      .player-detail-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .player-detail-toolbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+      }
+
+      .session-player-remove-button {
+        display: inline-flex;
+        min-height: 2.25rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        border: 1px solid rgb(248 113 113 / 0.32);
+        border-radius: 0.5rem;
+        background: rgb(248 113 113 / 0.08);
+        padding: 0.45rem 0.7rem;
+        color: rgb(254 202 202);
+        font-size: 0.78rem;
+        font-weight: 700;
+        transition:
+          background 160ms ease,
+          border-color 160ms ease,
+          color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .session-player-remove-button:hover {
+        border-color: rgb(248 113 113 / 0.62);
+        background: rgb(248 113 113 / 0.13);
+        color: rgb(254 226 226);
+        transform: translateY(-1px);
+      }
+
+      .session-player-remove-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+        transform: none;
+      }
+
+      @media (max-width: 640px) {
+        .player-detail-toolbar {
+          align-items: flex-start;
+        }
+
+        .player-detail-toolbar-actions {
+          max-width: 52%;
+        }
+
+        .session-player-remove-button {
+          min-height: 2rem;
+          padding: 0.4rem 0.6rem;
+          font-size: 0.72rem;
+        }
+      }
+
       .transaction-row-buyin {
         border-color: rgb(52 211 153 / 0.24);
         background:
@@ -965,6 +1050,10 @@ export class ActiveSessionPage implements OnDestroy {
 
     if (action?.startsWith('cash-out:')) {
       return 'Recording cash out...';
+    }
+
+    if (action?.startsWith('remove-player:')) {
+      return 'Removing player...';
     }
 
     if (action === 'delete-session') {
@@ -1235,6 +1324,10 @@ export class ActiveSessionPage implements OnDestroy {
     return session.status === 'ACTIVE' && session.players.every((player) => player.status === 'COMPLETED');
   }
 
+  protected canRemovePlayer(session: PokerSession, _player: SessionPlayer): boolean {
+    return session.status === 'ACTIVE' && this.canDelete();
+  }
+
   protected isPending(action: string): boolean {
     return this.pendingAction() === action;
   }
@@ -1341,6 +1434,48 @@ export class ActiveSessionPage implements OnDestroy {
 
       if (deleted) {
         await this.router.navigateByUrl(this.backLink, { replaceUrl: true });
+      }
+    });
+  }
+
+  protected confirmRemoveSessionPlayer(player: SessionPlayer): void {
+    if (this.isBusy() || !this.canDelete()) {
+      return;
+    }
+
+    const currentSession = this.session();
+
+    if (!currentSession || currentSession.status !== 'ACTIVE') {
+      return;
+    }
+
+    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+      ConfirmationDialogComponent,
+      {
+        autoFocus: false,
+        data: {
+          title: 'Remove player?',
+          message:
+            'This removes the player from this session and removes their buy-in, rebuy, cash-out, and call-time records from this session.',
+          confirmLabel: 'Remove player',
+          tone: 'danger',
+          details: [player.name]
+        },
+        panelClass: 'pokertrack-dialog-panel'
+      }
+    );
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      const removed = await this.runAction(this.playerAction('remove-player', player.id), () =>
+        this.store.removeSessionPlayer(this.sessionId, player.id)
+      );
+
+      if (removed) {
+        this.expandedPlayerId.set(null);
       }
     });
   }

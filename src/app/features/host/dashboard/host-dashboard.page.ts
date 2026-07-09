@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 
 import {
   defaultPokerTableName,
+  PokerTransaction,
   PokerSession,
   PokerStoreService,
   SessionPlayer
@@ -25,11 +26,6 @@ import {
   RebuyDialogData,
   RebuyDialogResult
 } from '../transactions/rebuy-dialog.component';
-import {
-  ConfirmationDialogComponent,
-  ConfirmationDialogData
-} from '../shared/confirmation-dialog.component';
-
 interface TableNameDialogData {
   tableName: string;
 }
@@ -281,7 +277,7 @@ class TableNameDialogComponent {
                     @if (isPending(tableAction('add-table', session.id))) {
                       Creating...
                     } @else {
-                      Add Table
+                      <span class="dashboard-add-table-label">Add Table</span>
                     }
                   </button>
                 </div>
@@ -391,7 +387,7 @@ class TableNameDialogComponent {
                               >
                                 <div class="min-h-0">
                                   <div
-                                    class="border-t p-3 opacity-0 transition-opacity duration-300 ease-in-out sm:p-4"
+                                    class="border-t p-0 opacity-0 transition-opacity duration-300 ease-in-out"
                                     [class.border-cyan-300/20]="tableAccent(table.tableNumber) === 'cyan'"
                                     [class.bg-cyan-300/[0.035]]="tableAccent(table.tableNumber) === 'cyan'"
                                     [class.border-amber-300/20]="tableAccent(table.tableNumber) === 'amber'"
@@ -404,9 +400,19 @@ class TableNameDialogComponent {
                                   >
                                     @for (player of store.playersForTable(session, table.id); track player.id) {
                                       <div
-                                        class="dashboard-player-row grid gap-3 border-b border-white/10 p-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                                        class="dashboard-player-row border-b border-white/10 last:border-b-0"
+                                        [class.dashboard-player-row-open]="isDashboardPlayerExpanded(player.id)"
                                         [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
                                       >
+                                        <div
+                                          class="grid cursor-pointer gap-3 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                                          role="button"
+                                          tabindex="0"
+                                          [attr.aria-expanded]="isDashboardPlayerExpanded(player.id)"
+                                          (click)="toggleDashboardPlayer(player.id)"
+                                          (keydown.enter)="toggleDashboardPlayer(player.id)"
+                                          (keydown.space)="$event.preventDefault(); toggleDashboardPlayer(player.id)"
+                                        >
                                         <div class="min-w-0">
                                           <div class="flex flex-wrap items-center gap-2">
                                             <p class="truncate font-semibold text-white">{{ player.name }}</p>
@@ -421,11 +427,15 @@ class TableNameDialogComponent {
                                             }
                                           </div>
                                           <p class="mt-1 hidden text-xs text-neutral-500 md:block">
-                                            Joined {{ player.joinedAt | date: 'shortTime' }}
+                                            Tap to view buy-in timeline
                                           </p>
                                         </div>
 
-                                        <div class="grid grid-cols-[1fr_1fr_auto] gap-2 text-center text-sm md:grid-cols-[8rem_7rem_7rem_2.75rem] md:min-w-[26rem]">
+                                        <div
+                                          class="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-[8rem_7rem_7rem] md:min-w-[22rem]"
+                                          (keydown.enter)="$event.stopPropagation()"
+                                          (keydown.space)="$event.stopPropagation()"
+                                        >
                                           <span class="hidden rounded-lg bg-white/[0.04] px-3 py-2 md:col-span-1 md:block">
                                             <span class="block text-xs text-neutral-500">Buy-in</span>
                                             <span
@@ -440,7 +450,7 @@ class TableNameDialogComponent {
                                               type="button"
                                               [disabled]="isBusy()"
                                               class="dashboard-player-action"
-                                              (click)="openRebuyDialog(session.id, player)"
+                                              (click)="$event.stopPropagation(); openRebuyDialog(session.id, player)"
                                             >
                                               @if (isPending(playerAction('rebuy', player.id))) {
                                                 Saving...
@@ -452,7 +462,7 @@ class TableNameDialogComponent {
                                               type="button"
                                               [disabled]="isBusy()"
                                               class="dashboard-player-action dashboard-player-action-cashout"
-                                              (click)="openCashOutDialog(session.id, player)"
+                                              (click)="$event.stopPropagation(); openCashOutDialog(session.id, player)"
                                             >
                                               @if (isPending(playerAction('cash-out', player.id))) {
                                                 Saving...
@@ -471,24 +481,46 @@ class TableNameDialogComponent {
                                               Cashout
                                             </span>
                                           }
-                                          <button
-                                            type="button"
-                                            [disabled]="isBusy()"
-                                            class="dashboard-player-remove"
-                                            aria-label="Remove player"
-                                            title="Remove player"
-                                            (click)="confirmRemoveSessionPlayer(session.id, player)"
-                                          >
-                                            @if (isPending(playerAction('remove-player', player.id))) {
-                                              <span class="action-spinner" aria-hidden="true"></span>
+                                        </div>
+                                        </div>
+
+                                        <div
+                                          class="dashboard-player-timeline"
+                                          [class.dashboard-player-timeline-open]="isDashboardPlayerExpanded(player.id)"
+                                          [attr.aria-hidden]="!isDashboardPlayerExpanded(player.id)"
+                                        >
+                                          <div class="dashboard-player-timeline-inner">
+                                            <div class="mb-2 flex items-center justify-between gap-3">
+                                              <span class="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">Buy-in timeline</span>
+                                              <span class="text-xs text-neutral-500">{{ dashboardPlayerBuyInTransactions(session, player.id).length }} records</span>
+                                            </div>
+
+                                            @if (dashboardPlayerBuyInTransactions(session, player.id).length === 0) {
+                                              <div class="rounded-lg border border-dashed border-white/10 bg-black/15 p-3 text-sm text-neutral-500">
+                                                No buy-ins recorded.
+                                              </div>
                                             } @else {
-                                              <span class="trash-icon" aria-hidden="true"></span>
+                                              <div class="grid gap-2 sm:grid-cols-2">
+                                                @for (transaction of dashboardPlayerBuyInTransactions(session, player.id); track transaction.id) {
+                                                  <div
+                                                    class="dashboard-timeline-item"
+                                                    [class.dashboard-timeline-item-buyin]="transaction.type === 'BUYIN'"
+                                                    [class.dashboard-timeline-item-rebuy]="transaction.type === 'REBUY'"
+                                                  >
+                                                    <span class="text-xs font-semibold uppercase">{{ transaction.type }}</span>
+                                                    <span class="text-sm text-neutral-400">{{ transaction.createdAt | date: 'shortTime' }}</span>
+                                                    <span class="text-right text-base font-semibold text-white">
+                                                      {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                                                    </span>
+                                                  </div>
+                                                }
+                                              </div>
                                             }
-                                          </button>
+                                          </div>
                                         </div>
                                       </div>
                                     } @empty {
-                                      <div class="rounded-lg border border-dashed border-white/10 p-4 text-center text-sm text-neutral-500">
+                                      <div class="m-3 rounded-lg border border-dashed border-white/10 p-4 text-center text-sm text-neutral-500 sm:m-4">
                                         No players at this table yet.
                                       </div>
                                     }
@@ -915,6 +947,14 @@ class TableNameDialogComponent {
         transform: none;
       }
 
+      .dashboard-add-table-label {
+        font-family: 'Orbitron', 'Rajdhani', 'Inter', system-ui, sans-serif;
+        font-size: 0.92rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
       .table-add-user-icon {
         display: block;
         width: 1.55rem;
@@ -1098,6 +1138,7 @@ export class HostDashboardPage implements OnDestroy {
   protected readonly actionError = signal<string | null>(null);
   protected readonly expandedSessionId = signal<string | null | undefined>(undefined);
   protected readonly expandedTableId = signal<string | null | undefined>(undefined);
+  protected readonly expandedDashboardPlayerId = signal<string | null>(null);
   protected readonly recentRebuyPlayerId = signal<string | null>(null);
   protected readonly recentRebuySessionId = signal<string | null>(null);
   private rebuyAnimationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1142,6 +1183,25 @@ export class HostDashboardPage implements OnDestroy {
     const isCurrentlyOpen = expandedTableId === tableId || isDefaultOpen;
 
     this.expandedTableId.set(isCurrentlyOpen ? null : tableId);
+  }
+
+  protected toggleDashboardPlayer(playerId: string): void {
+    this.expandedDashboardPlayerId.update((currentPlayerId) =>
+      currentPlayerId === playerId ? null : playerId
+    );
+  }
+
+  protected isDashboardPlayerExpanded(playerId: string): boolean {
+    return this.expandedDashboardPlayerId() === playerId;
+  }
+
+  protected dashboardPlayerBuyInTransactions(
+    session: PokerSession,
+    playerId: string
+  ): PokerTransaction[] {
+    return this.store.buyInTransactionsForPlayer(session, playerId).filter(
+      (transaction) => !transaction.deletedAt
+    );
   }
 
   protected tableAccent(tableNumber: number): 'cyan' | 'amber' | 'fuchsia' | 'emerald' {
@@ -1281,38 +1341,6 @@ export class HostDashboardPage implements OnDestroy {
     });
   }
 
-  protected confirmRemoveSessionPlayer(sessionId: string, player: SessionPlayer): void {
-    if (this.isBusy()) {
-      return;
-    }
-
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
-      ConfirmationDialogComponent,
-      {
-        autoFocus: false,
-        data: {
-          title: 'Remove player?',
-          message:
-            'This removes the player from this session and removes their buy-in, rebuy, cash-out, and call-time records from this session.',
-          confirmLabel: 'Remove player',
-          tone: 'danger',
-          details: [player.name]
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
-
-    dialogRef.afterClosed().subscribe(async (confirmed) => {
-      if (!confirmed) {
-        return;
-      }
-
-      await this.runAction(this.playerAction('remove-player', player.id), () =>
-        this.store.removeSessionPlayer(sessionId, player.id)
-      );
-    });
-  }
-
   protected isBusy(): boolean {
     return Boolean(this.pendingAction() || this.store.loading());
   }
@@ -1338,10 +1366,6 @@ export class HostDashboardPage implements OnDestroy {
 
     if (action?.startsWith('cash-out:')) {
       return 'Recording cash out...';
-    }
-
-    if (action?.startsWith('remove-player:')) {
-      return 'Removing player...';
     }
 
     return 'Saving changes...';
