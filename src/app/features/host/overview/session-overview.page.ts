@@ -1,7 +1,12 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 
-import { PokerStoreService, ResolvedTimeCallStatus, TimeCall } from '../data/poker-store.service';
+import {
+  CALL_TIME_DURATION_SECONDS,
+  PokerStoreService,
+  ResolvedTimeCallStatus,
+  TimeCall
+} from '../data/poker-store.service';
 
 @Component({
   selector: 'app-session-overview-page',
@@ -73,7 +78,7 @@ import { PokerStoreService, ResolvedTimeCallStatus, TimeCall } from '../data/pok
                       <span class="call-time-ring-sweep"></span>
                     </div>
                     <div class="call-time-ring-face">
-                      <strong>{{ activeCall ? store.secondsRemainingFor(activeCall) : 30 }}</strong>
+                      <strong>{{ activeCall ? store.secondsRemainingFor(activeCall) : callTimeDuration }}</strong>
                       <span>seconds</span>
                     </div>
                   </div>
@@ -155,6 +160,7 @@ import { PokerStoreService, ResolvedTimeCallStatus, TimeCall } from '../data/pok
 })
 export class SessionOverviewPage implements OnInit {
   protected readonly store = inject(PokerStoreService);
+  protected readonly callTimeDuration = CALL_TIME_DURATION_SECONDS;
   protected readonly resolvingTimeCallId = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
 

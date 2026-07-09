@@ -14,7 +14,7 @@ export type TimeCallStatus = 'RUNNING' | 'FINISHED' | 'EXPIRED' | 'CANCELLED';
 export type ResolvedTimeCallStatus = Exclude<TimeCallStatus, 'RUNNING'>;
 
 export const CALL_TIME_LIMIT = 3;
-export const CALL_TIME_DURATION_SECONDS = 30;
+export const CALL_TIME_DURATION_SECONDS = 60;
 
 export function defaultPokerTableName(tableNumber: number): string {
   if (tableNumber === 1) {

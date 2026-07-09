@@ -21,6 +21,7 @@ import {
 } from '../../host/shared/confirmation-dialog.component';
 import {
   CALL_TIME_LIMIT,
+  CALL_TIME_DURATION_SECONDS,
   PokerSession,
   PokerStoreService,
   SessionPlayer,
@@ -1134,7 +1135,7 @@ export class PlayerDashboardPage implements OnInit {
       {
         data: {
           title: 'Call time?',
-          message: `Start a 30 second clock for ${entry.session.name}.`,
+          message: `Start a ${CALL_TIME_DURATION_SECONDS} second clock for ${entry.session.name}.`,
           confirmLabel: 'Start Clock',
           cancelLabel: 'Cancel',
           tone: 'primary',
