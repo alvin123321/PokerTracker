@@ -1437,7 +1437,8 @@ export class ActiveSessionPage implements OnDestroy {
       closedAt: null,
       tables: [] as PokerTable[],
       players: [] as SessionPlayer[],
-      transactions: [] as PokerTransaction[]
+      transactions: [] as PokerTransaction[],
+      timeCalls: []
     };
   }
 
