@@ -1197,17 +1197,17 @@ export class PokerStoreService implements OnDestroy {
   }
 
   secondsRemainingFor(timeCall: TimeCall | undefined): number {
-    this.nowSignal();
+    const now = this.nowSignal();
 
     if (!timeCall || timeCall.status !== 'RUNNING') {
       return 0;
     }
 
-    return Math.max(0, Math.ceil((new Date(timeCall.expiresAt).getTime() - Date.now()) / 1000));
+    return Math.max(0, Math.ceil((new Date(timeCall.expiresAt).getTime() - now) / 1000));
   }
 
   timeCallProgressFor(timeCall: TimeCall | undefined): number {
-    this.nowSignal();
+    const now = this.nowSignal();
 
     if (!timeCall) {
       return 0;
@@ -1216,7 +1216,7 @@ export class PokerStoreService implements OnDestroy {
     const startedAt = new Date(timeCall.startedAt).getTime();
     const expiresAt = new Date(timeCall.expiresAt).getTime();
     const duration = Math.max(1, expiresAt - startedAt);
-    const remaining = Math.max(0, expiresAt - Date.now());
+    const remaining = Math.max(0, expiresAt - now);
 
     return Math.max(0, Math.min(1, remaining / duration));
   }

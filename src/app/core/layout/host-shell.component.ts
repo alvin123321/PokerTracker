@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
+  LucideAlarmClock,
   LucideCalculator,
   LucideHistory,
   LucideHouse,
@@ -19,6 +20,7 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
 @Component({
   selector: 'app-host-shell',
   imports: [
+    LucideAlarmClock,
     LucideCalculator,
     LucideHistory,
     LucideHouse,
@@ -131,6 +133,21 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
             aria-hidden="true"
           ></svg>
           <span class="sr-only">Dashboard</span>
+        </a>
+        <a
+          routerLink="/host/session-overview"
+          routerLinkActive="host-mobile-tab-active"
+          class="host-mobile-tab"
+          aria-label="Clock"
+        >
+          <svg
+            lucideAlarmClock
+            class="pokertrack-nav-icon"
+            [strokeWidth]="3"
+            [absoluteStrokeWidth]="true"
+            aria-hidden="true"
+          ></svg>
+          <span class="sr-only">Clock</span>
         </a>
         <a
           routerLink="/host/pot-calculator"

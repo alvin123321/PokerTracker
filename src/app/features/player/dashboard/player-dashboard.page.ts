@@ -150,7 +150,7 @@ interface PlayerActivityEntry {
                           </svg>
                           <span>{{ store.secondsRemainingFor(activeCall) }}</span>
                         </div>
-                      } @else {
+                      } @else if (shouldShowCallTime(entry)) {
                         <button
                           type="button"
                           class="player-call-time-orb"
@@ -1100,6 +1100,16 @@ export class PlayerDashboardPage implements OnInit {
 
   protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
+  }
+
+  protected shouldShowCallTime(entry: PlayerSessionEntry): boolean {
+    const playerTable = entry.session.tables.find((table) => table.id === entry.player.tableId);
+
+    return (
+      entry.session.status === 'ACTIVE' &&
+      entry.player.status === 'ACTIVE' &&
+      (!playerTable || playerTable.status === 'ACTIVE')
+    );
   }
 
   private playerMatchesLogin(player: SessionPlayer, userId: string | null, targetName: string): boolean {

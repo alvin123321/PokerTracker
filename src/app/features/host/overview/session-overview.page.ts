@@ -82,10 +82,6 @@ import { PokerStoreService, ResolvedTimeCallStatus, TimeCall } from '../data/pok
                     <div class="session-overview-clock-copy">
                       <p>Clock is live</p>
                       <strong>Time Called</strong>
-                      <span>
-                        Calls left
-                        {{ store.remainingTimeCallsForPlayer(session, activeCall.sessionPlayerId) }} / 3
-                      </span>
                     </div>
 
                     <div class="session-overview-controls">
@@ -129,7 +125,6 @@ import { PokerStoreService, ResolvedTimeCallStatus, TimeCall } from '../data/pok
                         </span>
                         <div class="min-w-0">
                           <p class="truncate">{{ player.name }}</p>
-                          <span>Calls {{ store.remainingTimeCallsForPlayer(session, player.id) }} / 3</span>
                         </div>
                         <strong
                           [class.text-emerald-300]="player.status === 'ACTIVE'"
