@@ -72,51 +72,70 @@ interface PlayerLedgerRow {
                 </p>
               </div>
 
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="member-action-menu-wrap">
                 <button
                   type="button"
-                  [disabled]="passwordResettingPlayerId() === player.id || isDeletingAnyPlayer()"
-                  class="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-lg border border-sky-300/30 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  (click)="confirmResetPassword(player)"
+                  [disabled]="isAnyPlayerActionPending(player)"
+                  aria-label="Member actions"
+                  title="Member actions"
+                  class="member-action-trigger"
+                  (click)="toggleMemberActionMenu(player.id)"
                 >
-                  @if (passwordResettingPlayerId() === player.id) {
+                  @if (isAnyPlayerActionPending(player)) {
                     <span class="action-spinner" aria-hidden="true"></span>
-                    Resetting...
                   } @else {
-                    Reset Password
+                    <span aria-hidden="true">...</span>
                   }
                 </button>
-                <button
-                  type="button"
-                  [disabled]="roleUpdatingPlayerId() === player.id || isDeletingAnyPlayer()"
-                  class="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  (click)="toggleManagerRole(player)"
-                >
-                  @if (roleUpdatingPlayerId() === player.id) {
-                    <span class="action-spinner" aria-hidden="true"></span>
-                    Saving...
-                  } @else if (player.role === 'MANAGER') {
-                    Make Player
-                  } @else {
-                    Make Manager
-                  }
-                </button>
-                <button
-                  type="button"
-                  [disabled]="isDeletingAnyPlayer()"
-                  aria-label="Delete player"
-                  title="Delete player"
-                  class="pokertrack-icon-button"
-                  (click)="confirmDeletePlayer(player)"
-                >
-                  @if (isDeletingPlayer(player.id)) {
-                    <span class="action-spinner" aria-hidden="true"></span>
-                    <span class="sr-only">Deleting player</span>
-                  } @else {
-                    <span class="trash-icon" aria-hidden="true"></span>
-                    <span class="sr-only">Delete player</span>
-                  }
-                </button>
+
+                @if (isMemberActionMenuOpen(player.id)) {
+                  <div class="member-action-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      [disabled]="roleUpdatingPlayerId() === player.id || isDeletingAnyPlayer()"
+                      class="member-action-menu-item"
+                      (click)="toggleManagerRole(player)"
+                    >
+                      @if (roleUpdatingPlayerId() === player.id) {
+                        <span class="action-spinner" aria-hidden="true"></span>
+                        Saving...
+                      } @else if (player.role === 'MANAGER') {
+                        Make Player
+                      } @else {
+                        Make Manager
+                      }
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      [disabled]="passwordResettingPlayerId() === player.id || isDeletingAnyPlayer()"
+                      class="member-action-menu-item member-action-menu-item-sky"
+                      (click)="confirmResetPassword(player)"
+                    >
+                      @if (passwordResettingPlayerId() === player.id) {
+                        <span class="action-spinner" aria-hidden="true"></span>
+                        Resetting...
+                      } @else {
+                        Reset Password
+                      }
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      [disabled]="isDeletingAnyPlayer()"
+                      class="member-action-menu-item member-action-menu-item-danger"
+                      (click)="confirmDeletePlayer(player)"
+                    >
+                      @if (isDeletingPlayer(player.id)) {
+                        <span class="action-spinner" aria-hidden="true"></span>
+                        Deleting...
+                      } @else {
+                        Delete
+                      }
+                    </button>
+                  </div>
+                }
               </div>
             </div>
           </div>
@@ -311,6 +330,104 @@ interface PlayerLedgerRow {
         animation: member-view-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
+      .member-action-menu-wrap {
+        position: relative;
+        display: inline-flex;
+        justify-content: flex-end;
+      }
+
+      .member-action-trigger {
+        display: inline-flex;
+        width: 2.75rem;
+        height: 2.75rem;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 0.7rem;
+        background: rgba(10, 10, 10, 0.38);
+        color: rgb(229, 229, 229);
+        font-size: 1.15rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease,
+          color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .member-action-trigger:hover {
+        border-color: rgba(110, 231, 183, 0.48);
+        background: rgba(16, 185, 129, 0.1);
+        color: rgb(209, 250, 229);
+        transform: translateY(-1px);
+      }
+
+      .member-action-trigger:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+        transform: none;
+      }
+
+      .member-action-menu {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        z-index: 30;
+        display: grid;
+        min-width: 12.5rem;
+        gap: 0.35rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 0.75rem;
+        background: rgb(10, 10, 10);
+        padding: 0.45rem;
+        box-shadow: 0 1.25rem 2.5rem rgba(0, 0, 0, 0.38);
+        animation: member-menu-in 160ms ease-out both;
+      }
+
+      .member-action-menu-item {
+        display: inline-flex;
+        min-height: 2.55rem;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.55rem;
+        border-radius: 0.55rem;
+        padding: 0.65rem 0.75rem;
+        color: rgb(209, 250, 229);
+        font-size: 0.86rem;
+        font-weight: 700;
+        text-align: left;
+        transition:
+          background 150ms ease,
+          color 150ms ease;
+      }
+
+      .member-action-menu-item:hover {
+        background: rgba(16, 185, 129, 0.12);
+        color: white;
+      }
+
+      .member-action-menu-item:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .member-action-menu-item-sky {
+        color: rgb(186, 230, 253);
+      }
+
+      .member-action-menu-item-sky:hover {
+        background: rgba(14, 165, 233, 0.12);
+      }
+
+      .member-action-menu-item-danger {
+        color: rgb(254, 202, 202);
+      }
+
+      .member-action-menu-item-danger:hover {
+        background: rgba(248, 113, 113, 0.12);
+      }
+
       .member-ledger-panel {
         display: grid;
         grid-template-rows: 0fr;
@@ -366,6 +483,18 @@ interface PlayerLedgerRow {
         }
       }
 
+      @keyframes member-menu-in {
+        from {
+          opacity: 0;
+          transform: translateY(-0.25rem) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
       @keyframes action-spinner {
         to {
           transform: rotate(360deg);
@@ -384,6 +513,7 @@ export class PlayersAdminPage implements OnInit {
   protected readonly deletingPlayerId = signal<string | null>(null);
   protected readonly roleUpdatingPlayerId = signal<string | null>(null);
   protected readonly passwordResettingPlayerId = signal<string | null>(null);
+  protected readonly openMemberActionMenuId = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly successMessage = signal<string | null>(null);
   protected readonly expandedLedgerRowKey = signal<string | null | undefined>(undefined);
@@ -450,6 +580,8 @@ export class PlayersAdminPage implements OnInit {
       return;
     }
 
+    this.openMemberActionMenuId.set(null);
+
     const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
       ConfirmationDialogComponent,
       {
@@ -491,6 +623,8 @@ export class PlayersAdminPage implements OnInit {
       return;
     }
 
+    this.openMemberActionMenuId.set(null);
+
     const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
       ConfirmationDialogComponent,
       {
@@ -531,6 +665,8 @@ export class PlayersAdminPage implements OnInit {
       return;
     }
 
+    this.openMemberActionMenuId.set(null);
+
     const nextRole = player.role === 'MANAGER' ? 'PLAYER' : 'MANAGER';
     this.roleUpdatingPlayerId.set(player.id);
     this.errorMessage.set(null);
@@ -547,14 +683,34 @@ export class PlayersAdminPage implements OnInit {
 
   protected selectPlayer(playerId: string): void {
     this.expandedLedgerRowKey.set(undefined);
+    this.openMemberActionMenuId.set(null);
     this.selectedPlayerId.set(playerId);
     this.scrollToPageTop();
   }
 
   protected showPlayerList(): void {
     this.expandedLedgerRowKey.set(undefined);
+    this.openMemberActionMenuId.set(null);
     this.selectedPlayerId.set(null);
     this.scrollToPageTop();
+  }
+
+  protected toggleMemberActionMenu(playerId: string): void {
+    this.openMemberActionMenuId.update((currentPlayerId) =>
+      currentPlayerId === playerId ? null : playerId
+    );
+  }
+
+  protected isMemberActionMenuOpen(playerId: string): boolean {
+    return this.openMemberActionMenuId() === playerId;
+  }
+
+  protected isAnyPlayerActionPending(player: RegisteredPlayerOption): boolean {
+    return (
+      this.roleUpdatingPlayerId() === player.id ||
+      this.passwordResettingPlayerId() === player.id ||
+      this.isDeletingPlayer(player.id)
+    );
   }
 
   protected ledgerRowKey(row: PlayerLedgerRow): string {

@@ -405,7 +405,7 @@ class TableNameDialogComponent {
                                         [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
                                       >
                                         <div
-                                          class="grid cursor-pointer gap-3 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                                          class="grid cursor-pointer gap-3 px-3 py-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
                                           role="button"
                                           tabindex="0"
                                           [attr.aria-expanded]="isDashboardPlayerExpanded(player.id)"

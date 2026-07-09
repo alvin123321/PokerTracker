@@ -326,7 +326,8 @@ import {
                   >
                     <button
                       type="button"
-                      class="col-span-2 min-w-0 rounded-lg bg-white/[0.025] px-3 py-2 text-left transition hover:bg-white/[0.045]"
+                      class="min-w-0 rounded-lg bg-white/[0.025] px-3 py-2 text-left transition hover:bg-white/[0.045]"
+                      [class.col-span-2]="!canRemovePlayer(currentSession, player)"
                       (click)="$event.stopPropagation(); togglePlayer(player.id)"
                     >
                       <span class="flex min-w-0 items-center gap-2">
@@ -348,6 +349,23 @@ import {
                         }
                       </span>
                     </button>
+
+                    @if (canRemovePlayer(currentSession, player)) {
+                      <button
+                        type="button"
+                        [disabled]="isBusy()"
+                        aria-label="Remove player"
+                        title="Remove player"
+                        class="session-player-remove-icon-button"
+                        (click)="$event.stopPropagation(); confirmRemoveSessionPlayer(player)"
+                      >
+                        @if (isPending(playerAction('remove-player', player.id))) {
+                          <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
+                        } @else {
+                          <span class="trash-icon" aria-hidden="true"></span>
+                        }
+                      </button>
+                    }
 
                     @if (player.status !== 'COMPLETED') {
                       <button
@@ -442,6 +460,22 @@ import {
                   </div>
 
                   <div class="flex justify-end gap-2">
+                    @if (canRemovePlayer(currentSession, player)) {
+                      <button
+                        type="button"
+                        [disabled]="isBusy()"
+                        aria-label="Remove player"
+                        title="Remove player"
+                        class="session-player-remove-icon-button"
+                        (click)="$event.stopPropagation(); confirmRemoveSessionPlayer(player)"
+                      >
+                        @if (isPending(playerAction('remove-player', player.id))) {
+                          <span class="action-spinner" aria-hidden="true"></span>
+                        } @else {
+                          <span class="trash-icon" aria-hidden="true"></span>
+                        }
+                      </button>
+                    }
                     @if (player.status !== 'COMPLETED') {
                       <button
                         type="button"
@@ -512,22 +546,6 @@ import {
                         <p class="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-xs font-semibold text-emerald-100 lg:hidden">
                           Total re-buys {{ activeBuyInCount(player.id) }}
                         </p>
-                        @if (canRemovePlayer(currentSession, player)) {
-                          <button
-                            type="button"
-                            [disabled]="isBusy()"
-                            class="session-player-remove-button"
-                            (click)="confirmRemoveSessionPlayer(player)"
-                          >
-                            @if (isPending(playerAction('remove-player', player.id))) {
-                              <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
-                              Removing...
-                            } @else {
-                              <span class="trash-icon" aria-hidden="true"></span>
-                              Remove player
-                            }
-                          </button>
-                        }
                       </div>
                     </div>
 
@@ -828,6 +846,36 @@ import {
         align-items: center;
         justify-content: flex-end;
         gap: 0.5rem;
+      }
+
+      .session-player-remove-icon-button {
+        display: inline-grid;
+        width: 2.5rem;
+        min-width: 2.5rem;
+        height: 2.5rem;
+        place-items: center;
+        border: 1px solid rgb(248 113 113 / 0.32);
+        border-radius: 0.5rem;
+        background: rgb(248 113 113 / 0.08);
+        color: rgb(254 202 202);
+        transition:
+          background 160ms ease,
+          border-color 160ms ease,
+          color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .session-player-remove-icon-button:hover {
+        border-color: rgb(248 113 113 / 0.62);
+        background: rgb(248 113 113 / 0.13);
+        color: rgb(254 226 226);
+        transform: translateY(-1px);
+      }
+
+      .session-player-remove-icon-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+        transform: none;
       }
 
       .session-player-remove-button {

@@ -2278,6 +2278,12 @@ h3 {
   padding: 0.75rem;
 }
 
+.dashboard-player-timeline:not(.dashboard-player-timeline-open) .dashboard-player-timeline-inner {
+  border-width: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .dashboard-timeline-item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
