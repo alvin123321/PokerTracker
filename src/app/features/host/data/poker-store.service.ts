@@ -7,6 +7,11 @@ import { SupabaseService } from '../../../core/supabase/supabase.service';
 import { environment } from '../../../../environments/environment';
 import { removeSessionPlayerFromSession } from './session-player-removal.logic';
 import { removeSessionTableFromSession } from './session-table-removal.logic';
+import {
+  localPlayerSlug as buildLocalPlayerSlug,
+  usernameFromDisplayName as buildUsernameFromDisplayName
+} from './username.logic';
+import { shouldReconnectRealtimeChannel } from './realtime.logic';
 
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
@@ -250,6 +255,7 @@ export class PokerStoreService implements OnDestroy {
   private serverTimeOffsetMs = 0;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
   private localSharedPollTimer: ReturnType<typeof setInterval> | null = null;
+  private realtimeReconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly expiringTimeCallIds = new Set<string>();
 
   readonly sessions = this.sessionsSignal.asReadonly();
@@ -318,6 +324,11 @@ export class PokerStoreService implements OnDestroy {
     if (this.localSharedPollTimer) {
       clearInterval(this.localSharedPollTimer);
       this.localSharedPollTimer = null;
+    }
+
+    if (this.realtimeReconnectTimer) {
+      clearTimeout(this.realtimeReconnectTimer);
+      this.realtimeReconnectTimer = null;
     }
   }
 
@@ -1738,6 +1749,11 @@ export class PokerStoreService implements OnDestroy {
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         this.queueRealtimeRefresh();
+        return;
+      }
+
+      if (shouldReconnectRealtimeChannel(status)) {
+        this.scheduleRealtimeReconnect();
       }
     });
 
@@ -1746,12 +1762,33 @@ export class PokerStoreService implements OnDestroy {
   }
 
   private teardownRealtimeChannel(): void {
+    if (this.realtimeReconnectTimer) {
+      clearTimeout(this.realtimeReconnectTimer);
+      this.realtimeReconnectTimer = null;
+    }
+
     if (this.realtimeChannel) {
       void this.supabaseService.client?.removeChannel(this.realtimeChannel);
     }
 
     this.realtimeChannel = null;
     this.realtimeUserKey = null;
+  }
+
+  private scheduleRealtimeReconnect(): void {
+    if (this.realtimeReconnectTimer || !this.shouldUseSupabase()) {
+      return;
+    }
+
+    this.realtimeReconnectTimer = setTimeout(() => {
+      this.realtimeReconnectTimer = null;
+      const user = this.authState.user();
+      const role = this.authState.role();
+
+      this.teardownRealtimeChannel();
+      this.setupRealtimeChannel(user?.id ?? null, role);
+      void this.refreshSessions();
+    }, 1000);
   }
 
   private queueRealtimeRefresh(): void {
@@ -1851,25 +1888,11 @@ export class PokerStoreService implements OnDestroy {
   }
 
   private localPlayerSlug(name: string): string {
-    const normalized = name
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 24);
-
-    return normalized.length >= 3 ? normalized : 'player';
+    return buildLocalPlayerSlug(name);
   }
 
   private usernameFromDisplayName(displayName: string): string {
-    const normalized = displayName
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 24);
-
-    return normalized.length >= 3 ? normalized : `player-${Date.now().toString(36)}`;
+    return buildUsernameFromDisplayName(displayName);
   }
 
   private titleCaseName(name: string): string {

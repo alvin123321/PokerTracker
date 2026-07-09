@@ -26,7 +26,7 @@ interface AuthAdminUserResponse {
 }
 
 const defaultPassword = '123456';
-const usernamePattern = /^[a-z0-9][a-z0-9_-]{2,31}$/;
+const usernamePattern = /^[a-z0-9][a-z0-9_-]{1,31}$/;
 const displayNameMaxLength = 80;
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,7 +51,7 @@ const usernameFromDisplayName = (displayName: string) => {
     .replace(/^-+|-+$/g, '')
     .slice(0, 24);
 
-  return baseUsername.length >= 3 ? baseUsername : `player-${crypto.randomUUID().slice(0, 8)}`;
+  return baseUsername.length >= 2 ? baseUsername : `player-${crypto.randomUUID().slice(0, 8)}`;
 };
 const usernameWithSuffix = (username: string, suffix: string) => {
   const maxBaseLength = 32 - suffix.length - 1;
@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     return json(
       {
         error:
-          'Player login must be 3-32 characters and use only letters, numbers, underscore, or hyphen.'
+          'Player login must be 2-32 characters and use only letters, numbers, underscore, or hyphen.'
       },
       400
     );

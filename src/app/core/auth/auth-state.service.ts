@@ -418,6 +418,10 @@ export class AuthStateService {
     this.listenerRegistered = true;
 
     this.authService.onAuthStateChange((_event, session) => {
+      if (session?.access_token) {
+        void this.supabaseService.client?.realtime.setAuth(session.access_token);
+      }
+
       void this.applySession(session);
     });
   }

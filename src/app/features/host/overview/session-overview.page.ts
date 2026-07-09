@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 
 import {
   CALL_TIME_DURATION_SECONDS,
@@ -7,6 +7,7 @@ import {
   ResolvedTimeCallStatus,
   TimeCall
 } from '../data/poker-store.service';
+import { sessionOverviewRefreshIntervalMs } from '../data/realtime.logic';
 
 @Component({
   selector: 'app-session-overview-page',
@@ -158,13 +159,37 @@ import {
     </section>
   `
 })
-export class SessionOverviewPage implements OnInit {
+export class SessionOverviewPage implements OnInit, OnDestroy {
   protected readonly store = inject(PokerStoreService);
   protected readonly callTimeDuration = CALL_TIME_DURATION_SECONDS;
   protected readonly resolvingTimeCallId = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
+  private overviewRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
   async ngOnInit(): Promise<void> {
+    this.startOverviewRefresh();
+
+    await this.refreshOverviewSessions();
+  }
+
+  ngOnDestroy(): void {
+    if (this.overviewRefreshTimer) {
+      clearInterval(this.overviewRefreshTimer);
+      this.overviewRefreshTimer = null;
+    }
+  }
+
+  private startOverviewRefresh(): void {
+    if (typeof window === 'undefined' || this.overviewRefreshTimer) {
+      return;
+    }
+
+    this.overviewRefreshTimer = window.setInterval(() => {
+      void this.refreshOverviewSessions();
+    }, sessionOverviewRefreshIntervalMs);
+  }
+
+  private async refreshOverviewSessions(): Promise<void> {
     try {
       await this.store.refreshSessions();
     } catch {

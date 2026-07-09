@@ -817,7 +817,7 @@ export class PlayersAdminPage implements OnInit {
       .replace(/^-+|-+$/g, '')
       .slice(0, 24);
 
-    return `local-player-${normalized.length >= 3 ? normalized : 'player'}`;
+    return `local-player-${normalized.length >= 2 ? normalized : 'player'}`;
   }
 
   private toMessage(error: unknown): string {
