@@ -124,7 +124,7 @@ import {
                 type="button"
                 [disabled]="isBusy() || !canCloseSession(currentSession)"
                 [title]="canCloseSession(currentSession) ? 'Close session' : 'Cash out all players before closing'"
-                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                class="session-action-button session-close-button inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
                 (click)="closeSession()"
               >
                 @if (isPending('close-session')) {
@@ -141,7 +141,7 @@ import {
                 [disabled]="isBusy()"
                 aria-label="Delete session"
                 title="Delete session"
-                class="pokertrack-icon-button"
+                class="pokertrack-icon-button session-delete-button"
                 (click)="deleteSession()"
               >
                 @if (isPending('delete-session')) {
@@ -215,10 +215,26 @@ import {
               @for (table of currentSession.tables; track table.id) {
                 @let tableTotals = store.totalsForTable(currentSession, table.id);
                 <article
-                  class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] transition"
+                  class="relative overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] transition"
                   [class.border-emerald-300]="isTableExpanded(table.id)"
                   [class.bg-emerald-300/10]="isTableExpanded(table.id)"
                 >
+                @if (canDelete() && currentSession.status === 'ACTIVE') {
+                  <button
+                    type="button"
+                    [disabled]="isBusy()"
+                    aria-label="Delete table"
+                    title="Delete table"
+                    class="table-delete-button"
+                    (click)="confirmDeleteTable(table); $event.stopPropagation()"
+                  >
+                    @if (isPending(tableAction('delete-table', table.id))) {
+                      <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
+                    } @else {
+                      <span class="trash-icon" aria-hidden="true"></span>
+                    }
+                  </button>
+                }
                 <button
                   type="button"
                   class="w-full p-4 text-left"
@@ -232,7 +248,7 @@ import {
                         Table {{ table.tableNumber }} · {{ table.status }}
                       </span>
                     </span>
-                    <span class="rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-neutral-200">
+                    <span class="mr-12 rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-neutral-200">
                       {{ tableTotals.totalPlayers }}/9 Seats
                     </span>
                   </span>
@@ -285,10 +301,10 @@ import {
                           <span class="text-right">Actions</span>
                         </div>
 
-                        @for (player of playersForTable(currentSession, table.id); track player.id) {
+                        @for (player of playersForTable(currentSession, table.id); track player.id; let playerIndex = $index) {
                           <ng-container
                             [ngTemplateOutlet]="playerRow"
-                            [ngTemplateOutletContext]="{ $implicit: player }"
+                            [ngTemplateOutletContext]="{ $implicit: player, index: playerIndex }"
                           ></ng-container>
                         }
                       </div>
@@ -313,15 +329,19 @@ import {
           }
         </section>
 
-        <ng-template #playerRow let-player>
+        <ng-template #playerRow let-player let-playerIndex="index">
               <div
                 class="player-row border-b border-white/5 transition last:border-b-0 hover:bg-white/[0.035]"
+                [class.player-row-accent-cyan]="playerAccent(playerIndex) === 'cyan'"
+                [class.player-row-accent-amber]="playerAccent(playerIndex) === 'amber'"
+                [class.player-row-accent-fuchsia]="playerAccent(playerIndex) === 'fuchsia'"
+                [class.player-row-accent-emerald]="playerAccent(playerIndex) === 'emerald'"
                 [class.opacity-70]="player.status === 'COMPLETED'"
                 [class.player-row-rebuy-glow]="recentRebuyPlayerId() === player.id"
               >
                 <div class="lg:hidden">
                   <div
-                    class="grid cursor-pointer grid-cols-2 items-center gap-2 px-3 py-2.5"
+                    class="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5"
                     (click)="togglePlayer(player.id)"
                   >
                     <button
@@ -367,35 +387,37 @@ import {
                       </button>
                     }
 
-                    @if (player.status !== 'COMPLETED') {
+                    <div class="col-span-2 grid grid-cols-2 gap-2">
+                      @if (player.status !== 'COMPLETED') {
+                        <button
+                          type="button"
+                          [disabled]="isBusy()"
+                          class="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md bg-emerald-400 px-3 py-2 text-xs font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                          (click)="$event.stopPropagation(); openRebuyDialog(player)"
+                        >
+                          @if (isPending(playerAction('rebuy', player.id))) {
+                            <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
+                            Saving
+                          } @else {
+                            Rebuy
+                          }
+                        </button>
+                      }
                       <button
                         type="button"
                         [disabled]="isBusy()"
-                        class="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md bg-emerald-400 px-3 py-2 text-xs font-bold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
-                        (click)="$event.stopPropagation(); openRebuyDialog(player)"
+                        class="inline-flex min-h-10 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                        [class.col-span-2]="player.status === 'COMPLETED'"
+                        (click)="$event.stopPropagation(); openCashOutDialog(player)"
                       >
-                        @if (isPending(playerAction('rebuy', player.id))) {
+                        @if (isPending(playerAction('cash-out', player.id))) {
                           <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
                           Saving
                         } @else {
-                          Rebuy
+                          {{ player.status === 'COMPLETED' ? 'Edit Cash Out' : 'Cash Out' }}
                         }
                       </button>
-                    }
-                    <button
-                      type="button"
-                      [disabled]="isBusy()"
-                      class="inline-flex min-h-10 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
-                      [class.col-span-2]="player.status === 'COMPLETED'"
-                      (click)="$event.stopPropagation(); openCashOutDialog(player)"
-                    >
-                      @if (isPending(playerAction('cash-out', player.id))) {
-                        <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
-                        Saving
-                      } @else {
-                        {{ player.status === 'COMPLETED' ? 'Edit Cash Out' : 'Cash Out' }}
-                      }
-                    </button>
+                    </div>
                   </div>
                 </div>
 
@@ -460,22 +482,6 @@ import {
                   </div>
 
                   <div class="flex justify-end gap-2">
-                    @if (canRemovePlayer(currentSession, player)) {
-                      <button
-                        type="button"
-                        [disabled]="isBusy()"
-                        aria-label="Remove player"
-                        title="Remove player"
-                        class="session-player-remove-icon-button"
-                        (click)="$event.stopPropagation(); confirmRemoveSessionPlayer(player)"
-                      >
-                        @if (isPending(playerAction('remove-player', player.id))) {
-                          <span class="action-spinner" aria-hidden="true"></span>
-                        } @else {
-                          <span class="trash-icon" aria-hidden="true"></span>
-                        }
-                      </button>
-                    }
                     @if (player.status !== 'COMPLETED') {
                       <button
                         type="button"
@@ -504,6 +510,22 @@ import {
                         {{ player.status === 'COMPLETED' ? 'Edit Cash Out' : 'Cash Out' }}
                       }
                     </button>
+                    @if (canRemovePlayer(currentSession, player)) {
+                      <button
+                        type="button"
+                        [disabled]="isBusy()"
+                        aria-label="Remove player"
+                        title="Remove player"
+                        class="session-player-remove-icon-button"
+                        (click)="$event.stopPropagation(); confirmRemoveSessionPlayer(player)"
+                      >
+                        @if (isPending(playerAction('remove-player', player.id))) {
+                          <span class="action-spinner" aria-hidden="true"></span>
+                        } @else {
+                          <span class="trash-icon" aria-hidden="true"></span>
+                        }
+                      </button>
+                    }
                   </div>
                 </div>
 
@@ -662,14 +684,57 @@ import {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        justify-content: flex-start;
+        justify-content: flex-end;
         gap: 0.6rem;
+        width: 100%;
       }
 
       .session-action-button {
         min-height: 2.85rem;
         padding-inline: 0.6rem;
         white-space: nowrap;
+      }
+
+      .session-close-button {
+        order: -1;
+        margin-right: auto;
+      }
+
+      .session-delete-button {
+        margin-left: auto;
+      }
+
+      .table-delete-button {
+        position: absolute;
+        top: 0.8rem;
+        right: 0.8rem;
+        z-index: 5;
+        display: inline-grid;
+        width: 2.4rem;
+        height: 2.4rem;
+        place-items: center;
+        border: 1px solid rgb(248 113 113 / 0.32);
+        border-radius: 0.55rem;
+        background: rgb(10 10 10 / 0.74);
+        color: rgb(254 202 202);
+        transition:
+          background 160ms ease,
+          border-color 160ms ease,
+          color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .table-delete-button:hover {
+        border-color: rgb(248 113 113 / 0.62);
+        background: rgb(248 113 113 / 0.12);
+        color: rgb(254 226 226);
+        transform: translateY(-1px);
+      }
+
+      .table-delete-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+        transform: none;
       }
 
       .session-action-bar .pokertrack-icon-button {
@@ -878,39 +943,6 @@ import {
         transform: none;
       }
 
-      .session-player-remove-button {
-        display: inline-flex;
-        min-height: 2.25rem;
-        align-items: center;
-        justify-content: center;
-        gap: 0.45rem;
-        border: 1px solid rgb(248 113 113 / 0.32);
-        border-radius: 0.5rem;
-        background: rgb(248 113 113 / 0.08);
-        padding: 0.45rem 0.7rem;
-        color: rgb(254 202 202);
-        font-size: 0.78rem;
-        font-weight: 700;
-        transition:
-          background 160ms ease,
-          border-color 160ms ease,
-          color 160ms ease,
-          transform 160ms ease;
-      }
-
-      .session-player-remove-button:hover {
-        border-color: rgb(248 113 113 / 0.62);
-        background: rgb(248 113 113 / 0.13);
-        color: rgb(254 226 226);
-        transform: translateY(-1px);
-      }
-
-      .session-player-remove-button:disabled {
-        cursor: not-allowed;
-        opacity: 0.45;
-        transform: none;
-      }
-
       @media (max-width: 640px) {
         .player-detail-toolbar {
           align-items: flex-start;
@@ -920,11 +952,6 @@ import {
           max-width: 52%;
         }
 
-        .session-player-remove-button {
-          min-height: 2rem;
-          padding: 0.4rem 0.6rem;
-          font-size: 0.72rem;
-        }
       }
 
       .transaction-row-buyin {
@@ -955,8 +982,70 @@ import {
         position: relative;
       }
 
+      .player-row::before {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0.18rem;
+        content: '';
+        opacity: 0.8;
+      }
+
+      .player-row-accent-cyan {
+        background: linear-gradient(90deg, rgb(34 211 238 / 0.08), transparent 42%);
+      }
+
+      .player-row-accent-amber {
+        background: linear-gradient(90deg, rgb(251 191 36 / 0.08), transparent 42%);
+      }
+
+      .player-row-accent-fuchsia {
+        background: linear-gradient(90deg, rgb(217 70 239 / 0.08), transparent 42%);
+      }
+
+      .player-row-accent-emerald {
+        background: linear-gradient(90deg, rgb(52 211 153 / 0.08), transparent 42%);
+      }
+
+      .player-row-accent-cyan::before {
+        background: rgb(34 211 238 / 0.75);
+      }
+
+      .player-row-accent-amber::before {
+        background: rgb(251 191 36 / 0.75);
+      }
+
+      .player-row-accent-fuchsia::before {
+        background: rgb(217 70 239 / 0.75);
+      }
+
+      .player-row-accent-emerald::before {
+        background: rgb(52 211 153 / 0.75);
+      }
+
       .player-row-rebuy-glow {
         animation: player-row-rebuy-glow 1200ms ease-in-out both;
+      }
+
+      @media (min-width: 1024px) {
+        .session-action-bar {
+          min-width: min(42rem, 52vw);
+        }
+      }
+
+      @media (max-width: 640px) {
+        .session-close-button,
+        .session-delete-button {
+          margin-left: 0;
+          margin-right: 0;
+        }
+
+        .session-close-button {
+          flex: 1 1 calc(100% - 3.45rem);
+        }
+
+        .session-delete-button {
+          flex: 0 0 2.85rem;
+        }
       }
 
       @keyframes action-spinner {
@@ -1090,6 +1179,10 @@ export class ActiveSessionPage implements OnDestroy {
 
     if (action === 'add-table') {
       return 'Creating table...';
+    }
+
+    if (action?.startsWith('delete-table:')) {
+      return 'Deleting table...';
     }
 
     if (action?.startsWith('rebuy:')) {
@@ -1384,8 +1477,20 @@ export class ActiveSessionPage implements OnDestroy {
     return `${action}:${playerId}`;
   }
 
+  protected tableAction(action: string, tableId: string): string {
+    return `${action}:${tableId}`;
+  }
+
   protected transactionAction(action: string, transactionId: string): string {
     return `${action}:${transactionId}`;
+  }
+
+  protected playerAccent(index: number): 'cyan' | 'amber' | 'fuchsia' | 'emerald' {
+    return ['cyan', 'amber', 'fuchsia', 'emerald'][index % 4] as
+      | 'cyan'
+      | 'amber'
+      | 'fuchsia'
+      | 'emerald';
   }
 
   protected closeSession(): void {
@@ -1482,6 +1587,57 @@ export class ActiveSessionPage implements OnDestroy {
 
       if (deleted) {
         await this.router.navigateByUrl(this.backLink, { replaceUrl: true });
+      }
+    });
+  }
+
+  protected confirmDeleteTable(table: PokerTable): void {
+    if (this.isBusy() || !this.canDelete()) {
+      return;
+    }
+
+    const currentSession = this.session();
+
+    if (!currentSession || currentSession.status !== 'ACTIVE') {
+      return;
+    }
+
+    const tableTotals = this.store.totalsForTable(currentSession, table.id);
+    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+      ConfirmationDialogComponent,
+      {
+        autoFocus: false,
+        data: {
+          title: 'Delete table?',
+          message:
+            'This removes the table, its seated players, buy-ins, rebuys, cash-outs, and call-time records from this session.',
+          confirmLabel: 'Delete table',
+          tone: 'danger',
+          details: [
+            table.name,
+            `${tableTotals.totalPlayers} players`,
+            `${this.formatMoney(tableTotals.totalBuyIn)} total buy-in`
+          ]
+        },
+        panelClass: 'pokertrack-dialog-panel'
+      }
+    );
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      const deleted = await this.runAction(this.tableAction('delete-table', table.id), async () => {
+        await this.store.deleteTable(this.sessionId, table.id);
+      });
+
+      if (deleted) {
+        this.selectedTableId.set(null);
+        this.expandedTableIds.update((tableIds) =>
+          tableIds.filter((currentTableId) => currentTableId !== table.id)
+        );
+        this.expandedPlayerId.set(null);
       }
     });
   }

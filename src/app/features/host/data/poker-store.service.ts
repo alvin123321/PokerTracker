@@ -6,6 +6,7 @@ import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { SupabaseService } from '../../../core/supabase/supabase.service';
 import { environment } from '../../../../environments/environment';
 import { removeSessionPlayerFromSession } from './session-player-removal.logic';
+import { removeSessionTableFromSession } from './session-table-removal.logic';
 
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
@@ -508,6 +509,23 @@ export class PokerStoreService implements OnDestroy {
     }));
 
     return table;
+  }
+
+  async deleteTable(sessionId: string, tableId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService.requireClient().rpc('delete_session_table', {
+        p_table_id: tableId
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    this.updateSession(sessionId, (session) => removeSessionTableFromSession(session, tableId));
   }
 
   async listRegisteredPlayers(): Promise<RegisteredPlayerOption[]> {
@@ -1698,7 +1716,14 @@ export class PokerStoreService implements OnDestroy {
       this.queueRealtimeRefresh();
     };
 
-    for (const table of ['sessions', 'players', 'session_players', 'transactions', 'time_calls']) {
+    for (const table of [
+      'sessions',
+      'session_tables',
+      'players',
+      'session_players',
+      'transactions',
+      'time_calls'
+    ]) {
       channel.on(
         'postgres_changes',
         {
