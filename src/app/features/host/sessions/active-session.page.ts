@@ -91,34 +91,6 @@ import {
           </div>
 
           <div class="session-action-bar">
-            @if (!isHistoryView && currentSession.status === 'ACTIVE') {
-              <button
-                type="button"
-                [disabled]="isBusy()"
-                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                (click)="createTable()"
-              >
-                @if (isPending('add-table')) {
-                  <span class="action-spinner" aria-hidden="true"></span>
-                  Creating...
-                } @else {
-                  + Table
-                }
-              </button>
-              <button
-                type="button"
-                [disabled]="isBusy() || !selectedTable()"
-                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-                (click)="openAddPlayerDialog()"
-              >
-                @if (isPending('add-player')) {
-                  <span class="action-spinner" aria-hidden="true"></span>
-                  Adding...
-                } @else {
-                  Add Player
-                }
-              </button>
-            }
             @if (canDelete() && currentSession.status === 'ACTIVE') {
               <button
                 type="button"
@@ -135,6 +107,36 @@ import {
                 }
               </button>
             }
+            <div class="session-primary-actions">
+              @if (!isHistoryView && currentSession.status === 'ACTIVE') {
+                <button
+                  type="button"
+                  [disabled]="isBusy()"
+                  class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  (click)="createTable()"
+                >
+                  @if (isPending('add-table')) {
+                    <span class="action-spinner" aria-hidden="true"></span>
+                    Creating...
+                  } @else {
+                    + Table
+                  }
+                </button>
+                <button
+                  type="button"
+                  [disabled]="isBusy() || !selectedTable()"
+                  class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                  (click)="openAddPlayerDialog()"
+                >
+                  @if (isPending('add-player')) {
+                    <span class="action-spinner" aria-hidden="true"></span>
+                    Adding...
+                  } @else {
+                    Add Player
+                  }
+                </button>
+              }
+            </div>
             @if (canDelete()) {
               <button
                 type="button"
@@ -249,7 +251,7 @@ import {
                       </span>
                     </span>
                     <span class="mr-12 rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-neutral-200">
-                      {{ tableTotals.totalPlayers }}/9 Seats
+                      {{ tableTotals.totalPlayers }}/10 Seats
                     </span>
                   </span>
                   <span class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
@@ -340,54 +342,52 @@ import {
                 [class.player-row-rebuy-glow]="recentRebuyPlayerId() === player.id"
               >
                 <div class="lg:hidden">
-                  <div
-                    class="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5"
-                    (click)="togglePlayer(player.id)"
-                  >
-                    <button
-                      type="button"
-                      class="min-w-0 rounded-lg bg-white/[0.025] px-3 py-2 text-left transition hover:bg-white/[0.045]"
-                      [class.col-span-2]="!canRemovePlayer(currentSession, player)"
-                      (click)="$event.stopPropagation(); togglePlayer(player.id)"
-                    >
-                      <span class="flex min-w-0 items-center gap-2">
-                        <span class="truncate text-base font-semibold text-white">{{ player.name }}</span>
-                        <span class="shrink-0 text-xs text-neutral-500">
-                          {{ isExpanded(player.id) ? 'v' : '>' }}
-                        </span>
-                      </span>
-                      <span class="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-neutral-400">
-                        <span>{{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }} buy-in</span>
-                        @if (player.status === 'COMPLETED') {
-                          <span
-                            class="font-semibold"
-                            [class.text-emerald-300]="player.net >= 0"
-                            [class.text-red-300]="player.net < 0"
-                          >
-                            Net {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
-                          </span>
-                        }
-                      </span>
-                    </button>
-
-                    @if (canRemovePlayer(currentSession, player)) {
+                  <div class="grid cursor-pointer gap-2 px-3 py-2.5" (click)="togglePlayer(player.id)">
+                    <div class="session-player-mobile-card">
                       <button
                         type="button"
-                        [disabled]="isBusy()"
-                        aria-label="Remove player"
-                        title="Remove player"
-                        class="session-player-remove-icon-button"
-                        (click)="$event.stopPropagation(); confirmRemoveSessionPlayer(player)"
+                        class="min-w-0 px-3 py-2 text-left transition"
+                        (click)="$event.stopPropagation(); togglePlayer(player.id)"
                       >
-                        @if (isPending(playerAction('remove-player', player.id))) {
-                          <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
-                        } @else {
-                          <span class="trash-icon" aria-hidden="true"></span>
-                        }
+                        <span class="flex min-w-0 items-center gap-2">
+                          <span class="truncate text-base font-semibold text-white">{{ player.name }}</span>
+                          <span class="shrink-0 text-xs text-neutral-500">
+                            {{ isExpanded(player.id) ? 'v' : '>' }}
+                          </span>
+                        </span>
+                        <span class="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-neutral-400">
+                          <span>{{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }} buy-in</span>
+                          @if (player.status === 'COMPLETED') {
+                            <span
+                              class="font-semibold"
+                              [class.text-emerald-300]="player.net >= 0"
+                              [class.text-red-300]="player.net < 0"
+                            >
+                              Net {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                            </span>
+                          }
+                        </span>
                       </button>
-                    }
 
-                    <div class="col-span-2 grid grid-cols-2 gap-2">
+                      @if (canRemovePlayer(currentSession, player)) {
+                        <button
+                          type="button"
+                          [disabled]="isBusy()"
+                          aria-label="Remove player"
+                          title="Remove player"
+                          class="session-player-remove-icon-button session-player-remove-mobile-button"
+                          (click)="$event.stopPropagation(); confirmRemoveSessionPlayer(player)"
+                        >
+                          @if (isPending(playerAction('remove-player', player.id))) {
+                            <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
+                          } @else {
+                            <span class="trash-icon" aria-hidden="true"></span>
+                          }
+                        </button>
+                      }
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
                       @if (player.status !== 'COMPLETED') {
                         <button
                           type="button"
@@ -681,12 +681,20 @@ import {
       }
 
       .session-action-bar {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.6rem;
+        width: 100%;
+      }
+
+      .session-primary-actions {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         justify-content: flex-end;
         gap: 0.6rem;
-        width: 100%;
+        min-width: 0;
       }
 
       .session-action-button {
@@ -696,12 +704,11 @@ import {
       }
 
       .session-close-button {
-        order: -1;
-        margin-right: auto;
+        justify-self: start;
       }
 
       .session-delete-button {
-        margin-left: auto;
+        justify-self: end;
       }
 
       .table-delete-button {
@@ -789,20 +796,21 @@ import {
 
       @media (max-width: 639px) {
         .session-action-bar {
+          grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .session-primary-actions {
+          grid-column: 1 / -1;
+          grid-row: 2;
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          width: 100%;
         }
       }
 
       @media (min-width: 640px) {
         .session-action-button {
           padding-inline: 0.85rem;
-        }
-      }
-
-      @media (min-width: 1024px) {
-        .session-action-bar {
-          justify-content: flex-end;
         }
       }
 
@@ -943,6 +951,34 @@ import {
         transform: none;
       }
 
+      .session-player-mobile-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        overflow: hidden;
+        border: 1px solid rgb(255 255 255 / 0.08);
+        border-radius: 0.65rem;
+        background: rgb(255 255 255 / 0.025);
+        transition:
+          background 180ms ease,
+          border-color 180ms ease;
+      }
+
+      .session-player-mobile-card:hover {
+        border-color: rgb(255 255 255 / 0.14);
+        background: rgb(255 255 255 / 0.04);
+      }
+
+      .session-player-remove-mobile-button {
+        width: 2.85rem;
+        min-width: 2.85rem;
+        height: auto;
+        min-height: 100%;
+        border-width: 0 0 0 1px;
+        border-color: rgb(248 113 113 / 0.22);
+        border-radius: 0;
+        background: transparent;
+      }
+
       @media (max-width: 640px) {
         .player-detail-toolbar {
           align-items: flex-start;
@@ -1024,28 +1060,6 @@ import {
 
       .player-row-rebuy-glow {
         animation: player-row-rebuy-glow 1200ms ease-in-out both;
-      }
-
-      @media (min-width: 1024px) {
-        .session-action-bar {
-          min-width: min(42rem, 52vw);
-        }
-      }
-
-      @media (max-width: 640px) {
-        .session-close-button,
-        .session-delete-button {
-          margin-left: 0;
-          margin-right: 0;
-        }
-
-        .session-close-button {
-          flex: 1 1 calc(100% - 3.45rem);
-        }
-
-        .session-delete-button {
-          flex: 0 0 2.85rem;
-        }
       }
 
       @keyframes action-spinner {
