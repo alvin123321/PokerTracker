@@ -25,9 +25,14 @@ import {
   PokerSession,
   PokerStoreService,
   SessionPlayer,
+  TimeCall,
   PokerTransaction,
   PokerTransactionType
 } from '../../host/data/poker-store.service';
+import {
+  playerCallTimeDisplayState,
+  PlayerCallTimeDisplayState
+} from './player-dashboard.logic';
 
 type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator';
 
@@ -138,6 +143,7 @@ interface PlayerActivityEntry {
                   @let activeCall = store.activeTimeCallForSession(entry.session);
                   @let remainingCalls = store.remainingTimeCallsForPlayer(entry.session, entry.player.id);
                   @let isMyClock = store.isTimeCallRunningForPlayer(entry.session, entry.player.id);
+                  @let callTimeState = callTimeDisplayState(entry, activeCall);
                   <div class="feature-heading">
                     <div>
                       <h2>{{ entry.session.name }}</h2>
@@ -153,9 +159,9 @@ interface PlayerActivityEntry {
                     </div>
                   </div>
 
-                  @if (activeCall || shouldShowCallTime(entry)) {
+                  @if (callTimeState !== 'NONE') {
                     <div class="player-call-time-stage" (click)="$event.stopPropagation()">
-                      @if (activeCall) {
+                      @if (callTimeState === 'CLOCK' && activeCall) {
                         <div class="player-call-time-live">
                           <div
                             class="call-time-mini-ring call-time-mini-ring-hero"
@@ -176,7 +182,7 @@ interface PlayerActivityEntry {
                           </div>
                           <p>{{ isMyClock ? 'Your clock is running' : 'Table clock running' }}</p>
                         </div>
-                      } @else if (shouldShowCallTime(entry)) {
+                      } @else if (callTimeState === 'BUTTON') {
                         <button
                           type="button"
                           class="player-call-time-orb player-call-time-orb-hero"
@@ -1061,14 +1067,11 @@ export class PlayerDashboardPage implements OnInit {
     this.activeTab.set(tab);
   }
 
-  protected shouldShowCallTime(entry: PlayerSessionEntry): boolean {
-    const playerTable = entry.session.tables.find((table) => table.id === entry.player.tableId);
-
-    return (
-      entry.session.status === 'ACTIVE' &&
-      entry.player.status === 'ACTIVE' &&
-      (!playerTable || playerTable.status === 'ACTIVE')
-    );
+  protected callTimeDisplayState(
+    entry: PlayerSessionEntry,
+    activeCall: TimeCall | undefined
+  ): PlayerCallTimeDisplayState {
+    return playerCallTimeDisplayState(entry.session, entry.player, activeCall);
   }
 
   private playerMatchesLogin(player: SessionPlayer, userId: string | null, targetName: string): boolean {
