@@ -1,36 +1,16 @@
 import { Component, computed, inject } from '@angular/core';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { LucideLogOut } from '@lucide/angular';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterOutlet } from '@angular/router';
 
 import { AuthStateService } from '../auth/auth-state.service';
-import {
-  ConfirmationDialogComponent,
-  ConfirmationDialogData
-} from '../../features/host/shared/confirmation-dialog.component';
 import { displayNameInitials } from '../../features/profile/profile.logic';
 
 @Component({
   selector: 'app-player-shell',
-  imports: [LucideLogOut, MatDialogModule, RouterLink, RouterOutlet],
+  imports: [RouterLink, RouterOutlet],
   template: `
     <main class="min-h-dvh bg-neutral-950 text-neutral-100">
       <header class="border-b border-white/10 bg-neutral-950/90 backdrop-blur">
         <nav class="host-shell-nav mx-auto grid max-w-7xl items-center gap-3 px-3 py-3 sm:px-5 sm:py-4">
-          <button
-            type="button"
-            class="pokertrack-mobile-signout sm:hidden"
-            aria-label="Sign out"
-            (click)="signOut()"
-          >
-            <svg
-              lucideLogOut
-              class="pokertrack-nav-icon pokertrack-signout-left-icon"
-              [strokeWidth]="3"
-              [absoluteStrokeWidth]="true"
-              aria-hidden="true"
-            ></svg>
-          </button>
           <a
             routerLink="/player/dashboard"
             class="pokertrack-brand host-shell-brand justify-self-center"
@@ -47,15 +27,6 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
             <span class="pokertrack-profile-avatar">{{ profileInitials() }}</span>
             <span class="pokertrack-profile-name">{{ profileName() }}</span>
           </a>
-          <div class="host-shell-desktop-nav hidden min-w-0 items-center gap-2 text-sm sm:flex sm:justify-self-center">
-            <button
-              type="button"
-              class="pokertrack-nav-link min-w-0 rounded-md border border-white/10 px-2 py-2 text-neutral-300 sm:shrink-0 sm:px-3"
-              (click)="signOut()"
-            >
-              Sign out
-            </button>
-          </div>
         </nav>
       </header>
 
@@ -78,31 +49,4 @@ export class PlayerShellComponent {
     () => this.authState.profile()?.displayName ?? 'Profile'
   );
   protected readonly profileInitials = computed(() => displayNameInitials(this.profileName()));
-  private readonly dialog = inject(MatDialog);
-  private readonly router = inject(Router);
-
-  protected signOut(): void {
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
-      ConfirmationDialogComponent,
-      {
-        data: {
-          title: 'Sign out?',
-          message: 'You will need to sign in again before viewing your table.',
-          confirmLabel: 'Sign out',
-          cancelLabel: 'Stay',
-          tone: 'primary'
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
-
-    dialogRef.afterClosed().subscribe(async (confirmed) => {
-      if (!confirmed) {
-        return;
-      }
-
-      await this.authState.signOut();
-      await this.router.navigateByUrl('/login');
-    });
-  }
 }
