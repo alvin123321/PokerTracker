@@ -437,13 +437,13 @@ a {
 
 .host-shell-nav {
   position: relative;
-  grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+  min-height: 4.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
 }
 
 @media (min-width: 640px) {
   .host-shell-nav {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
     row-gap: 0.65rem;
   }
 
@@ -599,9 +599,11 @@ app-host-shell main {
 }
 
 .pokertrack-profile-chip {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
   display: inline-flex;
   align-items: center;
-  justify-self: end;
   gap: 0.55rem;
   min-width: 0;
   border: 1px solid rgb(134 239 172 / 0.22);
@@ -609,6 +611,7 @@ app-host-shell main {
   background: rgb(2 12 10 / 0.76);
   color: rgb(229 229 229);
   padding: 0.24rem 0.3rem;
+  transform: translateY(-50%);
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
@@ -620,11 +623,11 @@ app-host-shell main {
   border-color: rgb(134 239 172 / 0.48);
   background: rgb(3 24 18 / 0.9);
   box-shadow: 0 0 20px rgb(16 185 129 / 0.12);
-  transform: translateY(-1px);
+  transform: translateY(calc(-50% - 1px));
 }
 
 .pokertrack-profile-chip:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateY(-50%) scale(0.98);
 }
 
 .pokertrack-profile-avatar {
@@ -774,9 +777,17 @@ app-host-shell main {
   .pokertrack-profile-chip {
     grid-column: 1;
     grid-row: 1;
-    position: absolute;
     right: 1.25rem;
     top: 0.95rem;
+    transform: none;
+  }
+
+  .pokertrack-profile-chip:hover {
+    transform: translateY(-1px);
+  }
+
+  .pokertrack-profile-chip:active {
+    transform: translateY(0) scale(0.98);
   }
 
   .pokertrack-profile-name {
