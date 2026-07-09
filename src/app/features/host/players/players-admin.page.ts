@@ -41,6 +41,12 @@ interface PlayerLedgerRow {
         </div>
       }
 
+      @if (successMessage()) {
+        <div class="rounded-lg border border-emerald-300/30 bg-emerald-300/10 p-4 text-sm text-emerald-100">
+          {{ successMessage() }}
+        </div>
+      }
+
       @if (selectedPlayer(); as player) {
         <section class="member-view-enter space-y-4">
           <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
@@ -56,9 +62,30 @@ interface PlayerLedgerRow {
                 <span class="sr-only">Back to member list</span>
               </button>
 
-              <div class="min-w-0 flex-1"></div>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-lg font-semibold text-white">{{ playerLabel(player) }}</p>
+                <p class="mt-1 text-sm text-neutral-400">
+                  Login ID
+                  <span class="ml-2 rounded-md border border-emerald-300/20 bg-emerald-300/10 px-2 py-1 font-mono text-emerald-100">
+                    {{ player.username }}
+                  </span>
+                </p>
+              </div>
 
               <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  [disabled]="passwordResettingPlayerId() === player.id || isDeletingAnyPlayer()"
+                  class="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-lg border border-sky-300/30 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  (click)="confirmResetPassword(player)"
+                >
+                  @if (passwordResettingPlayerId() === player.id) {
+                    <span class="action-spinner" aria-hidden="true"></span>
+                    Resetting...
+                  } @else {
+                    Reset Password
+                  }
+                </button>
                 <button
                   type="button"
                   [disabled]="roleUpdatingPlayerId() === player.id || isDeletingAnyPlayer()"
@@ -356,7 +383,9 @@ export class PlayersAdminPage implements OnInit {
   protected readonly creatingPlayer = signal(false);
   protected readonly deletingPlayerId = signal<string | null>(null);
   protected readonly roleUpdatingPlayerId = signal<string | null>(null);
+  protected readonly passwordResettingPlayerId = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly successMessage = signal<string | null>(null);
   protected readonly expandedLedgerRowKey = signal<string | null | undefined>(undefined);
   protected readonly newPlayerLogin = new FormControl('', {
     nonNullable: true,
@@ -457,6 +486,46 @@ export class PlayersAdminPage implements OnInit {
     });
   }
 
+  protected confirmResetPassword(player: RegisteredPlayerOption): void {
+    if (this.passwordResettingPlayerId() || this.isDeletingAnyPlayer()) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+      ConfirmationDialogComponent,
+      {
+        autoFocus: false,
+        data: {
+          title: 'Reset password?',
+          message: 'This resets the player login password to 123456.',
+          confirmLabel: 'Reset password',
+          tone: 'primary',
+          details: [this.playerLabel(player), `Login ID: ${player.username}`]
+        },
+        panelClass: 'pokertrack-dialog-panel'
+      }
+    );
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      this.passwordResettingPlayerId.set(player.id);
+      this.errorMessage.set(null);
+      this.successMessage.set(null);
+
+      try {
+        const temporaryPassword = await this.store.resetRegisteredPlayerPassword(player.id);
+        this.successMessage.set(`Password reset to ${temporaryPassword}.`);
+      } catch (error) {
+        this.errorMessage.set(this.toMessage(error));
+      } finally {
+        this.passwordResettingPlayerId.set(null);
+      }
+    });
+  }
+
   protected async toggleManagerRole(player: RegisteredPlayerOption): Promise<void> {
     if (this.roleUpdatingPlayerId() || this.isDeletingAnyPlayer()) {
       return;
@@ -545,6 +614,7 @@ export class PlayersAdminPage implements OnInit {
   private async loadPlayers(preferredPlayerId?: string): Promise<void> {
     this.loadingPlayers.set(true);
     this.errorMessage.set(null);
+    this.successMessage.set(null);
 
     try {
       const players = await this.store.listRegisteredPlayers();

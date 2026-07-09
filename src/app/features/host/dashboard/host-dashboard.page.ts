@@ -25,6 +25,10 @@ import {
   RebuyDialogData,
   RebuyDialogResult
 } from '../transactions/rebuy-dialog.component';
+import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData
+} from '../shared/confirmation-dialog.component';
 
 interface TableNameDialogData {
   tableName: string;
@@ -400,7 +404,7 @@ class TableNameDialogComponent {
                                   >
                                     @for (player of store.playersForTable(session, table.id); track player.id) {
                                       <div
-                                        class="grid gap-3 border border-white/10 border-b-0 bg-neutral-950/60 p-3 first:rounded-t-md last:rounded-b-md last:border-b md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                                        class="dashboard-player-row grid gap-3 border-b border-white/10 p-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
                                         [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
                                       >
                                         <div class="min-w-0">
@@ -421,7 +425,7 @@ class TableNameDialogComponent {
                                           </p>
                                         </div>
 
-                                        <div class="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-3 md:min-w-96">
+                                        <div class="grid grid-cols-[1fr_1fr_auto] gap-2 text-center text-sm md:grid-cols-[8rem_7rem_7rem_2.75rem] md:min-w-[26rem]">
                                           <span class="hidden rounded-lg bg-white/[0.04] px-3 py-2 md:col-span-1 md:block">
                                             <span class="block text-xs text-neutral-500">Buy-in</span>
                                             <span
@@ -467,6 +471,20 @@ class TableNameDialogComponent {
                                               Cashout
                                             </span>
                                           }
+                                          <button
+                                            type="button"
+                                            [disabled]="isBusy()"
+                                            class="dashboard-player-remove"
+                                            aria-label="Remove player"
+                                            title="Remove player"
+                                            (click)="confirmRemoveSessionPlayer(session.id, player)"
+                                          >
+                                            @if (isPending(playerAction('remove-player', player.id))) {
+                                              <span class="action-spinner" aria-hidden="true"></span>
+                                            } @else {
+                                              <span class="trash-icon" aria-hidden="true"></span>
+                                            }
+                                          </button>
                                         </div>
                                       </div>
                                     } @empty {
@@ -1263,6 +1281,38 @@ export class HostDashboardPage implements OnDestroy {
     });
   }
 
+  protected confirmRemoveSessionPlayer(sessionId: string, player: SessionPlayer): void {
+    if (this.isBusy()) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+      ConfirmationDialogComponent,
+      {
+        autoFocus: false,
+        data: {
+          title: 'Remove player?',
+          message:
+            'This removes the player from this session and removes their buy-in, rebuy, cash-out, and call-time records from this session.',
+          confirmLabel: 'Remove player',
+          tone: 'danger',
+          details: [player.name]
+        },
+        panelClass: 'pokertrack-dialog-panel'
+      }
+    );
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      await this.runAction(this.playerAction('remove-player', player.id), () =>
+        this.store.removeSessionPlayer(sessionId, player.id)
+      );
+    });
+  }
+
   protected isBusy(): boolean {
     return Boolean(this.pendingAction() || this.store.loading());
   }
@@ -1288,6 +1338,10 @@ export class HostDashboardPage implements OnDestroy {
 
     if (action?.startsWith('cash-out:')) {
       return 'Recording cash out...';
+    }
+
+    if (action?.startsWith('remove-player:')) {
+      return 'Removing player...';
     }
 
     return 'Saving changes...';
