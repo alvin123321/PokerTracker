@@ -2603,6 +2603,22 @@ h3 {
   color: rgb(125 211 252);
 }
 
+.dashboard-timeline-item-cashout {
+  border-color: rgb(251 191 36 / 0.3);
+  background:
+    linear-gradient(135deg, rgb(245 158 11 / 0.14), transparent 62%),
+    rgb(255 255 255 / 0.035);
+  color: rgb(253 230 138);
+}
+
+.dashboard-player-net-positive strong {
+  color: rgb(134 239 172);
+}
+
+.dashboard-player-net-negative strong {
+  color: rgb(252 165 165);
+}
+
 .action-spinner {
   display: inline-block;
   width: 1rem;

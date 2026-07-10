@@ -1,4 +1,6 @@
-import type { PokerSession, SessionPlayer, TimeCall } from '../../host/data/poker-store.service';
+import { gameTimelineTransactions } from '../../host/data/session-timeline.logic';
+
+import type { PokerSession, PokerTransaction, SessionPlayer, TimeCall } from '../../host/data/poker-store.service';
 
 export type PlayerCallTimeDisplayState = 'CLOCK' | 'BUTTON' | 'NONE';
 
@@ -16,6 +18,10 @@ export function playerCallTimeDisplayState(
   }
 
   return 'BUTTON';
+}
+
+export function playerGameTimeline(transactions: PokerTransaction[]): PokerTransaction[] {
+  return gameTimelineTransactions(transactions);
 }
 
 function isActivePlayerAtActiveTable(session: PokerSession, player: SessionPlayer): boolean {

@@ -31,6 +31,7 @@ import {
 } from '../../host/data/poker-store.service';
 import {
   playerCallTimeDisplayState,
+  playerGameTimeline,
   PlayerCallTimeDisplayState
 } from './player-dashboard.logic';
 
@@ -263,20 +264,22 @@ interface PlayerActivityEntry {
                   <div class="feature-detail-panel" [attr.aria-hidden]="!isFeaturedExpanded(entry)">
                     <div class="feature-detail-panel-inner">
                       <div class="feature-detail-heading">
-                        <span>Buy-in history</span>
+                        <span>Game timeline</span>
                       </div>
                       <div class="feature-buyin-list">
-                        @for (transaction of buyInRows(entry); track transaction.id) {
+                        @for (transaction of gameTimelineRows(entry); track transaction.id) {
                           <div
                             class="feature-buyin-row"
+                            [class.feature-buyin-row-buyin]="transaction.type === 'BUYIN'"
                             [class.feature-buyin-row-rebuy]="transaction.type === 'REBUY'"
+                            [class.feature-buyin-row-cashout]="transaction.type === 'CASHOUT'"
                           >
                             <span class="feature-buyin-type">{{ activityLabel(transaction.type) }}</span>
                             <span class="feature-buyin-time">{{ transaction.createdAt | date: 'shortTime' }}</span>
                             <strong>{{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
                           </div>
                         } @empty {
-                          <p class="activity-empty">No buy-in history yet.</p>
+                          <p class="activity-empty">No game timeline yet.</p>
                         }
                       </div>
                     </div>
@@ -731,25 +734,39 @@ interface PlayerActivityEntry {
         grid-template-columns: minmax(4.9rem, 0.8fr) minmax(4.2rem, 0.7fr) minmax(4rem, 0.65fr);
         align-items: center;
         gap: 0.55rem;
-        border: 1px solid rgb(56 189 248 / 0.22);
+        border: 1px solid rgb(34 197 94 / 0.26);
         border-radius: 0.78rem;
-        background: rgb(14 165 233 / 0.11);
+        background: rgb(34 197 94 / 0.11);
         padding: 0.64rem 0.7rem;
       }
 
+      .feature-buyin-row-buyin {
+        border-color: rgb(34 197 94 / 0.28);
+        background: rgb(34 197 94 / 0.1);
+      }
+
       .feature-buyin-row-rebuy {
-        border-color: rgb(34 197 94 / 0.26);
-        background: rgb(34 197 94 / 0.11);
+        border-color: rgb(56 189 248 / 0.26);
+        background: rgb(14 165 233 / 0.11);
+      }
+
+      .feature-buyin-row-cashout {
+        border-color: rgb(251 191 36 / 0.3);
+        background: rgb(245 158 11 / 0.12);
       }
 
       .feature-buyin-type {
-        color: rgb(186 230 253);
+        color: rgb(134 239 172);
         font-size: 0.78rem;
         font-weight: 820;
       }
 
       .feature-buyin-row-rebuy .feature-buyin-type {
-        color: rgb(134 239 172);
+        color: rgb(186 230 253);
+      }
+
+      .feature-buyin-row-cashout .feature-buyin-type {
+        color: rgb(253 230 138);
       }
 
       .feature-buyin-time {
@@ -1257,12 +1274,8 @@ export class PlayerDashboardPage implements OnInit {
     return Boolean(await firstValueFrom(dialogRef.afterClosed()));
   }
 
-  protected buyInRows(entry: PlayerSessionEntry): PokerTransaction[] {
-    return entry.transactions.filter(
-      (transaction) =>
-        !transaction.deletedAt &&
-        (transaction.type === 'BUYIN' || transaction.type === 'REBUY')
-    );
+  protected gameTimelineRows(entry: PlayerSessionEntry): PokerTransaction[] {
+    return playerGameTimeline(entry.transactions);
   }
 
   protected statusLabel(entry: PlayerSessionEntry): string {
