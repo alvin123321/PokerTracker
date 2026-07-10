@@ -10,6 +10,7 @@ import {
   LucideCoins,
   LucideHistory,
   LucideHouse,
+  LucideMessageCircle,
   LucideAlarmClock,
   LucideReceiptText,
   LucideRefreshCcw,
@@ -21,6 +22,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PotCalculatorPage } from '../../host/tools/pot-calculator.page';
+import { GlobalChatPage } from '../../chat/global-chat.page';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
@@ -50,7 +52,7 @@ import {
   PlayerGameStatusKind
 } from './player-dashboard.logic';
 
-type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator';
+type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator' | 'chat';
 
 interface PlayerSessionEntry {
   session: PokerSession;
@@ -85,13 +87,15 @@ const playerCallTimeSyncIntervalMs = 1000;
     LucideCoins,
     LucideHistory,
     LucideHouse,
+    LucideMessageCircle,
     LucideAlarmClock,
     LucideReceiptText,
     LucideRefreshCcw,
     LucideUsersRound,
     LucideZap,
     RouterLink,
-    PotCalculatorPage
+    PotCalculatorPage,
+    GlobalChatPage
   ],
   template: `
     <section class="player-dashboard">
@@ -128,6 +132,15 @@ const playerCallTimeSyncIntervalMs = 1000;
               @case ('calculator') {
                 <svg
                   lucideCalculator
+                  class="pokertrack-nav-icon"
+                  [strokeWidth]="3"
+                  [absoluteStrokeWidth]="true"
+                  aria-hidden="true"
+                ></svg>
+              }
+              @case ('chat') {
+                <svg
+                  lucideMessageCircle
                   class="pokertrack-nav-icon"
                   [strokeWidth]="3"
                   [absoluteStrokeWidth]="true"
@@ -535,6 +548,12 @@ const playerCallTimeSyncIntervalMs = 1000;
               <app-pot-calculator-page [compact]="true" />
             </section>
           }
+
+          @case ('chat') {
+            <section class="player-view player-chat-panel">
+              <app-global-chat-page [compact]="true" />
+            </section>
+          }
         }
       </div>
     </section>
@@ -568,7 +587,7 @@ const playerCallTimeSyncIntervalMs = 1000;
 
       .player-tabs {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 0.6rem;
         position: fixed;
         z-index: 30;
@@ -627,7 +646,7 @@ const playerCallTimeSyncIntervalMs = 1000;
         .player-tabs {
           position: static;
           justify-self: center;
-          max-width: 18rem;
+          max-width: 25rem;
           border: 1px solid rgb(255 255 255 / 0.09);
           border-radius: 1rem;
           background: rgb(0 0 0 / 0.24);
@@ -686,7 +705,8 @@ const playerCallTimeSyncIntervalMs = 1000;
       .player-ledger-panel,
       .session-tile,
       .player-empty-card,
-      .calculator-player-panel {
+      .calculator-player-panel,
+      .player-chat-panel {
         border: 1px solid rgb(255 255 255 / 0.1);
         border-radius: 1rem;
         background:
@@ -1049,6 +1069,7 @@ const playerCallTimeSyncIntervalMs = 1000;
 
       .player-ledger-panel,
       .calculator-player-panel,
+      .player-chat-panel,
       .player-empty-card {
         padding: 1rem;
       }
@@ -1405,6 +1426,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string }> = [
     { id: 'calculator', label: 'Calculator' },
     { id: 'overview', label: 'Home' },
+    { id: 'chat', label: 'Chat' },
     { id: 'sessions', label: 'History' }
   ];
   protected readonly activeTab = signal<'overview' | 'sessions' | 'calculator'>('overview');
@@ -1522,6 +1544,11 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
 
     if (tab === 'calculator') {
       this.activeTab.set('calculator');
+      return;
+    }
+
+    if (tab === 'chat') {
+      this.activeTab.set('chat');
     }
   }
 

@@ -4,6 +4,7 @@ import {
   LucideCalculator,
   LucideHistory,
   LucideHouse,
+  LucideMessageCircle,
   LucideUsersRound
 } from '@lucide/angular';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -18,6 +19,7 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
     LucideCalculator,
     LucideHistory,
     LucideHouse,
+    LucideMessageCircle,
     LucideUsersRound,
     RouterLink,
     RouterLinkActive,
@@ -57,6 +59,13 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
               class="pokertrack-nav-link min-w-0 rounded-md px-2 py-2 text-center text-neutral-300 sm:shrink-0 sm:px-3"
             >
               Session Overview
+            </a>
+            <a
+              routerLink="/host/chat"
+              routerLinkActive="pokertrack-nav-link-active"
+              class="pokertrack-nav-link min-w-0 rounded-md px-2 py-2 text-center text-neutral-300 sm:shrink-0 sm:px-3"
+            >
+              Chat
             </a>
             <a
               routerLink="/host/pot-calculator"
@@ -134,6 +143,21 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
             aria-hidden="true"
           ></svg>
           <span class="sr-only">Pot Calculator</span>
+        </a>
+        <a
+          routerLink="/host/chat"
+          routerLinkActive="host-mobile-tab-active"
+          class="host-mobile-tab"
+          aria-label="Chat"
+        >
+          <svg
+            lucideMessageCircle
+            class="pokertrack-nav-icon"
+            [strokeWidth]="3"
+            [absoluteStrokeWidth]="true"
+            aria-hidden="true"
+          ></svg>
+          <span class="sr-only">Chat</span>
         </a>
         @if (authState.isHostAdmin()) {
           <a
