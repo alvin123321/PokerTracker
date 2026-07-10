@@ -828,10 +828,6 @@ interface PlayerActivityEntry {
         color: rgb(134 239 172);
       }
 
-      .player-feature-card-open .feature-toggle-label {
-        color: rgb(134 239 172);
-      }
-
       .feature-detail-panel {
         display: grid;
         grid-template-rows: 0fr;
