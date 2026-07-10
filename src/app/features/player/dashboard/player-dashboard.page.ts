@@ -174,9 +174,10 @@ interface PlayerActivityEntry {
                             <svg viewBox="0 0 44 44" aria-hidden="true">
                               <defs>
                                 <linearGradient id="player-call-time-progress-gradient" x1="6" y1="6" x2="38" y2="38">
-                                  <stop offset="0%" stop-color="rgb(125 211 252)"></stop>
-                                  <stop offset="46%" stop-color="rgb(52 211 153)"></stop>
-                                  <stop offset="100%" stop-color="rgb(250 204 21)"></stop>
+                                  <stop offset="0%" stop-color="rgb(187 247 208)"></stop>
+                                  <stop offset="38%" stop-color="rgb(74 222 128)"></stop>
+                                  <stop offset="72%" stop-color="rgb(34 197 94)"></stop>
+                                  <stop offset="100%" stop-color="rgb(5 150 105)"></stop>
                                 </linearGradient>
                               </defs>
                               <circle class="call-time-ring-track" cx="22" cy="22" r="18"></circle>
