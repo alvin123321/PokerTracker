@@ -24,6 +24,10 @@ import {
 
 export { CALL_TIME_DURATION_SECONDS, CALL_TIME_LIMIT } from './time-call.logic';
 
+interface RefreshSessionsOptions {
+  showLoading?: boolean;
+}
+
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
 export type PokerPlayerStatus = 'ACTIVE' | 'COMPLETED';
@@ -342,11 +346,13 @@ export class PokerStoreService implements OnDestroy {
     }
   }
 
-  async refreshSessions(): Promise<void> {
-    await this.refreshHostSessions();
+  async refreshSessions(options: RefreshSessionsOptions = {}): Promise<void> {
+    await this.refreshHostSessions(options);
   }
 
-  async refreshHostSessions(): Promise<void> {
+  async refreshHostSessions(options: RefreshSessionsOptions = {}): Promise<void> {
+    const showLoading = options.showLoading ?? true;
+
     if (this.shouldUseLocalSharedData()) {
       await this.loadLocalSharedState();
       this.markSessionsLoaded();
@@ -354,12 +360,14 @@ export class PokerStoreService implements OnDestroy {
     }
 
     if (!this.shouldUseSupabase()) {
-      await this.refreshDevelopmentProductionSnapshot();
+      await this.refreshDevelopmentProductionSnapshot({ showLoading });
       this.markSessionsLoaded();
       return;
     }
 
-    this.setLoading(true);
+    if (showLoading) {
+      this.setLoading(true);
+    }
     this.setError(null);
 
     try {
@@ -448,7 +456,9 @@ export class PokerStoreService implements OnDestroy {
       this.setError(this.toMessage(error));
       throw error;
     } finally {
-      this.setLoading(false);
+      if (showLoading) {
+        this.setLoading(false);
+      }
       this.markSessionsLoaded();
     }
   }
@@ -2068,12 +2078,18 @@ export class PokerStoreService implements OnDestroy {
     void this.saveLocalSharedState({ sessions });
   }
 
-  private async refreshDevelopmentProductionSnapshot(): Promise<void> {
+  private async refreshDevelopmentProductionSnapshot(
+    options: RefreshSessionsOptions = {}
+  ): Promise<void> {
     if (environment.production || typeof fetch === 'undefined') {
       return;
     }
 
-    this.setLoading(true);
+    const showLoading = options.showLoading ?? true;
+
+    if (showLoading) {
+      this.setLoading(true);
+    }
 
     try {
       const response = await fetch(`${developmentProductionSnapshotPath}?t=${Date.now()}`, {
@@ -2114,7 +2130,9 @@ export class PokerStoreService implements OnDestroy {
     } catch {
       // Missing or invalid local snapshots should not block development mode.
     } finally {
-      this.setLoading(false);
+      if (showLoading) {
+        this.setLoading(false);
+      }
     }
   }
 
