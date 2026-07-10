@@ -1020,7 +1020,9 @@ h3 {
 }
 
 .call-time-mini-ring-starting .call-time-ring-progress {
-  animation: calltime-sync-ring 900ms ease-in-out infinite alternate;
+  animation:
+    calltime-sync-ring 900ms ease-in-out infinite alternate,
+    calltime-progress-breathe 900ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
 .call-time-mini-ring-starting span {
@@ -1028,7 +1030,7 @@ h3 {
   text-shadow:
     0 0 14px rgb(52 211 153 / 0.78),
     0 0 28px rgb(52 211 153 / 0.34);
-  animation: calltime-countdown-number 900ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation: calltime-countdown-number 1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
 .player-hero-panel,
@@ -1278,6 +1280,8 @@ h3 {
     animation: none;
   }
 
+  .player-feature-card-time-starting,
+  .player-feature-card-time-starting::before,
   .player-call-time-orb,
   .call-time-mini-ring span,
   .call-time-ring-progress {
@@ -1310,16 +1314,33 @@ h3 {
   }
 }
 
-@keyframes calltime-countdown-number {
+@keyframes calltime-progress-breathe {
   0% {
-    transform: scale(0.96);
+    stroke-width: 3.4;
   }
 
-  48% {
-    transform: scale(1.08);
+  50% {
+    stroke-width: 5;
   }
 
   100% {
+    stroke-width: 4;
+  }
+}
+
+@keyframes calltime-countdown-number {
+  0% {
+    opacity: 0.68;
+    transform: translateY(0.18rem) scale(0.9);
+  }
+
+  42% {
+    opacity: 1;
+    transform: translateY(0) scale(1.13);
+  }
+
+  100% {
+    opacity: 0.94;
     transform: scale(1);
   }
 }
