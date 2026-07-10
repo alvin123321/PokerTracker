@@ -166,6 +166,7 @@ interface PlayerActivityEntry {
                           <div
                             class="call-time-mini-ring call-time-mini-ring-hero"
                             [class.call-time-mini-ring-active]="isMyClock"
+                            [class.call-time-mini-ring-starting]="store.isTimeCallStarting(activeCall)"
                           >
                             <svg viewBox="0 0 44 44" aria-hidden="true">
                               <circle class="call-time-ring-track" cx="22" cy="22" r="18"></circle>
@@ -186,13 +187,6 @@ interface PlayerActivityEntry {
                               }}
                             </span>
                           </div>
-                          <p>
-                            @if (store.isTimeCallStarting(activeCall)) {
-                              Starting
-                            } @else {
-                              {{ isMyClock ? 'Your clock is running' : 'Table clock running' }}
-                            }
-                          </p>
                         </div>
                       } @else if (callTimeState === 'BUTTON') {
                         <button
@@ -322,7 +316,14 @@ interface PlayerActivityEntry {
                         <small>{{ activity.sessionName }} - {{ activity.createdAt | date: 'shortTime' }}</small>
                       </span>
                       <span class="activity-meta">
-                        <span class="activity-amount">{{ activity.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                        <span
+                          class="activity-amount"
+                          [class.activity-amount-buyin]="activity.type === 'BUYIN'"
+                          [class.activity-amount-rebuy]="activity.type === 'REBUY'"
+                          [class.activity-amount-cashout]="activity.type === 'CASHOUT'"
+                        >
+                          {{ activity.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        </span>
                         <small>{{ activity.createdAt | date: 'MMM d' }}</small>
                       </span>
                     </a>
@@ -817,14 +818,15 @@ interface PlayerActivityEntry {
       }
 
       .activity-icon-buyin {
-        border-color: #38bdf852;
-        background: #0ea5e929;
-        color: #7dd3fc;
+        border-color: #22c55e57;
+        background: #22c55e24;
+        color: #4ade80;
       }
 
       .activity-icon-rebuy {
-        background: #22c55e29;
-        color: #4ade80;
+        border-color: #38bdf852;
+        background: #0ea5e929;
+        color: #7dd3fc;
       }
 
       .activity-icon-cashout {
@@ -869,8 +871,16 @@ interface PlayerActivityEntry {
         font-weight: 680;
       }
 
-      .activity-amount {
+      .activity-amount-buyin {
         color: rgb(74 222 128);
+      }
+
+      .activity-amount-rebuy {
+        color: rgb(125 211 252);
+      }
+
+      .activity-amount-cashout {
+        color: rgb(251 191 36);
       }
 
       .activity-empty,
@@ -1155,7 +1165,6 @@ export class PlayerDashboardPage implements OnInit {
           cancelLabel: 'Cancel',
           tone: 'primary',
           details: [
-            'The table screen gets a 3 second sync before the countdown starts.',
             `You have ${this.store.remainingTimeCallsForPlayer(entry.session, entry.player.id)} of ${this.callTimeLimit} calls left.`
           ]
         },

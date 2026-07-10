@@ -995,6 +995,10 @@ h3 {
   font-size: 1rem;
   font-weight: 750;
   line-height: 1;
+  transition:
+    color 180ms ease,
+    text-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .call-time-ring-track,
@@ -1011,8 +1015,20 @@ h3 {
   stroke: rgb(52 211 153);
   stroke-linecap: round;
   stroke-dasharray: 1;
-  transition: stroke-dashoffset 220ms linear;
+  transition: stroke-dashoffset 280ms cubic-bezier(0.16, 1, 0.3, 1);
   filter: drop-shadow(0 0 8px rgb(52 211 153 / 0.45));
+}
+
+.call-time-mini-ring-starting .call-time-ring-progress {
+  animation: calltime-sync-ring 900ms ease-in-out infinite alternate;
+}
+
+.call-time-mini-ring-starting span {
+  color: rgb(187 247 208);
+  text-shadow:
+    0 0 14px rgb(52 211 153 / 0.78),
+    0 0 28px rgb(52 211 153 / 0.34);
+  animation: calltime-countdown-number 900ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
 .player-hero-panel,
@@ -1147,23 +1163,14 @@ h3 {
 .player-call-time-stage {
   display: grid;
   justify-items: center;
-  margin: 0.1rem auto 0.15rem;
-  width: min(100%, 17rem);
+  margin: 0.1rem 0 0.15rem;
+  width: 100%;
 }
 
 .player-call-time-live {
   display: grid;
   justify-items: center;
-  gap: 0.72rem;
-}
-
-.player-call-time-live p {
-  margin: 0;
-  background: rgb(34 197 94 / 0.1);
-  color: rgb(220 252 231);
-  font-size: 0.82rem;
-  font-weight: 820;
-  padding: 0.48rem 0.78rem;
+  width: 100%;
 }
 
 .call-time-mini-ring-hero {
@@ -1179,11 +1186,10 @@ h3 {
 .player-call-time-orb {
   position: relative;
   isolation: isolate;
-  display: inline-grid;
+  display: grid;
   min-height: 5.5rem;
-  min-width: min(100%, 13.5rem);
+  width: 100%;
   place-items: center;
-  gap: 0.14rem;
   overflow: hidden;
   border: 1px solid rgb(74 222 128 / 0.52);
   border-radius: 1.35rem;
@@ -1193,7 +1199,11 @@ h3 {
     rgb(2 6 5 / 0.78);
   color: white;
   box-shadow: 0 0 42px rgb(34 197 94 / 0.22);
-  transition: border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease, transform 180ms ease;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .player-call-time-orb::after {
@@ -1216,8 +1226,8 @@ h3 {
 }
 
 .player-call-time-orb svg {
-  width: 2.05rem;
-  height: 2.05rem;
+  width: 3.35rem;
+  height: 3.35rem;
   color: rgb(220 252 231);
   filter: drop-shadow(0 0 12px rgb(34 197 94 / 0.35));
 }
@@ -1231,10 +1241,17 @@ h3 {
 }
 
 .player-call-time-orb strong {
+  position: absolute;
+  top: 0.78rem;
+  right: 0.9rem;
+  border: 1px solid rgb(187 247 208 / 0.34);
+  border-radius: 999px;
+  background: rgb(2 6 5 / 0.48);
   color: rgb(134 239 172);
   font-size: 0.86rem;
   font-weight: 820;
   line-height: 1;
+  padding: 0.28rem 0.48rem;
 }
 
 .player-call-time-orb:not(:disabled):hover {
@@ -1261,7 +1278,10 @@ h3 {
     animation: none;
   }
 
-  .player-call-time-orb {
+  .player-call-time-orb,
+  .call-time-mini-ring span,
+  .call-time-ring-progress {
+    animation: none;
     transition: none;
   }
 }
@@ -1275,6 +1295,32 @@ h3 {
   72%,
   100% {
     transform: translateX(115%);
+  }
+}
+
+@keyframes calltime-sync-ring {
+  from {
+    filter: drop-shadow(0 0 8px rgb(52 211 153 / 0.45));
+    stroke: rgb(52 211 153);
+  }
+
+  to {
+    filter: drop-shadow(0 0 18px rgb(52 211 153 / 0.82));
+    stroke: rgb(187 247 208);
+  }
+}
+
+@keyframes calltime-countdown-number {
+  0% {
+    transform: scale(0.96);
+  }
+
+  48% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 
