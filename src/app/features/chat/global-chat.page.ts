@@ -20,6 +20,28 @@ import {
   type GlobalChatMessage
 } from './global-chat.logic';
 
+const chatSenderPalette = [
+  { accent: 'rgb(192 82 242)', surface: 'rgb(192 82 242 / 0.12)' },
+  { accent: 'rgb(34 197 94)', surface: 'rgb(34 197 94 / 0.12)' },
+  { accent: 'rgb(56 189 248)', surface: 'rgb(56 189 248 / 0.12)' },
+  { accent: 'rgb(250 204 21)', surface: 'rgb(250 204 21 / 0.12)' },
+  { accent: 'rgb(251 113 133)', surface: 'rgb(251 113 133 / 0.12)' },
+  { accent: 'rgb(45 212 191)', surface: 'rgb(45 212 191 / 0.12)' },
+  { accent: 'rgb(251 146 60)', surface: 'rgb(251 146 60 / 0.12)' },
+  { accent: 'rgb(129 140 248)', surface: 'rgb(129 140 248 / 0.12)' }
+];
+
+function chatSenderPaletteIndex(message: GlobalChatMessage): number {
+  const seed = `${message.senderUserId || message.senderDisplayName}:${message.senderDisplayName}`;
+  let hash = 0;
+
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  }
+
+  return hash % chatSenderPalette.length;
+}
+
 @Component({
   selector: 'app-global-chat-page',
   imports: [
@@ -117,6 +139,8 @@ import {
                   class="chat-message"
                   [class.chat-message-own]="isOwn(message)"
                   [style.--message-index]="index"
+                  [style.--sender-accent]="senderAccent(message)"
+                  [style.--sender-surface]="senderSurface(message)"
                 >
                   <span class="chat-avatar">{{ initials(message.senderDisplayName) }}</span>
                   <div class="chat-message-content">
@@ -453,6 +477,8 @@ import {
       }
 
       .chat-message {
+        --sender-accent: rgb(168 85 247);
+        --sender-surface: rgb(168 85 247 / 0.12);
         display: flex;
         align-items: end;
         gap: 0.6rem;
@@ -482,38 +508,29 @@ import {
         height: 2.25rem;
         flex: 0 0 auto;
         place-items: center;
-        border: 1px solid rgb(255 255 255 / 0.16);
+        border: 1px solid var(--sender-accent);
         border-radius: 999px;
         background:
           radial-gradient(circle at 30% 20%, rgb(255 255 255 / 0.24), transparent 44%),
+          var(--sender-surface),
           rgb(15 23 42);
-        color: white;
+        color: var(--sender-accent);
         font-size: 0.76rem;
         font-weight: 850;
       }
 
-      .chat-message-own .chat-avatar {
-        border-color: rgb(34 197 94 / 0.45);
-        background:
-          radial-gradient(circle at 30% 20%, rgb(255 255 255 / 0.2), transparent 44%),
-          linear-gradient(145deg, rgb(21 128 61), rgb(6 95 70));
-      }
-
       .chat-bubble {
         min-width: 0;
-        border: 1px solid rgb(255 255 255 / 0.1);
+        border: 1px solid var(--sender-surface);
         border-radius: 1rem 1rem 1rem 0.28rem;
         padding: 0.72rem 0.78rem;
-        background: rgb(255 255 255 / 0.07);
+        background: linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.02)), var(--sender-surface);
       }
 
       .chat-message-own .chat-bubble {
-        border-color: rgb(34 197 94 / 0.34);
+        border-color: var(--sender-accent);
         border-radius: 1rem 1rem 0.28rem;
-        background:
-          linear-gradient(145deg, rgb(34 197 94 / 0.22), rgb(20 184 166 / 0.12)),
-          rgb(255 255 255 / 0.05);
-        box-shadow: 0 0 1.8rem rgb(34 197 94 / 0.11);
+        background: var(--sender-surface);
       }
 
       .chat-message-meta {
@@ -527,7 +544,7 @@ import {
       }
 
       .chat-message-meta strong {
-        color: white;
+        color: var(--sender-accent);
         font-size: 0.78rem;
       }
 
@@ -844,11 +861,13 @@ import {
           width: 100%;
           max-width: none;
           gap: 0.64rem;
+          justify-content: flex-start;
         }
 
         .global-chat-compact .chat-message-own {
           align-self: stretch;
-          flex-direction: row;
+          flex-direction: row-reverse;
+          justify-content: flex-start;
         }
 
         .global-chat-compact .chat-message-content {
@@ -871,9 +890,9 @@ import {
         .global-chat-compact .chat-message-own .chat-avatar {
           width: 2.75rem;
           height: 2.75rem;
-          border: 1.5px solid rgb(168 85 247 / 0.88);
+          border: 1.35px solid var(--sender-accent);
           background: rgb(12 7 18 / 0.54);
-          color: rgb(217 70 239);
+          color: var(--sender-accent);
           font-size: 0.98rem;
           font-weight: 680;
         }
@@ -885,10 +904,11 @@ import {
         .global-chat-compact .chat-bubble,
         .global-chat-compact .chat-message-own .chat-bubble {
           width: 100%;
-          border: 1px solid rgb(148 163 184 / 0.18);
+          border: 1px solid var(--sender-surface);
           border-radius: 0.95rem;
           background:
             linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.025)),
+            var(--sender-surface),
             rgb(17 24 39 / 0.72);
           padding: 0.72rem 0.88rem;
         }
@@ -910,10 +930,9 @@ import {
         }
 
         .global-chat-compact .chat-message-meta strong {
-          color: rgb(192 82 242);
+          color: var(--sender-accent);
           font-size: 0.88rem;
           font-weight: 720;
-          letter-spacing: -0.01em;
         }
 
         .global-chat-compact .chat-message-meta span {
@@ -924,7 +943,6 @@ import {
           margin-left: 0;
           color: rgb(203 213 225 / 0.72);
           font-size: 0.8rem;
-          font-weight: 540;
         }
 
         .chat-composer {
@@ -1020,6 +1038,14 @@ export class GlobalChatPage {
 
   protected isOwn(message: GlobalChatMessage): boolean {
     return isOwnGlobalChatMessage(message, this.authState.user()?.id ?? null);
+  }
+
+  protected senderAccent(message: GlobalChatMessage): string {
+    return chatSenderPalette[chatSenderPaletteIndex(message)].accent;
+  }
+
+  protected senderSurface(message: GlobalChatMessage): string {
+    return chatSenderPalette[chatSenderPaletteIndex(message)].surface;
   }
 
   protected timeLabel(createdAt: string): string {
