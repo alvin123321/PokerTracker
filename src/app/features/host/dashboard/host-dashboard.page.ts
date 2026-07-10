@@ -121,8 +121,11 @@ class TableNameDialogComponent {
         </div>
       }
 
-      @if (shouldShowLoadingState()) {
-        <section class="mx-auto w-full max-w-5xl">
+      @if (shouldShowDashboardLoader()) {
+        <section
+          class="dashboard-loading-state mx-auto w-full max-w-5xl"
+          [class.dashboard-loading-state-exit]="dashboardLoaderLeaving()"
+        >
           <article class="overflow-hidden rounded-lg border border-emerald-300/25 bg-neutral-950/70 p-6 text-center shadow-[0_22px_60px_rgba(0,0,0,0.28)] ring-1 ring-emerald-300/10 sm:p-8">
             <div class="deck-shuffle mx-auto mb-5" aria-hidden="true">
               <span></span>
@@ -133,7 +136,7 @@ class TableNameDialogComponent {
           </article>
         </section>
       } @else if (shouldShowEmptyState()) {
-        <section class="dashboard-empty-state mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
+        <section class="dashboard-content-state dashboard-empty-state mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
           <article class="empty-session-hero overflow-hidden rounded-lg border border-emerald-300/35 bg-neutral-950/78 p-5 text-center shadow-[0_22px_60px_rgba(0,0,0,0.36)] ring-1 ring-emerald-300/10 sm:p-8">
             <div class="empty-poker-table mx-auto" aria-hidden="true">
               <span class="empty-poker-table-pattern"></span>
@@ -220,7 +223,7 @@ class TableNameDialogComponent {
           </section>
         </section>
       } @else {
-        <section class="space-y-4">
+        <section class="dashboard-content-state space-y-4">
           <div class="flex items-center gap-3">
             <span class="dashboard-table-icon" aria-hidden="true"></span>
             <h2 class="truncate text-xl font-semibold text-white">Active Sessions</h2>
@@ -237,19 +240,22 @@ class TableNameDialogComponent {
                   (click)="toggleSession(session.id)"
                 >
                   <span class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <span class="min-w-0">
-                      <span class="flex flex-wrap items-center gap-3">
-                        <span class="truncate text-2xl font-semibold text-white">{{ session.name }}</span>
-                        <span class="rounded-full border border-emerald-300/35 px-3 py-1 text-xs font-semibold text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.12)]">
-                          {{ session.tables.length }} table{{ session.tables.length === 1 ? '' : 's' }}
+                    <span class="grid w-full min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                      <span class="min-w-0">
+                        <span class="flex flex-wrap items-center gap-3">
+                          <span class="truncate text-2xl font-semibold text-white">{{ session.name }}</span>
+                          <span class="rounded-full border border-emerald-300/35 px-3 py-1 text-xs font-semibold text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.12)]">
+                            {{ session.tables.length }} table{{ session.tables.length === 1 ? '' : 's' }}
+                          </span>
                         </span>
-                        <span class="dashboard-status-pill dashboard-status-pill-active">
-                          <span class="dashboard-status-dot" aria-hidden="true"></span>
-                          Active
+                        <span class="mt-2 block text-sm text-neutral-400">
+                          {{ session.sessionDate | date: 'mediumDate' }}
                         </span>
                       </span>
-                      <span class="mt-2 block text-sm text-neutral-400">
-                        {{ session.sessionDate | date: 'mediumDate' }}
+
+                      <span class="dashboard-status-pill dashboard-status-pill-active justify-self-end">
+                        <span class="dashboard-status-dot" aria-hidden="true"></span>
+                        Active
                       </span>
                     </span>
 
@@ -578,8 +584,72 @@ class TableNameDialogComponent {
         isolation: isolate;
       }
 
+      .dashboard-loading-state {
+        animation: dashboard-loader-in 260ms ease-out both;
+      }
+
+      .dashboard-loading-state-exit {
+        pointer-events: none;
+        animation: dashboard-loader-out 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      .dashboard-content-state {
+        animation: dashboard-content-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
       .dashboard-empty-state {
-        animation: dashboard-empty-in 360ms ease-out both;
+        animation: dashboard-content-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      @keyframes dashboard-loader-in {
+        from {
+          opacity: 0;
+          transform: translateY(0.35rem);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes dashboard-loader-out {
+        from {
+          opacity: 1;
+          filter: blur(0);
+          transform: translateY(0);
+        }
+
+        to {
+          opacity: 0;
+          filter: blur(5px);
+          transform: translateY(-0.35rem);
+        }
+      }
+
+      @keyframes dashboard-content-in {
+        from {
+          opacity: 0;
+          filter: blur(4px);
+          transform: translateY(0.45rem);
+        }
+
+        to {
+          opacity: 1;
+          filter: blur(0);
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .dashboard-loading-state,
+        .dashboard-loading-state-exit,
+        .dashboard-content-state,
+        .dashboard-empty-state {
+          animation-duration: 1ms;
+          filter: none;
+          transform: none;
+        }
       }
 
       .empty-session-hero,
@@ -1194,6 +1264,8 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
   protected readonly initialLoadingWindowExpired = signal(false);
+  protected readonly dashboardLoaderVisible = signal(true);
+  protected readonly dashboardLoaderLeaving = signal(false);
   protected readonly expandedSessionId = signal<string | null | undefined>(undefined);
   protected readonly expandedTableId = signal<string | null | undefined>(undefined);
   protected readonly expandedDashboardPlayerId = signal<string | null>(null);
@@ -1201,15 +1273,23 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   protected readonly recentRebuySessionId = signal<string | null>(null);
   private rebuyAnimationTimer: ReturnType<typeof setTimeout> | null = null;
   private initialLoadingTimer: ReturnType<typeof setTimeout> | null = null;
+  private dashboardLoaderExitTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     if (typeof window === 'undefined') {
       this.initialLoadingWindowExpired.set(true);
+      this.dashboardLoaderVisible.set(false);
+      return;
+    }
+
+    if (this.store.sessionsLoaded()) {
+      this.initialLoadingWindowExpired.set(true);
+      this.dashboardLoaderVisible.set(false);
       return;
     }
 
     this.initialLoadingTimer = window.setTimeout(() => {
-      this.initialLoadingWindowExpired.set(true);
+      this.revealDashboardContent();
       this.initialLoadingTimer = null;
     }, 900);
   }
@@ -1218,6 +1298,11 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     if (this.initialLoadingTimer) {
       clearTimeout(this.initialLoadingTimer);
       this.initialLoadingTimer = null;
+    }
+
+    if (this.dashboardLoaderExitTimer) {
+      clearTimeout(this.dashboardLoaderExitTimer);
+      this.dashboardLoaderExitTimer = null;
     }
 
     this.clearRebuyAnimation();
@@ -1247,6 +1332,10 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       sessionsLoaded: this.store.sessionsLoaded(),
       initialLoadingWindowExpired: this.initialLoadingWindowExpired()
     });
+  }
+
+  protected shouldShowDashboardLoader(): boolean {
+    return this.dashboardLoaderVisible();
   }
 
   protected toggleSession(sessionId: string): void {
@@ -1522,6 +1611,17 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     this.recentRebuySessionId.set(sessionId);
     this.recentRebuyPlayerId.set(playerId);
     this.rebuyAnimationTimer = setTimeout(() => this.clearRebuyAnimation(), 1500);
+  }
+
+  private revealDashboardContent(): void {
+    this.initialLoadingWindowExpired.set(true);
+    this.dashboardLoaderLeaving.set(true);
+
+    this.dashboardLoaderExitTimer = window.setTimeout(() => {
+      this.dashboardLoaderVisible.set(false);
+      this.dashboardLoaderLeaving.set(false);
+      this.dashboardLoaderExitTimer = null;
+    }, 560);
   }
 
   private clearRebuyAnimation(): void {
