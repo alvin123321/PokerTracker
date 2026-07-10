@@ -1194,6 +1194,10 @@ h3 {
   background: rgb(34 197 94 / 0.075);
 }
 
+.feature-player-row-active strong {
+  color: rgb(187 247 208);
+}
+
 .feature-player-row-active .feature-player-dot {
   background: rgb(74 222 128);
   box-shadow: 0 0 10px rgb(34 197 94 / 0.45);
@@ -1204,16 +1208,20 @@ h3 {
 }
 
 .feature-player-row-cashed {
-  border-color: rgb(245 158 11 / 0.18);
-  background: rgb(245 158 11 / 0.06);
+  border-color: rgb(255 255 255 / 0.08);
+  background: rgb(113 113 122 / 0.08);
 }
 
 .feature-player-row-cashed .feature-player-dot {
-  background: rgb(251 191 36);
+  background: rgb(113 113 122);
+}
+
+.feature-player-row-cashed strong {
+  color: rgb(161 161 170);
 }
 
 .feature-player-row-cashed .feature-player-status {
-  color: rgb(253 230 138);
+  color: rgb(113 113 122);
 }
 
 .feature-player-row-current {
