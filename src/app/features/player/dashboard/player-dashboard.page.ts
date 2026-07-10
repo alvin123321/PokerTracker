@@ -1307,6 +1307,14 @@ const playerCallTimeSyncIntervalMs = 1000;
       }
 
       @media (max-width: 560px) {
+        .player-chat-panel {
+          margin-inline: -0.75rem;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          padding: 0;
+        }
+
         .player-tab {
           min-height: 2.65rem;
         }

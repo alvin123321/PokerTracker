@@ -119,13 +119,15 @@ import {
                   [style.--message-index]="index"
                 >
                   <span class="chat-avatar">{{ initials(message.senderDisplayName) }}</span>
-                  <div class="chat-bubble">
+                  <div class="chat-message-content">
                     <div class="chat-message-meta">
                       <strong>{{ message.senderDisplayName }}</strong>
                       <span>{{ message.senderRole === 'PLAYER' ? 'Member' : message.senderRole }}</span>
                       <time [attr.datetime]="message.createdAt">{{ timeLabel(message.createdAt) }}</time>
                     </div>
-                    <p>{{ message.message }}</p>
+                    <div class="chat-bubble">
+                      <p>{{ message.message }}</p>
+                    </div>
                   </div>
                 </article>
               }
@@ -464,6 +466,16 @@ import {
         flex-direction: row-reverse;
       }
 
+      .chat-message-content {
+        display: grid;
+        min-width: 0;
+        gap: 0.28rem;
+      }
+
+      .chat-message-own .chat-message-content {
+        justify-items: end;
+      }
+
       .chat-avatar {
         display: grid;
         width: 2.25rem;
@@ -768,7 +780,7 @@ import {
 
       @media (max-width: 639px) {
         .global-chat {
-          gap: 0.75rem;
+          gap: 0;
         }
 
         .chat-hero {
@@ -781,7 +793,18 @@ import {
         }
 
         .global-chat-compact .chat-panel {
-          min-height: calc(100dvh - 12rem);
+          min-height: calc(100dvh - 9.4rem);
+          grid-template-rows: minmax(0, 1fr) auto;
+          overflow: visible;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          box-shadow: none;
+        }
+
+        .global-chat-compact .chat-panel::before,
+        .global-chat-compact .chat-panel-head {
+          display: none;
         }
 
         .chat-panel-head {
@@ -806,9 +829,36 @@ import {
           padding: 0.78rem;
         }
 
+        .global-chat-compact .chat-stream {
+          min-height: 0;
+          padding: 0.1rem 0.75rem 0.75rem;
+        }
+
         .chat-message {
           max-width: 94%;
           gap: 0.48rem;
+        }
+
+        .global-chat-compact .chat-message {
+          align-items: start;
+          width: 100%;
+          max-width: none;
+          gap: 0.64rem;
+        }
+
+        .global-chat-compact .chat-message-own {
+          align-self: stretch;
+          flex-direction: row;
+        }
+
+        .global-chat-compact .chat-message-content {
+          width: min(100%, 16rem);
+          gap: 0.32rem;
+          justify-items: stretch;
+        }
+
+        .global-chat-compact .chat-message-own .chat-message-content {
+          justify-items: stretch;
         }
 
         .chat-avatar {
@@ -817,13 +867,69 @@ import {
           font-size: 0.7rem;
         }
 
+        .global-chat-compact .chat-avatar,
+        .global-chat-compact .chat-message-own .chat-avatar {
+          width: 2.75rem;
+          height: 2.75rem;
+          border: 1.5px solid rgb(168 85 247 / 0.88);
+          background: rgb(12 7 18 / 0.54);
+          color: rgb(217 70 239);
+          font-size: 0.98rem;
+          font-weight: 680;
+        }
+
         .chat-bubble {
           padding: 0.64rem 0.68rem;
         }
 
+        .global-chat-compact .chat-bubble,
+        .global-chat-compact .chat-message-own .chat-bubble {
+          width: 100%;
+          border: 1px solid rgb(148 163 184 / 0.18);
+          border-radius: 0.95rem;
+          background:
+            linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.025)),
+            rgb(17 24 39 / 0.72);
+          padding: 0.72rem 0.88rem;
+        }
+
+        .global-chat-compact .chat-bubble p {
+          color: rgb(241 245 249);
+          font-size: 1rem;
+          line-height: 1.52;
+          font-weight: 520;
+        }
+
+        .global-chat-compact .chat-message-meta {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 0.5rem;
+          margin: 0 0 0 0.1rem;
+          color: rgb(203 213 225 / 0.78);
+          font-size: 0.8rem;
+        }
+
+        .global-chat-compact .chat-message-meta strong {
+          color: rgb(192 82 242);
+          font-size: 0.88rem;
+          font-weight: 720;
+          letter-spacing: -0.01em;
+        }
+
+        .global-chat-compact .chat-message-meta span {
+          display: none;
+        }
+
+        .global-chat-compact .chat-message-meta time {
+          margin-left: 0;
+          color: rgb(203 213 225 / 0.72);
+          font-size: 0.8rem;
+          font-weight: 540;
+        }
+
         .chat-composer {
           position: sticky;
-          bottom: calc(4.7rem + env(safe-area-inset-bottom));
+          bottom: calc(4.35rem + env(safe-area-inset-bottom));
           margin-inline: -0.12rem;
           padding: 0.72rem;
           border: 1px solid rgb(255 255 255 / 0.1);
@@ -832,9 +938,25 @@ import {
           box-shadow: 0 -1rem 2.6rem rgb(0 0 0 / 0.28);
         }
 
+        .global-chat-compact .chat-composer {
+          margin-inline: 0;
+          padding: 0.5rem;
+          gap: 0.42rem;
+          border-radius: 0.9rem;
+        }
+
         .chat-composer textarea {
           min-height: 3.75rem;
           font-size: 1rem;
+        }
+
+        .global-chat-compact .chat-composer textarea {
+          min-height: 2.85rem;
+          padding: 0.66rem 0.75rem;
+        }
+
+        .global-chat-compact .composer-footer button {
+          min-height: 2.28rem;
         }
 
         .composer-footer button {
