@@ -1,5 +1,6 @@
 import {
   playerCallTimeDisplayState,
+  playerHasSharedCallTimeClock,
   playerGameTimeline,
   playerGameStatusKind,
   playerGameStatMode,
@@ -24,6 +25,18 @@ describe('player dashboard call-time display', () => {
     });
 
     expect(playerCallTimeDisplayState(session, player, session.timeCalls[0])).toBe('CLOCK');
+  });
+
+  it('uses the same shared clock view for the caller and tablemates', () => {
+    const caller = makePlayer({ id: 'seat-a' });
+    const tablemate = makePlayer({ id: 'seat-b' });
+    const session = makeSession({
+      players: [caller, tablemate],
+      timeCalls: [makeTimeCall({ sessionPlayerId: caller.id })]
+    });
+
+    expect(playerHasSharedCallTimeClock(session, caller, session.timeCalls[0])).toBeTrue();
+    expect(playerHasSharedCallTimeClock(session, tablemate, session.timeCalls[0])).toBeTrue();
   });
 
   it('shows the call-time button when no table clock is running', () => {

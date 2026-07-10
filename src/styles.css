@@ -1831,7 +1831,7 @@ h3 {
 .session-overview-clock-panel {
   position: relative;
   display: flex;
-  min-height: 24rem;
+  min-height: 25rem;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -1864,10 +1864,15 @@ h3 {
   z-index: 1;
   isolation: isolate;
   display: grid;
-  width: min(64vw, 21rem);
-  height: min(64vw, 21rem);
+  width: min(72vw, 24rem);
+  height: min(72vw, 24rem);
   place-items: center;
   margin-inline: auto;
+}
+
+.call-time-stage-ring-active {
+  width: min(78vw, 26rem);
+  height: min(78vw, 26rem);
 }
 
 .call-time-stage-ring::before,
@@ -1996,6 +2001,8 @@ h3 {
   z-index: 3;
   display: grid;
   place-items: center;
+  width: 56%;
+  height: 56%;
 }
 
 .call-time-ring-face strong {
@@ -2006,10 +2013,10 @@ h3 {
   font-family:
     'Bahnschrift SemiBold', 'Arial Black', 'Trebuchet MS', 'Aptos Display', Aptos, ui-sans-serif,
     system-ui, sans-serif;
-  font-size: clamp(5.25rem, 20vw, 10rem);
+  font-size: clamp(6rem, 22vw, 11.4rem);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
-  line-height: 0.9;
+  line-height: 1;
   text-shadow:
     0 0 20px rgb(52 211 153 / 0.32),
     0 12px 38px rgb(0 0 0 / 0.52);
@@ -2196,8 +2203,17 @@ h3 {
     grid-template-columns: minmax(0, 1fr) 23rem;
   }
 
+  .session-overview-table-card-live .session-overview-table-layout {
+    grid-template-columns: minmax(0, 1fr) 21rem;
+  }
+
   .session-overview-clock-panel {
-    min-height: 33rem;
+    min-height: 35rem;
+  }
+
+  .call-time-stage-ring-active {
+    width: min(42vw, 29rem);
+    height: min(42vw, 29rem);
   }
 }
 

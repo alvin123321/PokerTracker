@@ -1,10 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 
 import {
   CALL_TIME_DURATION_SECONDS,
   PokerStoreService,
-  ResolvedTimeCallStatus,
   TimeCall
 } from '../data/poker-store.service';
 import { sessionOverviewRefreshIntervalMs } from '../data/realtime.logic';
@@ -32,9 +31,9 @@ import { sessionOverviewRefreshIntervalMs } from '../data/realtime.logic';
         </div>
       }
 
-      @if (actionError() || store.error()) {
+      @if (store.error()) {
         <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
-          {{ actionError() || store.error() }}
+          {{ store.error() }}
         </div>
       }
 
@@ -83,39 +82,16 @@ import { sessionOverviewRefreshIntervalMs } from '../data/realtime.logic';
                     <div class="call-time-ring-face">
                       @if (activeCall && store.isTimeCallStarting(activeCall)) {
                         <strong>{{ store.timeCallStartsInSecondsFor(activeCall) }}</strong>
-                        <span>starting</span>
+                      } @else if (activeCall) {
+                        <strong>{{ store.secondsRemainingFor(activeCall) }}</strong>
                       } @else {
-                        <strong>{{ activeCall ? store.secondsRemainingFor(activeCall) : callTimeDuration }}</strong>
+                        <strong>{{ callTimeDuration }}</strong>
                         <span>seconds</span>
                       }
                     </div>
                   </div>
 
-                  @if (activeCall) {
-                    <div class="session-overview-clock-copy">
-                      <p>{{ store.isTimeCallStarting(activeCall) ? 'Syncing' : 'Clock is live' }}</p>
-                      <strong>{{ store.isTimeCallStarting(activeCall) ? 'Starting Soon' : 'Time Called' }}</strong>
-                    </div>
-
-                    <div class="session-overview-controls">
-                      <button
-                        type="button"
-                        class="session-overview-action"
-                        [disabled]="isResolving() || !store.timeCallSchemaReady()"
-                        (click)="resolveTimeCall(activeCall.id, 'FINISHED')"
-                      >
-                        Finish
-                      </button>
-                      <button
-                        type="button"
-                        class="session-overview-action session-overview-action-muted"
-                        [disabled]="isResolving() || !store.timeCallSchemaReady()"
-                        (click)="resolveTimeCall(activeCall.id, 'CANCELLED')"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  } @else {
+                  @if (!activeCall) {
                     <div class="session-overview-clock-copy">
                       <p>Ready</p>
                       <strong>No active clock</strong>
@@ -169,8 +145,6 @@ import { sessionOverviewRefreshIntervalMs } from '../data/realtime.logic';
 export class SessionOverviewPage implements OnInit, OnDestroy {
   protected readonly store = inject(PokerStoreService);
   protected readonly callTimeDuration = CALL_TIME_DURATION_SECONDS;
-  protected readonly resolvingTimeCallId = signal<string | null>(null);
-  protected readonly actionError = signal<string | null>(null);
   private overviewRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
   async ngOnInit(): Promise<void> {
@@ -223,24 +197,4 @@ export class SessionOverviewPage implements OnInit, OnDestroy {
     return `${Math.max(0, Math.min(1, elapsed)) * 360}deg`;
   }
 
-  protected isResolving(): boolean {
-    return Boolean(this.resolvingTimeCallId());
-  }
-
-  protected async resolveTimeCall(timeCallId: string, status: ResolvedTimeCallStatus): Promise<void> {
-    if (this.resolvingTimeCallId()) {
-      return;
-    }
-
-    this.resolvingTimeCallId.set(timeCallId);
-    this.actionError.set(null);
-
-    try {
-      await this.store.resolveTimeCall(timeCallId, status);
-    } catch (error) {
-      this.actionError.set(error instanceof Error ? error.message : 'Unable to update table clock.');
-    } finally {
-      this.resolvingTimeCallId.set(null);
-    }
-  }
 }

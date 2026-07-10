@@ -37,6 +37,7 @@ import {
 } from '../../host/data/poker-store.service';
 import {
   playerCallTimeDisplayState,
+  playerHasSharedCallTimeClock,
   playerGameTimeline,
   playerGameStatMode,
   playerGameStatusKind,
@@ -157,7 +158,6 @@ interface PlayerActivityEntry {
                 >
                   @let activeCall = store.activeTimeCallForSession(entry.session);
                   @let remainingCalls = store.remainingTimeCallsForPlayer(entry.session, entry.player.id);
-                  @let isMyClock = store.isTimeCallRunningForPlayer(entry.session, entry.player.id);
                   @let callTimeState = callTimeDisplayState(entry, activeCall);
                   @let statMode = gameStatMode(entry);
                   <div class="feature-heading">
@@ -197,7 +197,7 @@ interface PlayerActivityEntry {
                         <div class="player-call-time-live">
                           <div
                             class="call-time-mini-ring call-time-mini-ring-hero"
-                            [class.call-time-mini-ring-active]="isMyClock"
+                            [class.call-time-mini-ring-active]="hasSharedCallTimeClock(entry, activeCall)"
                             [class.call-time-mini-ring-starting]="store.isTimeCallStarting(activeCall)"
                             [class.call-time-mini-ring-running]="!store.isTimeCallStarting(activeCall)"
                           >
@@ -1466,6 +1466,10 @@ export class PlayerDashboardPage implements OnInit {
     activeCall: TimeCall | undefined
   ): PlayerCallTimeDisplayState {
     return playerCallTimeDisplayState(entry.session, entry.player, activeCall);
+  }
+
+  protected hasSharedCallTimeClock(entry: PlayerSessionEntry, activeCall: TimeCall | undefined): boolean {
+    return playerHasSharedCallTimeClock(entry.session, entry.player, activeCall);
   }
 
   private playerMatchesLogin(player: SessionPlayer, userId: string | null, targetName: string): boolean {
