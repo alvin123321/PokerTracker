@@ -12,6 +12,17 @@ import {
   usernameFromDisplayName as buildUsernameFromDisplayName
 } from './username.logic';
 import { shouldReconnectRealtimeChannel } from './realtime.logic';
+import {
+  CALL_TIME_DURATION_SECONDS,
+  CALL_TIME_LIMIT,
+  CALL_TIME_SYNC_BUFFER_SECONDS,
+  timeCallPhase,
+  timeCallProgress,
+  timeCallSecondsRemaining,
+  timeCallStartsInSeconds
+} from './time-call.logic';
+
+export { CALL_TIME_DURATION_SECONDS, CALL_TIME_LIMIT } from './time-call.logic';
 
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
@@ -19,9 +30,6 @@ export type PokerPlayerStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTransactionType = 'BUYIN' | 'REBUY' | 'CASHOUT';
 export type TimeCallStatus = 'RUNNING' | 'FINISHED' | 'EXPIRED' | 'CANCELLED';
 export type ResolvedTimeCallStatus = Exclude<TimeCallStatus, 'RUNNING'>;
-
-export const CALL_TIME_LIMIT = 3;
-export const CALL_TIME_DURATION_SECONDS = 60;
 
 export function defaultPokerTableName(tableNumber: number): string {
   if (tableNumber === 1) {
@@ -1152,8 +1160,8 @@ export class PokerStoreService implements OnDestroy {
     }
 
     const now = new Date();
-    const nowIso = now.toISOString();
-    const expiresAt = new Date(now.getTime() + CALL_TIME_DURATION_SECONDS * 1000).toISOString();
+    const startsAt = new Date(now.getTime() + CALL_TIME_SYNC_BUFFER_SECONDS * 1000);
+    const expiresAt = new Date(startsAt.getTime() + CALL_TIME_DURATION_SECONDS * 1000).toISOString();
 
     this.updateSession(sessionId, (session) => {
       const timeCalls = this.expireTimeCalls(session.timeCalls ?? []);
@@ -1192,7 +1200,7 @@ export class PokerStoreService implements OnDestroy {
             sessionId,
             sessionPlayerId,
             status: 'RUNNING',
-            startedAt: nowIso,
+            startedAt: startsAt.toISOString(),
             expiresAt,
             resolvedAt: null,
             resolvedBy: null
@@ -1305,7 +1313,7 @@ export class PokerStoreService implements OnDestroy {
       return 0;
     }
 
-    return Math.max(0, Math.ceil((new Date(timeCall.expiresAt).getTime() - now) / 1000));
+    return timeCallSecondsRemaining(timeCall.startedAt, timeCall.expiresAt, now);
   }
 
   timeCallProgressFor(timeCall: TimeCall | undefined): number {
@@ -1315,12 +1323,23 @@ export class PokerStoreService implements OnDestroy {
       return 0;
     }
 
-    const startedAt = new Date(timeCall.startedAt).getTime();
-    const expiresAt = new Date(timeCall.expiresAt).getTime();
-    const duration = Math.max(1, expiresAt - startedAt);
-    const remaining = Math.max(0, expiresAt - now);
+    return timeCallProgress(timeCall.startedAt, timeCall.expiresAt, now);
+  }
 
-    return Math.max(0, Math.min(1, remaining / duration));
+  timeCallStartsInSecondsFor(timeCall: TimeCall | undefined): number {
+    if (!timeCall || timeCall.status !== 'RUNNING') {
+      return 0;
+    }
+
+    return timeCallStartsInSeconds(timeCall.startedAt, this.serverNowMs());
+  }
+
+  isTimeCallStarting(timeCall: TimeCall | undefined): boolean {
+    return Boolean(
+      timeCall &&
+        timeCall.status === 'RUNNING' &&
+        timeCallPhase(timeCall.startedAt, timeCall.expiresAt, this.serverNowMs()) === 'STARTING'
+    );
   }
 
   playerNameForTimeCall(session: PokerSession | undefined, timeCall: TimeCall | undefined): string {

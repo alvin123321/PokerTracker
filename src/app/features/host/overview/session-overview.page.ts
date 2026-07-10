@@ -79,15 +79,20 @@ import { sessionOverviewRefreshIntervalMs } from '../data/realtime.logic';
                       <span class="call-time-ring-sweep"></span>
                     </div>
                     <div class="call-time-ring-face">
-                      <strong>{{ activeCall ? store.secondsRemainingFor(activeCall) : callTimeDuration }}</strong>
-                      <span>seconds</span>
+                      @if (activeCall && store.isTimeCallStarting(activeCall)) {
+                        <strong>{{ store.timeCallStartsInSecondsFor(activeCall) }}</strong>
+                        <span>starting</span>
+                      } @else {
+                        <strong>{{ activeCall ? store.secondsRemainingFor(activeCall) : callTimeDuration }}</strong>
+                        <span>seconds</span>
+                      }
                     </div>
                   </div>
 
                   @if (activeCall) {
                     <div class="session-overview-clock-copy">
-                      <p>Clock is live</p>
-                      <strong>Time Called</strong>
+                      <p>{{ store.isTimeCallStarting(activeCall) ? 'Syncing' : 'Clock is live' }}</p>
+                      <strong>{{ store.isTimeCallStarting(activeCall) ? 'Starting Soon' : 'Time Called' }}</strong>
                     </div>
 
                     <div class="session-overview-controls">
