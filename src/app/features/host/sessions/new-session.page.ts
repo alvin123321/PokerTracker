@@ -16,7 +16,7 @@ import { PokerStoreService } from '../data/poker-store.service';
       </div>
 
       <form
-        class="rounded-lg border border-white/10 bg-white/[0.04] p-4 sm:p-5"
+        class="new-session-form rounded-lg border border-white/10 bg-white/[0.04] p-4 sm:p-5"
         [formGroup]="form"
       >
         @if (errorMessage()) {
@@ -29,7 +29,7 @@ import { PokerStoreService } from '../data/poker-store.service';
         <input
           id="sessionName"
           formControlName="name"
-          class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-emerald-300"
+          class="new-session-input mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-emerald-300"
           placeholder="July 15 Game"
         />
 
@@ -38,7 +38,7 @@ import { PokerStoreService } from '../data/poker-store.service';
           id="sessionDate"
           type="date"
           formControlName="sessionDate"
-          class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-emerald-300"
+          class="new-session-input mt-2 w-full rounded-lg border border-white/10 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-emerald-300"
         />
 
         <div class="mt-6 grid grid-cols-2 gap-3">
@@ -63,7 +63,46 @@ import { PokerStoreService } from '../data/poker-store.service';
         </div>
       </form>
     </section>
-  `
+  `,
+  styles: [
+    `
+      .new-session-form {
+        min-width: 0;
+      }
+
+      .new-session-input {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+
+      .new-session-input[type='date'] {
+        appearance: none;
+        -webkit-appearance: none;
+        inline-size: 100%;
+        overflow: hidden;
+      }
+
+      .new-session-input[type='date']::-webkit-date-and-time-value {
+        min-width: 0;
+        text-align: left;
+      }
+
+      .new-session-input[type='date']::-webkit-calendar-picker-indicator {
+        flex: 0 0 auto;
+        margin-inline-start: 0.25rem;
+        padding: 0;
+      }
+
+      @media (max-width: 380px) {
+        .new-session-input {
+          padding-inline: 0.875rem;
+        }
+      }
+    `
+  ]
 })
 export class NewSessionPage {
   private readonly store = inject(PokerStoreService);

@@ -7,6 +7,7 @@ import { SupabaseService } from '../../../core/supabase/supabase.service';
 import { environment } from '../../../../environments/environment';
 import { removeSessionPlayerFromSession } from './session-player-removal.logic';
 import { removeSessionTableFromSession } from './session-table-removal.logic';
+import { sessionLoadEffectAction } from './session-load.logic';
 import {
   localPlayerSlug as buildLocalPlayerSlug,
   usernameFromDisplayName as buildUsernameFromDisplayName
@@ -23,6 +24,10 @@ import {
 } from './time-call.logic';
 
 export { CALL_TIME_DURATION_SECONDS, CALL_TIME_LIMIT } from './time-call.logic';
+
+interface RefreshSessionsOptions {
+  showLoading?: boolean;
+}
 
 export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
@@ -290,19 +295,33 @@ export class PokerStoreService implements OnDestroy {
       const initialized = this.authState.initialized();
       const user = this.authState.user();
       const role = this.authState.role();
+      const userId = user?.id ?? null;
+      const loadAction = sessionLoadEffectAction({
+        initialized,
+        userId,
+        usesSupabase: this.shouldUseSupabaseForUser(userId),
+        loadedSupabaseUserId: this.loadedSupabaseUserId
+      });
 
-      if (!initialized || !this.shouldUseSupabaseForUser(user?.id ?? null)) {
+      if (loadAction === 'WAIT_FOR_AUTH') {
         this.teardownRealtimeChannel();
         return;
       }
 
-      this.setupRealtimeChannel(user?.id ?? null, role);
-
-      if (this.loadedSupabaseUserId === user?.id) {
+      if (loadAction === 'LOAD_LOCAL_SESSIONS') {
+        this.teardownRealtimeChannel();
+        this.loadedSupabaseUserId = null;
+        void this.refreshHostSessions({ showLoading: false });
         return;
       }
 
-      this.loadedSupabaseUserId = user?.id ?? null;
+      this.setupRealtimeChannel(userId, role);
+
+      if (loadAction === 'SKIP_CURRENT_SUPABASE_USER') {
+        return;
+      }
+
+      this.loadedSupabaseUserId = userId;
       void this.refreshSessions();
     });
 
@@ -342,11 +361,13 @@ export class PokerStoreService implements OnDestroy {
     }
   }
 
-  async refreshSessions(): Promise<void> {
-    await this.refreshHostSessions();
+  async refreshSessions(options: RefreshSessionsOptions = {}): Promise<void> {
+    await this.refreshHostSessions(options);
   }
 
-  async refreshHostSessions(): Promise<void> {
+  async refreshHostSessions(options: RefreshSessionsOptions = {}): Promise<void> {
+    const showLoading = options.showLoading ?? true;
+
     if (this.shouldUseLocalSharedData()) {
       await this.loadLocalSharedState();
       this.markSessionsLoaded();
@@ -354,12 +375,14 @@ export class PokerStoreService implements OnDestroy {
     }
 
     if (!this.shouldUseSupabase()) {
-      await this.refreshDevelopmentProductionSnapshot();
+      await this.refreshDevelopmentProductionSnapshot({ showLoading });
       this.markSessionsLoaded();
       return;
     }
 
-    this.setLoading(true);
+    if (showLoading) {
+      this.setLoading(true);
+    }
     this.setError(null);
 
     try {
@@ -448,7 +471,9 @@ export class PokerStoreService implements OnDestroy {
       this.setError(this.toMessage(error));
       throw error;
     } finally {
-      this.setLoading(false);
+      if (showLoading) {
+        this.setLoading(false);
+      }
       this.markSessionsLoaded();
     }
   }
@@ -2068,12 +2093,18 @@ export class PokerStoreService implements OnDestroy {
     void this.saveLocalSharedState({ sessions });
   }
 
-  private async refreshDevelopmentProductionSnapshot(): Promise<void> {
+  private async refreshDevelopmentProductionSnapshot(
+    options: RefreshSessionsOptions = {}
+  ): Promise<void> {
     if (environment.production || typeof fetch === 'undefined') {
       return;
     }
 
-    this.setLoading(true);
+    const showLoading = options.showLoading ?? true;
+
+    if (showLoading) {
+      this.setLoading(true);
+    }
 
     try {
       const response = await fetch(`${developmentProductionSnapshotPath}?t=${Date.now()}`, {
@@ -2114,7 +2145,9 @@ export class PokerStoreService implements OnDestroy {
     } catch {
       // Missing or invalid local snapshots should not block development mode.
     } finally {
-      this.setLoading(false);
+      if (showLoading) {
+        this.setLoading(false);
+      }
     }
   }
 

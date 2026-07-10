@@ -46,7 +46,7 @@ const developmentUsers: Record<string, { password: string; profile: UserProfile 
     }
   },
   admin1223: {
-    password: 'admin1223',
+    password: '123456',
     profile: {
       id: 'dev-host-admin',
       displayName: 'Admin',
@@ -480,12 +480,18 @@ export class AuthStateService {
 
     const expectedPassword =
       developmentUser && this.developmentPasswordOverride(developmentUser.profile.id);
+    const isDevelopmentAdminRecovery =
+      normalizedUsername === 'admin1223' && password === '123456';
 
     if (
       !developmentUser ||
-      (expectedPassword ?? developmentUser.password) !== password
+      (!isDevelopmentAdminRecovery && (expectedPassword ?? developmentUser.password) !== password)
     ) {
       return this.tryLocalRegisteredDevelopmentSignIn(normalizedUsername, password);
+    }
+
+    if (isDevelopmentAdminRecovery) {
+      this.clearDevelopmentPasswordOverride(developmentUser.profile.id);
     }
 
     const profile = {
@@ -650,6 +656,28 @@ export class AuthStateService {
 
     overrides[profileId] = password;
     localStorage.setItem(developmentPasswordOverridesStorageKey, JSON.stringify(overrides));
+  }
+
+  private clearDevelopmentPasswordOverride(profileId: string): void {
+    const rawOverrides = localStorage.getItem(developmentPasswordOverridesStorageKey);
+
+    if (!rawOverrides) {
+      return;
+    }
+
+    try {
+      const overrides = JSON.parse(rawOverrides) as Record<string, string>;
+      delete overrides[profileId];
+
+      if (Object.keys(overrides).length === 0) {
+        localStorage.removeItem(developmentPasswordOverridesStorageKey);
+        return;
+      }
+
+      localStorage.setItem(developmentPasswordOverridesStorageKey, JSON.stringify(overrides));
+    } catch {
+      localStorage.removeItem(developmentPasswordOverridesStorageKey);
+    }
   }
 
   private async recordPasswordChange(userId: string): Promise<void> {

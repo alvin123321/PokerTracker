@@ -22,6 +22,14 @@ export function playerCallTimeDisplayState(
   return 'BUTTON';
 }
 
+export function playerHasSharedCallTimeClock(
+  session: PokerSession,
+  player: SessionPlayer,
+  activeCall: TimeCall | undefined
+): boolean {
+  return playerCallTimeDisplayState(session, player, activeCall) === 'CLOCK';
+}
+
 export function playerGameTimeline(transactions: PokerTransaction[]): PokerTransaction[] {
   return gameTimelineTransactions(transactions);
 }
