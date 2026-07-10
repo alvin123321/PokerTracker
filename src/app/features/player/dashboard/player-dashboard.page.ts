@@ -178,9 +178,21 @@ interface PlayerActivityEntry {
                                 [attr.stroke-dashoffset]="1 - store.timeCallProgressFor(activeCall)"
                               ></circle>
                             </svg>
-                            <span>{{ store.secondsRemainingFor(activeCall) }}</span>
+                            <span>
+                              {{
+                                store.isTimeCallStarting(activeCall)
+                                  ? store.timeCallStartsInSecondsFor(activeCall)
+                                  : store.secondsRemainingFor(activeCall)
+                              }}
+                            </span>
                           </div>
-                          <p>{{ isMyClock ? 'Your clock is running' : 'Table clock running' }}</p>
+                          <p>
+                            @if (store.isTimeCallStarting(activeCall)) {
+                              Starting
+                            } @else {
+                              {{ isMyClock ? 'Your clock is running' : 'Table clock running' }}
+                            }
+                          </p>
                         </div>
                       } @else if (callTimeState === 'BUTTON') {
                         <button
@@ -1142,7 +1154,10 @@ export class PlayerDashboardPage implements OnInit {
           confirmLabel: 'Start Clock',
           cancelLabel: 'Cancel',
           tone: 'primary',
-          details: [`You have ${this.store.remainingTimeCallsForPlayer(entry.session, entry.player.id)} of ${this.callTimeLimit} calls left.`]
+          details: [
+            'The table screen gets a 3 second sync before the countdown starts.',
+            `You have ${this.store.remainingTimeCallsForPlayer(entry.session, entry.player.id)} of ${this.callTimeLimit} calls left.`
+          ]
         },
         panelClass: 'pokertrack-dialog-panel'
       }
