@@ -266,7 +266,7 @@ interface PlayerActivityEntry {
                   <div class="player-metrics">
                     <div class="metric-card metric-buyin">
                       <span class="metric-label">
-                        <svg lucideCircleDollarSign [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                        <svg lucideCircleDollarSign [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                         Total buy in
                       </span>
                       <strong>{{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
@@ -274,10 +274,10 @@ interface PlayerActivityEntry {
                     <div class="metric-card" [class.metric-active-players]="statMode === 'ACTIVE_GAME'" [class.metric-cashout]="statMode === 'COMPLETED_GAME'">
                       <span class="metric-label">
                         @if (statMode === 'ACTIVE_GAME') {
-                          <svg lucideUsersRound [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          <svg lucideUsersRound [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Active players
                         } @else {
-                          <svg lucideBanknoteArrowDown [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          <svg lucideBanknoteArrowDown [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Cashed out
                         }
                       </span>
@@ -297,10 +297,10 @@ interface PlayerActivityEntry {
                     >
                       <span class="metric-label">
                         @if (statMode === 'ACTIVE_GAME') {
-                          <svg lucideCoins [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          <svg lucideCoins [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Player chips
                         } @else {
-                          <svg lucideBadgeCheck [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          <svg lucideBadgeCheck [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Net
                         }
                       </span>
@@ -475,7 +475,7 @@ interface PlayerActivityEntry {
                     @let statMode = gameStatMode(entry);
                     <div class="session-stat session-stat-buyin">
                       <span class="metric-label">
-                        <svg lucideCircleDollarSign [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                        <svg lucideCircleDollarSign [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                         Total buy in
                       </span>
                       <strong>{{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
@@ -483,10 +483,10 @@ interface PlayerActivityEntry {
                     <div class="session-stat" [class.session-stat-active]="statMode === 'ACTIVE_GAME'" [class.session-stat-cashout]="statMode === 'COMPLETED_GAME'">
                       <span class="metric-label">
                         @if (statMode === 'ACTIVE_GAME') {
-                          <svg lucideUsersRound [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          <svg lucideUsersRound [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Active
                         } @else {
-                          <svg lucideBanknoteArrowDown [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          <svg lucideBanknoteArrowDown [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Cashed out
                         }
                       </span>
@@ -506,10 +506,10 @@ interface PlayerActivityEntry {
                     >
                       <span class="metric-label">
                         @if (statMode === 'ACTIVE_GAME') {
-                          <svg lucideCoins [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          <svg lucideCoins [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Chips
                         } @else {
-                          <svg lucideBadgeCheck [strokeWidth]="2.3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          <svg lucideBadgeCheck [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Net
                         }
                       </span>
@@ -980,8 +980,8 @@ interface PlayerActivityEntry {
       }
 
       .metric-label svg {
-        width: 0.98rem;
-        height: 0.98rem;
+        width: 1.12rem;
+        height: 1.12rem;
         flex: 0 0 auto;
       }
 
