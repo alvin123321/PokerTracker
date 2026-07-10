@@ -1025,12 +1025,23 @@ h3 {
     calltime-progress-breathe 900ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
+.call-time-mini-ring-running .call-time-ring-progress {
+  animation:
+    calltime-running-ring 1s ease-in-out infinite alternate,
+    calltime-progress-breathe 1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
 .call-time-mini-ring-starting span {
   color: rgb(187 247 208);
   text-shadow:
     0 0 14px rgb(52 211 153 / 0.78),
     0 0 28px rgb(52 211 153 / 0.34);
   animation: calltime-countdown-number 1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.call-time-mini-ring-running span {
+  text-shadow: 0 0 16px rgb(52 211 153 / 0.32);
+  animation: calltime-running-number 1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
 .player-hero-panel,
@@ -1280,11 +1291,14 @@ h3 {
     animation: none;
   }
 
-  .player-feature-card-time-starting,
-  .player-feature-card-time-starting::before,
   .player-call-time-orb,
   .call-time-mini-ring span,
-  .call-time-ring-progress {
+  .call-time-ring-progress,
+  .call-time-stage-ring-active .call-time-ring-visual,
+  .call-time-stage-ring-starting .call-time-ring-face strong,
+  .call-time-stage-ring-running .call-time-ring-face strong,
+  .call-time-stage-ring-running .call-time-ring-sweep::after,
+  .call-time-stage-ring-starting .call-time-ring-sweep::after {
     animation: none;
     transition: none;
   }
@@ -1314,6 +1328,18 @@ h3 {
   }
 }
 
+@keyframes calltime-running-ring {
+  from {
+    filter: drop-shadow(0 0 8px rgb(52 211 153 / 0.36));
+    stroke: rgb(52 211 153);
+  }
+
+  to {
+    filter: drop-shadow(0 0 15px rgb(52 211 153 / 0.62));
+    stroke: rgb(110 231 183);
+  }
+}
+
 @keyframes calltime-progress-breathe {
   0% {
     stroke-width: 3.4;
@@ -1325,6 +1351,20 @@ h3 {
 
   100% {
     stroke-width: 4;
+  }
+}
+
+@keyframes calltime-running-number {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.045);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 
@@ -1746,6 +1786,22 @@ h3 {
   opacity: 1;
 }
 
+.call-time-stage-ring-starting .call-time-ring-face strong {
+  animation: session-overview-sync-number 1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.call-time-stage-ring-running .call-time-ring-face strong {
+  animation: session-overview-running-number 1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.call-time-stage-ring-running .call-time-ring-sweep::after {
+  animation: session-overview-pointer-pulse 1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.call-time-stage-ring-starting .call-time-ring-sweep::after {
+  animation: session-overview-pointer-pulse 700ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
 .call-time-ring-face {
   position: relative;
   z-index: 3;
@@ -2064,6 +2120,60 @@ h3 {
 
   to {
     filter: drop-shadow(0 0 20px rgb(52 211 153 / 0.72));
+  }
+}
+
+@keyframes session-overview-running-number {
+  0% {
+    transform: scale(1);
+    text-shadow:
+      0 0 20px rgb(52 211 153 / 0.32),
+      0 12px 38px rgb(0 0 0 / 0.52);
+  }
+
+  50% {
+    transform: scale(1.025);
+    text-shadow:
+      0 0 28px rgb(52 211 153 / 0.48),
+      0 12px 42px rgb(0 0 0 / 0.56);
+  }
+
+  100% {
+    transform: scale(1);
+    text-shadow:
+      0 0 20px rgb(52 211 153 / 0.32),
+      0 12px 38px rgb(0 0 0 / 0.52);
+  }
+}
+
+@keyframes session-overview-sync-number {
+  0% {
+    opacity: 0.72;
+    transform: translateY(0.28rem) scale(0.9);
+  }
+
+  42% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+
+  100% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+}
+
+@keyframes session-overview-pointer-pulse {
+  0% {
+    transform: translateY(-50%) scale(0.9);
+  }
+
+  50% {
+    transform: translateY(-50%) scale(1.12);
+  }
+
+  100% {
+    transform: translateY(-50%) scale(1);
   }
 }
 

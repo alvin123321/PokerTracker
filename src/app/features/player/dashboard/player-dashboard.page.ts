@@ -138,6 +138,7 @@ interface PlayerActivityEntry {
                   [class.player-feature-card-active]="entry.player.status === 'ACTIVE'"
                   [class.player-feature-card-open]="isFeaturedExpanded(entry)"
                   [class.player-feature-card-time-starting]="store.isTimeCallStarting(store.activeTimeCallForSession(entry.session))"
+                  [class.player-feature-card-time-running]="store.activeTimeCallForSession(entry.session) && !store.isTimeCallStarting(store.activeTimeCallForSession(entry.session))"
                   [attr.aria-expanded]="isFeaturedExpanded(entry)"
                   (click)="toggleFeaturedDetails(entry)"
                 >
@@ -168,6 +169,7 @@ interface PlayerActivityEntry {
                             class="call-time-mini-ring call-time-mini-ring-hero"
                             [class.call-time-mini-ring-active]="isMyClock"
                             [class.call-time-mini-ring-starting]="store.isTimeCallStarting(activeCall)"
+                            [class.call-time-mini-ring-running]="!store.isTimeCallStarting(activeCall)"
                           >
                             <svg viewBox="0 0 44 44" aria-hidden="true">
                               <circle class="call-time-ring-track" cx="22" cy="22" r="18"></circle>
@@ -562,38 +564,21 @@ interface PlayerActivityEntry {
         z-index: 1;
       }
 
-      .player-feature-card::before {
-        content: '';
-        position: absolute;
-        inset: -35%;
-        z-index: 0;
-        pointer-events: none;
-        background:
-          conic-gradient(
-            from -90deg,
-            transparent 0deg,
-            rgb(34 197 94 / 0.03) 54deg,
-            rgb(34 197 94 / 0.3) 86deg,
-            rgb(125 211 252 / 0.16) 104deg,
-            transparent 140deg 360deg
-          );
-        opacity: 0;
-        transform: rotate(0deg) scale(1.06);
-        transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1);
-      }
-
-      .player-feature-card-time-starting {
+      .player-feature-card-time-starting,
+      .player-feature-card-time-running {
         border-color: rgb(52 211 153 / 0.62);
         box-shadow:
           inset 0 1px 0 rgb(255 255 255 / 0.07),
           0 20px 52px rgb(0 0 0 / 0.3),
           0 0 42px rgb(34 197 94 / 0.2);
-        animation: calltime-card-breath 950ms cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
       }
 
-      .player-feature-card-time-starting::before {
-        opacity: 1;
-        animation: calltime-card-sweep 3s linear infinite;
+      .player-feature-card-time-starting {
+        animation: calltime-card-sync-glow 950ms cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+      }
+
+      .player-feature-card-time-running {
+        animation: calltime-card-running-glow 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
       }
 
       .feature-heading,
@@ -1013,7 +998,7 @@ interface PlayerActivityEntry {
         .player-view,
         .activity-row,
         .player-feature-card-time-starting,
-        .player-feature-card-time-starting::before {
+        .player-feature-card-time-running {
           animation: none;
         }
 
@@ -1047,19 +1032,39 @@ interface PlayerActivityEntry {
         }
       }
 
-      @keyframes calltime-card-sweep {
+      @keyframes calltime-card-sync-glow {
+        from {
+          border-color: rgb(52 211 153 / 0.42);
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.05),
+            0 18px 46px rgb(0 0 0 / 0.28),
+            0 0 20px rgb(34 197 94 / 0.12);
+        }
+
         to {
-          transform: rotate(360deg) scale(1.06);
+          border-color: rgb(187 247 208 / 0.76);
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.08),
+            0 20px 52px rgb(0 0 0 / 0.32),
+            0 0 46px rgb(34 197 94 / 0.28);
         }
       }
 
-      @keyframes calltime-card-breath {
+      @keyframes calltime-card-running-glow {
         from {
-          background-color: rgb(3 8 7 / 0.68);
+          border-color: rgb(52 211 153 / 0.34);
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.05),
+            0 18px 46px rgb(0 0 0 / 0.28),
+            0 0 16px rgb(34 197 94 / 0.08);
         }
 
         to {
-          background-color: rgb(4 30 22 / 0.78);
+          border-color: rgb(52 211 153 / 0.58);
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.07),
+            0 20px 50px rgb(0 0 0 / 0.3),
+            0 0 32px rgb(34 197 94 / 0.18);
         }
       }
 
