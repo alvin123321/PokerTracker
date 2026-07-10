@@ -1,14 +1,20 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DOCUMENT, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
   LucideArrowDownToLine,
   LucideBanknoteArrowDown,
   LucideCalculator,
+  LucideBadgeCheck,
+  LucideCircleDollarSign,
+  LucideCoins,
   LucideHistory,
   LucideHouse,
   LucideAlarmClock,
-  LucideRefreshCcw
+  LucideReceiptText,
+  LucideRefreshCcw,
+  LucideUsersRound,
+  LucideZap
 } from '@lucide/angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -32,7 +38,13 @@ import {
 import {
   playerCallTimeDisplayState,
   playerGameTimeline,
-  PlayerCallTimeDisplayState
+  playerGameStatMode,
+  playerGameStatusKind,
+  totalActivePlayerChips,
+  totalActivePlayers,
+  PlayerCallTimeDisplayState,
+  PlayerGameStatMode,
+  PlayerGameStatusKind
 } from './player-dashboard.logic';
 
 type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator';
@@ -62,11 +74,17 @@ interface PlayerActivityEntry {
     MatDialogModule,
     LucideArrowDownToLine,
     LucideBanknoteArrowDown,
+    LucideBadgeCheck,
     LucideCalculator,
+    LucideCircleDollarSign,
+    LucideCoins,
     LucideHistory,
     LucideHouse,
     LucideAlarmClock,
+    LucideReceiptText,
     LucideRefreshCcw,
+    LucideUsersRound,
+    LucideZap,
     RouterLink,
     PotCalculatorPage
   ],
@@ -141,17 +159,34 @@ interface PlayerActivityEntry {
                   @let remainingCalls = store.remainingTimeCallsForPlayer(entry.session, entry.player.id);
                   @let isMyClock = store.isTimeCallRunningForPlayer(entry.session, entry.player.id);
                   @let callTimeState = callTimeDisplayState(entry, activeCall);
+                  @let statMode = gameStatMode(entry);
                   <div class="feature-heading">
                     <div>
-                      <h2>{{ entry.session.name }}</h2>
+                      <div class="feature-title-row">
+                        <h2>{{ entry.session.name }}</h2>
+                        <span
+                          class="game-status-pill"
+                          [class.game-status-pill-active]="gameStatusKind(entry) === 'ACTIVE'"
+                          [class.game-status-pill-completed]="gameStatusKind(entry) === 'COMPLETED'"
+                        >
+                          @if (gameStatusKind(entry) === 'ACTIVE') {
+                            <span class="status-live-dot" aria-hidden="true"></span>
+                          } @else {
+                            <svg lucideBadgeCheck [strokeWidth]="2.6" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          }
+                          {{ gameStatusKind(entry) === 'ACTIVE' ? 'Active' : 'Complete' }}
+                        </span>
+                      </div>
                     </div>
                     <div class="feature-heading-actions">
                       <a
                         [routerLink]="['/player/sessions', entry.session.id]"
                         class="feature-toggle-label"
-                        (click)="$event.stopPropagation()"
+                        aria-label="View game detail"
+                        title="View game detail"
+                        (click)="preparePlayerRouteTransition('forward'); $event.stopPropagation()"
                       >
-                        Detail
+                        <svg lucideReceiptText [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                       </a>
                     </div>
                   </div>
@@ -230,26 +265,50 @@ interface PlayerActivityEntry {
 
                   <div class="player-metrics">
                     <div class="metric-card metric-buyin">
-                      <span>Total buy in</span>
+                      <span class="metric-label">
+                        <svg lucideCircleDollarSign [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                        Total buy in
+                      </span>
                       <strong>{{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
                     </div>
-                    <div class="metric-card metric-cashout">
-                      <span>Cash out</span>
-                      <strong>
-                        @if (entry.player.status === 'COMPLETED') {
-                          {{ entry.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                    <div class="metric-card" [class.metric-active-players]="statMode === 'ACTIVE_GAME'" [class.metric-cashout]="statMode === 'COMPLETED_GAME'">
+                      <span class="metric-label">
+                        @if (statMode === 'ACTIVE_GAME') {
+                          <svg lucideUsersRound [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          Active players
                         } @else {
-                          -
+                          <svg lucideBanknoteArrowDown [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          Cashed out
+                        }
+                      </span>
+                      <strong>
+                        @if (statMode === 'ACTIVE_GAME') {
+                          {{ activePlayerCount(entry.session) }}
+                        } @else {
+                          {{ entry.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                         }
                       </strong>
                     </div>
-                    <div class="metric-card" [class.metric-net-positive]="entry.player.net >= 0" [class.metric-net-negative]="entry.player.net < 0">
-                      <span>Net</span>
-                      <strong>
-                        @if (entry.player.status === 'COMPLETED') {
-                          {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                    <div
+                      class="metric-card"
+                      [class.metric-total-chips]="statMode === 'ACTIVE_GAME'"
+                      [class.metric-net-positive]="statMode === 'COMPLETED_GAME' && entry.player.net >= 0"
+                      [class.metric-net-negative]="statMode === 'COMPLETED_GAME' && entry.player.net < 0"
+                    >
+                      <span class="metric-label">
+                        @if (statMode === 'ACTIVE_GAME') {
+                          <svg lucideCoins [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          Player chips
                         } @else {
-                          .
+                          <svg lucideBadgeCheck [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          Net
+                        }
+                      </span>
+                      <strong>
+                        @if (statMode === 'ACTIVE_GAME') {
+                          {{ activePlayerChips(entry.session) | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        } @else {
+                          {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                         }
                       </strong>
                     </div>
@@ -288,12 +347,21 @@ interface PlayerActivityEntry {
 
               <section class="player-ledger-panel">
                 <div class="panel-heading">
-                  <h2>Recent</h2>
+                  <div class="recent-heading-title">
+                    <h2>Recent</h2>
+                    <span class="recent-energy-icon" aria-hidden="true">
+                      <svg lucideZap [strokeWidth]="2.4" [absoluteStrokeWidth]="true"></svg>
+                    </span>
+                  </div>
                 </div>
 
                 <div class="activity-list">
                   @for (activity of recentActivity(); track activity.id) {
-                    <a [routerLink]="['/player/sessions', activity.sessionId]" class="activity-row">
+                    <a
+                      [routerLink]="['/player/sessions', activity.sessionId]"
+                      class="activity-row"
+                      (click)="preparePlayerRouteTransition('forward')"
+                    >
                       <span
                         class="activity-icon"
                         [class.activity-icon-buyin]="activity.type === 'BUYIN'"
@@ -358,31 +426,74 @@ interface PlayerActivityEntry {
                   [routerLink]="['/player/sessions', entry.session.id]"
                   class="session-tile"
                   [class.session-tile-active]="entry.player.status === 'ACTIVE'"
+                  (click)="preparePlayerRouteTransition('forward')"
                 >
                   <div class="session-tile-top">
                     <div>
                       <h2>{{ entry.session.name }}</h2>
                       <p>{{ entry.session.sessionDate | date: 'MMM d' }}</p>
                     </div>
-                    <span>{{ statusLabel(entry) }}</span>
+                    <span
+                      class="game-status-pill"
+                      [class.game-status-pill-active]="gameStatusKind(entry) === 'ACTIVE'"
+                      [class.game-status-pill-completed]="gameStatusKind(entry) === 'COMPLETED'"
+                    >
+                      @if (gameStatusKind(entry) === 'ACTIVE') {
+                        <span class="status-live-dot" aria-hidden="true"></span>
+                      } @else {
+                        <svg lucideBadgeCheck [strokeWidth]="2.5" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                      }
+                      {{ gameStatusKind(entry) === 'ACTIVE' ? 'Active' : 'Complete' }}
+                    </span>
                   </div>
 
                   <div class="session-tile-stats">
-                    <div>
-                      <span>Buy-in</span>
+                    @let statMode = gameStatMode(entry);
+                    <div class="session-stat session-stat-buyin">
+                      <span class="metric-label">
+                        <svg lucideCircleDollarSign [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                        Total buy in
+                      </span>
                       <strong>{{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
                     </div>
-                    <div>
-                      <span>Rebuys</span>
-                      <strong>{{ entry.rebuyCount }}</strong>
-                    </div>
-                    <div>
-                      <span>Net</span>
-                      <strong [class.positive]="entry.player.net >= 0" [class.negative]="entry.player.net < 0">
-                        @if (entry.player.status === 'COMPLETED') {
-                          {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                    <div class="session-stat" [class.session-stat-active]="statMode === 'ACTIVE_GAME'" [class.session-stat-cashout]="statMode === 'COMPLETED_GAME'">
+                      <span class="metric-label">
+                        @if (statMode === 'ACTIVE_GAME') {
+                          <svg lucideUsersRound [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          Active
                         } @else {
-                          .
+                          <svg lucideBanknoteArrowDown [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          Cashed out
+                        }
+                      </span>
+                      <strong>
+                        @if (statMode === 'ACTIVE_GAME') {
+                          {{ activePlayerCount(entry.session) }}
+                        } @else {
+                          {{ entry.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        }
+                      </strong>
+                    </div>
+                    <div
+                      class="session-stat"
+                      [class.session-stat-chips]="statMode === 'ACTIVE_GAME'"
+                      [class.session-stat-net-positive]="statMode === 'COMPLETED_GAME' && entry.player.net >= 0"
+                      [class.session-stat-net-negative]="statMode === 'COMPLETED_GAME' && entry.player.net < 0"
+                    >
+                      <span class="metric-label">
+                        @if (statMode === 'ACTIVE_GAME') {
+                          <svg lucideCoins [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          Chips
+                        } @else {
+                          <svg lucideBadgeCheck [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                          Net
+                        }
+                      </span>
+                      <strong [class.positive]="entry.player.net >= 0" [class.negative]="entry.player.net < 0">
+                        @if (statMode === 'ACTIVE_GAME') {
+                          {{ activePlayerChips(entry.session) | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        } @else {
+                          {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                         }
                       </strong>
                     </div>
@@ -428,9 +539,9 @@ interface PlayerActivityEntry {
       .session-tile-stats span {
         color: rgb(161 161 170);
         font-size: 0.72rem;
-        font-weight: 760;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        font-weight: 650;
+        letter-spacing: 0;
+        text-transform: none;
       }
 
       .player-tabs {
@@ -572,6 +683,10 @@ interface PlayerActivityEntry {
         transition: all 190ms ease;
       }
 
+      .player-feature-card:not(.player-feature-card-open) {
+        padding-bottom: 0.42rem;
+      }
+
       .player-feature-card > * {
         position: relative;
         z-index: 1;
@@ -603,7 +718,11 @@ interface PlayerActivityEntry {
         gap: 0.8rem;
       }
 
-      .session-tile-top span {
+      .game-status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
         border: 1px solid rgb(255 255 255 / 0.12);
         border-radius: 999px;
         color: rgb(212 212 216);
@@ -613,9 +732,35 @@ interface PlayerActivityEntry {
         padding: 0.32rem 0.58rem;
       }
 
-      .session-tile-active .session-tile-top span {
+      .game-status-pill svg {
+        width: 0.88rem;
+        height: 0.88rem;
+      }
+
+      .game-status-pill-active {
         border-color: rgb(34 197 94 / 0.46);
+        background: rgb(34 197 94 / 0.1);
         color: rgb(74 222 128);
+      }
+
+      .game-status-pill-completed {
+        border-color: rgb(74 222 128 / 0.28);
+        background: rgb(20 83 45 / 0.16);
+        color: rgb(187 247 208);
+      }
+
+      .status-live-dot {
+        width: 0.46rem;
+        height: 0.46rem;
+        border-radius: 999px;
+        background: rgb(34 197 94);
+      }
+
+      .feature-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
       }
 
       .feature-heading {
@@ -629,25 +774,12 @@ interface PlayerActivityEntry {
         flex: 0 0 auto;
       }
 
-      .player-call-time-status,
       .player-clock-warning {
         margin: 0;
         border-radius: 0.85rem;
         padding: 0.65rem 0.75rem;
         font-size: 0.8rem;
         font-weight: 760;
-      }
-
-      .player-call-time-status {
-        border: 1px solid rgb(245 158 11 / 0.24);
-        background: rgb(245 158 11 / 0.1);
-        color: rgb(253 230 138);
-      }
-
-      .player-call-time-status-active {
-        border-color: rgb(34 197 94 / 0.32);
-        background: rgb(34 197 94 / 0.11);
-        color: rgb(220 252 231);
       }
 
       .player-clock-warning {
@@ -673,34 +805,46 @@ interface PlayerActivityEntry {
       }
 
       .feature-toggle-label {
-        border: 1px solid rgb(34 197 94 / 0.42);
-        border-radius: 999px;
-        background: rgb(34 197 94 / 0.14);
-        color: rgb(220 252 231);
+        display: inline-grid;
+        place-items: center;
+        width: 1.8rem;
+        height: 1.8rem;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: rgb(212 212 216);
         flex: 0 0 auto;
-        font-size: 0.86rem;
-        font-weight: 760;
-        padding: 0.62rem 0.86rem;
+        padding: 0;
         text-decoration: none;
         transition: all 180ms ease;
       }
 
-      .player-feature-card-open .feature-toggle-label {
-        border-color: rgb(74 222 128 / 0.62);
-        background: rgb(34 197 94 / 0.22);
+      .feature-toggle-label svg {
+        width: 1.16rem;
+        height: 1.16rem;
+      }
+
+      .feature-toggle-label:hover {
+        color: rgb(134 239 172);
       }
 
       .feature-detail-panel {
         display: grid;
         grid-template-rows: 0fr;
         opacity: 0;
+        margin-top: -1rem;
         transform: translateY(-0.25rem);
-        transition: all 420ms cubic-bezier(0.16, 1, 0.3, 1);
+        transition:
+          grid-template-rows 420ms cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 260ms ease,
+          margin-top 260ms ease,
+          transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
       }
 
       .player-feature-card-open .feature-detail-panel {
         grid-template-rows: 1fr;
         opacity: 1;
+        margin-top: 0;
         transform: translateY(0);
       }
 
@@ -776,36 +920,84 @@ interface PlayerActivityEntry {
       .player-metrics,
       .session-tile-stats {
         display: grid;
-        gap: 0.65rem;
+        align-items: start;
+        gap: 0.42rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .metric-card {
         display: grid;
-        gap: 0.35rem;
+        justify-items: center;
+        gap: 0.28rem;
         min-width: 0;
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 0.85rem;
-        background: rgb(0 0 0 / 0.23);
-        padding: 0.78rem;
+        padding: 0.15rem 0.1rem;
+        text-align: center;
+      }
+
+      .metric-card:first-child,
+      .session-tile-stats > div:first-child {
+        justify-items: start;
+        text-align: left;
+      }
+
+      .metric-card:last-child,
+      .session-tile-stats > div:last-child {
+        justify-items: end;
+        text-align: right;
+      }
+
+      .metric-label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.22rem;
+        max-width: 100%;
+        white-space: nowrap;
+      }
+
+      .metric-label svg {
+        width: 0.82rem;
+        height: 0.82rem;
+        flex: 0 0 auto;
       }
 
       .metric-card strong,
       .session-tile-stats strong {
         overflow: hidden;
         color: white;
-        font-size: 1.28rem;
-        font-weight: 680;
+        font-size: 1.16rem;
+        font-weight: 560;
         line-height: 1.05;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
       .metric-buyin strong {
-        color: rgb(253 224 71);
+        color: rgb(125 211 252);
       }
 
-      .metric-cashout strong,
+      .metric-buyin .metric-label {
+        color: rgb(125 211 252);
+      }
+
+      .metric-active-players .metric-label {
+        color: rgb(110 231 183);
+      }
+
+      .metric-active-players strong {
+        color: rgb(74 222 128);
+      }
+
+      .metric-cashout .metric-label,
+      .metric-cashout strong {
+        color: rgb(251 191 36);
+      }
+
+      .metric-total-chips .metric-label,
+      .metric-total-chips strong {
+        color: rgb(125 211 252);
+      }
+
       .positive {
         color: rgb(74 222 128);
       }
@@ -819,6 +1011,18 @@ interface PlayerActivityEntry {
         color: rgb(74 222 128);
       }
 
+      .metric-net-positive {
+        color: rgb(74 222 128);
+      }
+
+      .metric-net-positive .metric-label {
+        color: rgb(134 239 172);
+      }
+
+      .metric-net-negative .metric-label {
+        color: rgb(252 165 165);
+      }
+
       .player-ledger-panel,
       .calculator-player-panel,
       .player-empty-card {
@@ -830,6 +1034,31 @@ interface PlayerActivityEntry {
         align-items: center;
         justify-content: space-between;
         margin-bottom: 0.75rem;
+      }
+
+      .recent-heading-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.42rem;
+      }
+
+      .recent-energy-icon {
+        display: inline-grid;
+        width: 1.35rem;
+        height: 1.35rem;
+        place-items: center;
+        background: transparent;
+        box-shadow: none;
+        color: rgb(250 204 21);
+      }
+
+      .recent-energy-icon svg {
+        width: 1.08rem;
+        height: 1.08rem;
+        stroke: rgb(250 204 21);
+        filter:
+          drop-shadow(0 0 4px rgb(250 204 21 / 0.86))
+          drop-shadow(0 0 12px rgb(250 204 21 / 0.48));
       }
 
       .activity-list {
@@ -949,8 +1178,8 @@ interface PlayerActivityEntry {
 
       .session-tile {
         display: grid;
-        gap: 0.9rem;
-        padding: 1rem;
+        gap: 0.58rem;
+        padding: 0.95rem 1rem 0.58rem;
         text-decoration: none;
         transition: all 180ms ease;
       }
@@ -968,8 +1197,50 @@ interface PlayerActivityEntry {
 
       .session-tile-stats > div {
         display: grid;
-        gap: 0.25rem;
+        justify-items: center;
+        gap: 0.28rem;
         min-width: 0;
+        text-align: center;
+      }
+
+      .session-stat {
+        padding: 0.1rem 0;
+      }
+
+      .session-stat-buyin .metric-label,
+      .session-stat-buyin strong {
+        color: rgb(125 211 252);
+      }
+
+      .session-stat-active .metric-label,
+      .session-stat-active strong {
+        color: rgb(110 231 183);
+      }
+
+      .session-stat-chips .metric-label,
+      .session-stat-chips strong {
+        color: rgb(125 211 252);
+      }
+
+      .session-stat-cashout .metric-label,
+      .session-stat-cashout strong {
+        color: rgb(251 191 36);
+      }
+
+      .session-stat-net-positive .metric-label {
+        color: rgb(134 239 172);
+      }
+
+      .session-stat-net-positive strong {
+        color: rgb(74 222 128);
+      }
+
+      .session-stat-net-negative .metric-label {
+        color: rgb(252 165 165);
+      }
+
+      .session-stat-net-negative strong {
+        color: rgb(252 165 165);
       }
 
       .player-empty-card {
@@ -1007,16 +1278,12 @@ interface PlayerActivityEntry {
 
         .player-metrics,
         .session-tile-stats {
-          gap: 0.45rem;
-        }
-
-        .metric-card {
-          padding: 0.62rem;
+          gap: 0.28rem;
         }
 
         .metric-card span,
         .session-tile-stats span {
-          font-size: 0.68rem;
+          font-size: 0.64rem;
         }
 
       }
@@ -1104,6 +1371,7 @@ export class PlayerDashboardPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
+  private readonly document = inject(DOCUMENT);
   protected readonly store = inject(PokerStoreService);
   protected readonly callTimeLimit = CALL_TIME_LIMIT;
   protected readonly pendingTimeCallPlayerId = signal<string | null>(null);
@@ -1180,6 +1448,17 @@ export class PlayerDashboardPage implements OnInit {
 
   protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
+  }
+
+  protected preparePlayerRouteTransition(direction: 'forward' | 'back'): void {
+    if (!this.document.defaultView?.matchMedia('(max-width: 639px)').matches) {
+      return;
+    }
+
+    this.document.documentElement.dataset['playerRouteTransition'] = direction;
+    this.document.defaultView.setTimeout(() => {
+      delete this.document.documentElement.dataset['playerRouteTransition'];
+    }, 700);
   }
 
   protected callTimeDisplayState(
@@ -1272,8 +1551,20 @@ export class PlayerDashboardPage implements OnInit {
     return playerGameTimeline(entry.transactions);
   }
 
-  protected statusLabel(entry: PlayerSessionEntry): string {
-    return entry.player.status === 'ACTIVE' ? 'Active' : 'Closed';
+  protected gameStatusKind(entry: PlayerSessionEntry): PlayerGameStatusKind {
+    return playerGameStatusKind(entry.session, entry.player);
+  }
+
+  protected gameStatMode(entry: PlayerSessionEntry): PlayerGameStatMode {
+    return playerGameStatMode(entry.session, entry.player);
+  }
+
+  protected activePlayerCount(session: PokerSession): number {
+    return totalActivePlayers(session);
+  }
+
+  protected activePlayerChips(session: PokerSession): number {
+    return totalActivePlayerChips(session);
   }
 
   protected activityLabel(type: PokerTransactionType): string {

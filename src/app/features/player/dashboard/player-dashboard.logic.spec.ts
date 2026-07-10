@@ -1,4 +1,11 @@
-import { playerCallTimeDisplayState, playerGameTimeline } from './player-dashboard.logic';
+import {
+  playerCallTimeDisplayState,
+  playerGameTimeline,
+  playerGameStatusKind,
+  playerGameStatMode,
+  totalActivePlayerChips,
+  totalActivePlayers
+} from './player-dashboard.logic';
 
 import type {
   PokerSession,
@@ -80,6 +87,32 @@ describe('playerGameTimeline', () => {
     ]);
 
     expect(rows.map((row) => row.id)).toEqual(['buyin']);
+  });
+});
+
+describe('player game status display', () => {
+  it('uses active-player and chip totals while the game is active', () => {
+    const session = makeSession({
+      players: [
+        makePlayer({ id: 'seat-a', status: 'ACTIVE', totalBuyIn: 100 }),
+        makePlayer({ id: 'seat-b', status: 'ACTIVE', totalBuyIn: 250 }),
+        makePlayer({ id: 'seat-c', status: 'COMPLETED', totalBuyIn: 500 })
+      ]
+    });
+    const player = session.players[0];
+
+    expect(playerGameStatusKind(session, player)).toBe('ACTIVE');
+    expect(playerGameStatMode(session, player)).toBe('ACTIVE_GAME');
+    expect(totalActivePlayers(session)).toBe(2);
+    expect(totalActivePlayerChips(session)).toBe(350);
+  });
+
+  it('uses completed cash-out and net stats after the player is completed', () => {
+    const session = makeSession({ status: 'COMPLETED' });
+    const player = makePlayer({ status: 'COMPLETED', cashOut: 500, net: 200 });
+
+    expect(playerGameStatusKind(session, player)).toBe('COMPLETED');
+    expect(playerGameStatMode(session, player)).toBe('COMPLETED_GAME');
   });
 });
 

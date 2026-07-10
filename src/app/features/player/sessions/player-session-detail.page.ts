@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DOCUMENT, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -172,6 +172,7 @@ interface PlayerLedgerRow {
               routerLink="/player/dashboard"
               [queryParams]="{ tab: 'history' }"
               class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-neutral-100 transition duration-200 ease-out hover:border-emerald-300/40 hover:bg-emerald-300/10 hover:text-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300/50"
+              (click)="preparePlayerRouteTransition('back')"
             >
               Back to history
             </a>
@@ -182,6 +183,7 @@ interface PlayerLedgerRow {
               routerLink="/player/dashboard"
               [queryParams]="{ tab: 'history' }"
               class="flex min-h-12 w-full items-center justify-center rounded-2xl border border-emerald-300/35 bg-emerald-300/10 text-base font-semibold text-emerald-100 transition duration-200 ease-out active:scale-[0.98] active:bg-emerald-300/20"
+              (click)="preparePlayerRouteTransition('back')"
             >
               Back to history
             </a>
@@ -200,6 +202,7 @@ interface PlayerLedgerRow {
         <a
           routerLink="/player/dashboard"
           class="mt-5 inline-flex rounded-lg bg-sky-300 px-5 py-3 text-sm font-semibold text-neutral-950"
+          (click)="preparePlayerRouteTransition('back')"
         >
           Back to my sessions
         </a>
@@ -211,6 +214,7 @@ export class PlayerSessionDetailPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
   protected readonly store = inject(PokerStoreService);
+  private readonly document = inject(DOCUMENT);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId');
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
@@ -270,6 +274,17 @@ export class PlayerSessionDetailPage implements OnInit {
     } catch {
       // The store exposes the error state; keep the page render path simple.
     }
+  }
+
+  protected preparePlayerRouteTransition(direction: 'forward' | 'back'): void {
+    if (!this.document.defaultView?.matchMedia('(max-width: 639px)').matches) {
+      return;
+    }
+
+    this.document.documentElement.dataset['playerRouteTransition'] = direction;
+    this.document.defaultView.setTimeout(() => {
+      delete this.document.documentElement.dataset['playerRouteTransition'];
+    }, 700);
   }
 
   private playerMatchesLogin(
