@@ -347,7 +347,7 @@ interface PlayerActivityEntry {
 
               <section class="player-ledger-panel">
                 <div class="panel-heading">
-                  <div>
+                  <div class="recent-heading-title">
                     <h2>Recent</h2>
                     <span class="recent-energy-icon" aria-hidden="true">
                       <svg lucideZap [strokeWidth]="2.4" [absoluteStrokeWidth]="true"></svg>
@@ -684,7 +684,7 @@ interface PlayerActivityEntry {
       }
 
       .player-feature-card:not(.player-feature-card-open) {
-        padding-bottom: 0.66rem;
+        padding-bottom: 0.42rem;
       }
 
       .player-feature-card > * {
@@ -1040,14 +1040,21 @@ interface PlayerActivityEntry {
         margin-bottom: 0.75rem;
       }
 
+      .recent-heading-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.42rem;
+      }
+
       .recent-energy-icon {
         display: inline-grid;
-        margin-top: 0.34rem;
-        width: 1.45rem;
-        height: 1.45rem;
+        width: 1.35rem;
+        height: 1.35rem;
         place-items: center;
         color: rgb(250 204 21);
-        filter: drop-shadow(0 0 12px rgb(250 204 21 / 0.28));
+        filter:
+          drop-shadow(0 0 7px rgb(250 204 21 / 0.62))
+          drop-shadow(0 0 18px rgb(250 204 21 / 0.28));
       }
 
       .recent-energy-icon svg {
@@ -1172,8 +1179,8 @@ interface PlayerActivityEntry {
 
       .session-tile {
         display: grid;
-        gap: 0.72rem;
-        padding: 0.95rem 1rem;
+        gap: 0.58rem;
+        padding: 0.95rem 1rem 0.58rem;
         text-decoration: none;
         transition: all 180ms ease;
       }
