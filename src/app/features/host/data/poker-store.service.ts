@@ -7,6 +7,7 @@ import { SupabaseService } from '../../../core/supabase/supabase.service';
 import { environment } from '../../../../environments/environment';
 import { removeSessionPlayerFromSession } from './session-player-removal.logic';
 import { removeSessionTableFromSession } from './session-table-removal.logic';
+import { sessionLoadEffectAction } from './session-load.logic';
 import {
   localPlayerSlug as buildLocalPlayerSlug,
   usernameFromDisplayName as buildUsernameFromDisplayName
@@ -294,19 +295,33 @@ export class PokerStoreService implements OnDestroy {
       const initialized = this.authState.initialized();
       const user = this.authState.user();
       const role = this.authState.role();
+      const userId = user?.id ?? null;
+      const loadAction = sessionLoadEffectAction({
+        initialized,
+        userId,
+        usesSupabase: this.shouldUseSupabaseForUser(userId),
+        loadedSupabaseUserId: this.loadedSupabaseUserId
+      });
 
-      if (!initialized || !this.shouldUseSupabaseForUser(user?.id ?? null)) {
+      if (loadAction === 'WAIT_FOR_AUTH') {
         this.teardownRealtimeChannel();
         return;
       }
 
-      this.setupRealtimeChannel(user?.id ?? null, role);
-
-      if (this.loadedSupabaseUserId === user?.id) {
+      if (loadAction === 'LOAD_LOCAL_SESSIONS') {
+        this.teardownRealtimeChannel();
+        this.loadedSupabaseUserId = null;
+        void this.refreshHostSessions({ showLoading: false });
         return;
       }
 
-      this.loadedSupabaseUserId = user?.id ?? null;
+      this.setupRealtimeChannel(userId, role);
+
+      if (loadAction === 'SKIP_CURRENT_SUPABASE_USER') {
+        return;
+      }
+
+      this.loadedSupabaseUserId = userId;
       void this.refreshSessions();
     });
 
