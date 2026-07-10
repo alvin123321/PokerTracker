@@ -137,6 +137,8 @@ interface PlayerActivityEntry {
                   class="player-feature-card"
                   [class.player-feature-card-active]="entry.player.status === 'ACTIVE'"
                   [class.player-feature-card-open]="isFeaturedExpanded(entry)"
+                  [class.player-feature-card-time-starting]="store.isTimeCallStarting(store.activeTimeCallForSession(entry.session))"
+                  [class.player-feature-card-time-running]="store.activeTimeCallForSession(entry.session) && !store.isTimeCallStarting(store.activeTimeCallForSession(entry.session))"
                   [attr.aria-expanded]="isFeaturedExpanded(entry)"
                   (click)="toggleFeaturedDetails(entry)"
                 >
@@ -166,9 +168,27 @@ interface PlayerActivityEntry {
                           <div
                             class="call-time-mini-ring call-time-mini-ring-hero"
                             [class.call-time-mini-ring-active]="isMyClock"
+                            [class.call-time-mini-ring-starting]="store.isTimeCallStarting(activeCall)"
+                            [class.call-time-mini-ring-running]="!store.isTimeCallStarting(activeCall)"
                           >
                             <svg viewBox="0 0 44 44" aria-hidden="true">
+                              <defs>
+                                <linearGradient id="player-call-time-progress-gradient" x1="6" y1="6" x2="38" y2="38">
+                                  <stop offset="0%" stop-color="rgb(187 247 208)"></stop>
+                                  <stop offset="38%" stop-color="rgb(74 222 128)"></stop>
+                                  <stop offset="72%" stop-color="rgb(34 197 94)"></stop>
+                                  <stop offset="100%" stop-color="rgb(5 150 105)"></stop>
+                                </linearGradient>
+                              </defs>
                               <circle class="call-time-ring-track" cx="22" cy="22" r="18"></circle>
+                              <circle
+                                class="call-time-ring-progress-underlay"
+                                cx="22"
+                                cy="22"
+                                r="18"
+                                pathLength="1"
+                                [attr.stroke-dashoffset]="1 - store.timeCallProgressFor(activeCall)"
+                              ></circle>
                               <circle
                                 class="call-time-ring-progress"
                                 cx="22"
@@ -186,13 +206,6 @@ interface PlayerActivityEntry {
                               }}
                             </span>
                           </div>
-                          <p>
-                            @if (store.isTimeCallStarting(activeCall)) {
-                              Starting
-                            } @else {
-                              {{ isMyClock ? 'Your clock is running' : 'Table clock running' }}
-                            }
-                          </p>
                         </div>
                       } @else if (callTimeState === 'BUTTON') {
                         <button
@@ -322,7 +335,14 @@ interface PlayerActivityEntry {
                         <small>{{ activity.sessionName }} - {{ activity.createdAt | date: 'shortTime' }}</small>
                       </span>
                       <span class="activity-meta">
-                        <span class="activity-amount">{{ activity.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                        <span
+                          class="activity-amount"
+                          [class.activity-amount-buyin]="activity.type === 'BUYIN'"
+                          [class.activity-amount-rebuy]="activity.type === 'REBUY'"
+                          [class.activity-amount-cashout]="activity.type === 'CASHOUT'"
+                        >
+                          {{ activity.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        </span>
                         <small>{{ activity.createdAt | date: 'MMM d' }}</small>
                       </span>
                     </a>
@@ -547,11 +567,34 @@ interface PlayerActivityEntry {
       .player-feature-card {
         display: grid;
         gap: 1rem;
+        isolation: isolate;
         overflow: hidden;
         padding: 1rem;
         position: relative;
         cursor: pointer;
         transition: all 190ms ease;
+      }
+
+      .player-feature-card > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .player-feature-card-time-starting,
+      .player-feature-card-time-running {
+        border-color: rgb(52 211 153 / 0.62);
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.07),
+          0 20px 52px rgb(0 0 0 / 0.3),
+          0 0 42px rgb(34 197 94 / 0.2);
+      }
+
+      .player-feature-card-time-starting {
+        animation: calltime-card-sync-glow 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+      }
+
+      .player-feature-card-time-running {
+        animation: calltime-card-running-glow 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
       }
 
       .feature-heading,
@@ -817,14 +860,15 @@ interface PlayerActivityEntry {
       }
 
       .activity-icon-buyin {
-        border-color: #38bdf852;
-        background: #0ea5e929;
-        color: #7dd3fc;
+        border-color: #22c55e57;
+        background: #22c55e24;
+        color: #4ade80;
       }
 
       .activity-icon-rebuy {
-        background: #22c55e29;
-        color: #4ade80;
+        border-color: #38bdf852;
+        background: #0ea5e929;
+        color: #7dd3fc;
       }
 
       .activity-icon-cashout {
@@ -869,8 +913,16 @@ interface PlayerActivityEntry {
         font-weight: 680;
       }
 
-      .activity-amount {
+      .activity-amount-buyin {
         color: rgb(74 222 128);
+      }
+
+      .activity-amount-rebuy {
+        color: rgb(125 211 252);
+      }
+
+      .activity-amount-cashout {
+        color: rgb(251 191 36);
       }
 
       .activity-empty,
@@ -960,7 +1012,11 @@ interface PlayerActivityEntry {
 
       @media (prefers-reduced-motion: reduce) {
         .player-view,
-        .activity-row {
+        .activity-row,
+        .player-feature-card-time-starting,
+        .player-feature-card-time-running,
+        .player-feature-card-time-starting::before,
+        .player-feature-card-time-running::before {
           animation: none;
         }
 
@@ -991,6 +1047,42 @@ interface PlayerActivityEntry {
         to {
           opacity: 1;
           transform: translateY(0);
+        }
+      }
+
+      @keyframes calltime-card-sync-glow {
+        from {
+          border-color: rgb(52 211 153 / 0.42);
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.05),
+            0 18px 46px rgb(0 0 0 / 0.28),
+            0 0 18px rgb(34 197 94 / 0.08);
+        }
+
+        to {
+          border-color: rgb(187 247 208 / 0.76);
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.08),
+            0 20px 52px rgb(0 0 0 / 0.32),
+            0 0 34px rgb(34 197 94 / 0.18);
+        }
+      }
+
+      @keyframes calltime-card-running-glow {
+        from {
+          border-color: rgb(52 211 153 / 0.34);
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.05),
+            0 18px 46px rgb(0 0 0 / 0.28),
+            0 0 14px rgb(34 197 94 / 0.06);
+        }
+
+        to {
+          border-color: rgb(52 211 153 / 0.58);
+          box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.07),
+            0 20px 50px rgb(0 0 0 / 0.3),
+            0 0 24px rgb(34 197 94 / 0.12);
         }
       }
 
@@ -1155,7 +1247,6 @@ export class PlayerDashboardPage implements OnInit {
           cancelLabel: 'Cancel',
           tone: 'primary',
           details: [
-            'The table screen gets a 3 second sync before the countdown starts.',
             `You have ${this.store.remainingTimeCallsForPlayer(entry.session, entry.player.id)} of ${this.callTimeLimit} calls left.`
           ]
         },

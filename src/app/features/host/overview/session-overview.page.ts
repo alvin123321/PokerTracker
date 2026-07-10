@@ -73,6 +73,8 @@ import { sessionOverviewRefreshIntervalMs } from '../data/realtime.logic';
                   <div
                     class="call-time-stage-ring"
                     [class.call-time-stage-ring-active]="activeCall"
+                    [class.call-time-stage-ring-starting]="activeCall && store.isTimeCallStarting(activeCall)"
+                    [class.call-time-stage-ring-running]="activeCall && !store.isTimeCallStarting(activeCall)"
                     [style.--clock-elapsed-angle]="clockElapsedAngle(activeCall)"
                   >
                     <div class="call-time-ring-visual" aria-hidden="true">
