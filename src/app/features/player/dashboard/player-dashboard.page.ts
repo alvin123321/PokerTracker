@@ -123,12 +123,6 @@ interface PlayerActivityEntry {
         </div>
       }
 
-      @if (store.loading()) {
-        <div class="player-alert">
-          Updating...
-        </div>
-      }
-
       <div class="player-view-shell">
         @switch (activeTab()) {
           @case ('overview') {

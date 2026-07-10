@@ -252,6 +252,7 @@ export class PokerStoreService implements OnDestroy {
     this.loadLocalDeletedRegisteredPlayerIds()
   );
   private readonly loadingSignal = signal(false);
+  private readonly sessionsLoadedSignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
   private readonly timeCallSchemaReadySignal = signal(true);
   private readonly nowSignal = signal(Date.now());
@@ -268,6 +269,7 @@ export class PokerStoreService implements OnDestroy {
 
   readonly sessions = this.sessionsSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
+  readonly sessionsLoaded = this.sessionsLoadedSignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
   readonly timeCallSchemaReady = this.timeCallSchemaReadySignal.asReadonly();
   readonly activeSessions = computed(() =>
@@ -347,11 +349,13 @@ export class PokerStoreService implements OnDestroy {
   async refreshHostSessions(): Promise<void> {
     if (this.shouldUseLocalSharedData()) {
       await this.loadLocalSharedState();
+      this.markSessionsLoaded();
       return;
     }
 
     if (!this.shouldUseSupabase()) {
       await this.refreshDevelopmentProductionSnapshot();
+      this.markSessionsLoaded();
       return;
     }
 
@@ -445,6 +449,7 @@ export class PokerStoreService implements OnDestroy {
       throw error;
     } finally {
       this.setLoading(false);
+      this.markSessionsLoaded();
     }
   }
 
@@ -1978,6 +1983,10 @@ export class PokerStoreService implements OnDestroy {
 
   private setLoading(value: boolean): void {
     this.loadingSignal.set(value);
+  }
+
+  private markSessionsLoaded(): void {
+    this.sessionsLoadedSignal.set(true);
   }
 
   private setError(value: string | null): void {
