@@ -425,6 +425,14 @@ class TableNameDialogComponent {
                                             </span>
                                             @if (player.status === 'COMPLETED') {
                                               <span class="text-sm font-bold leading-none text-emerald-300">&check;</span>
+                                              <span
+                                                class="dashboard-player-net-inline"
+                                                [class.dashboard-player-net-positive]="player.net >= 0"
+                                                [class.dashboard-player-net-negative]="player.net < 0"
+                                              >
+                                                Net
+                                                <strong>{{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                                              </span>
                                             }
                                           </div>
                                           <p class="mt-1 hidden text-xs text-neutral-500 md:block">
@@ -517,22 +525,6 @@ class TableNameDialogComponent {
                                                   </div>
                                                 }
                                               </div>
-                                              @if (player.status === 'COMPLETED') {
-                                                <div class="mt-3 grid grid-cols-2 gap-2">
-                                                  <span class="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/25 px-3 py-2">
-                                                    <small class="text-xs font-bold text-neutral-400">Cash out</small>
-                                                    <strong class="text-base font-extrabold text-white">{{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
-                                                  </span>
-                                                  <span
-                                                    class="dashboard-player-net-result flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/25 px-3 py-2"
-                                                    [class.dashboard-player-net-positive]="player.net >= 0"
-                                                    [class.dashboard-player-net-negative]="player.net < 0"
-                                                  >
-                                                    <small class="text-xs font-bold text-neutral-400">Net</small>
-                                                    <strong class="text-base font-extrabold">{{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
-                                                  </span>
-                                                </div>
-                                              }
                                             }
                                           </div>
                                         </div>
