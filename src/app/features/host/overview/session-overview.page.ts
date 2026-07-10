@@ -168,12 +168,17 @@ export class SessionOverviewPage implements OnInit, OnDestroy {
   protected readonly overviewLoaderLeaving = signal(false);
   private overviewRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private overviewLoaderTimer: ReturnType<typeof setTimeout> | null = null;
+  private overviewRevealFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   async ngOnInit(): Promise<void> {
     this.startOverviewRefresh();
+    this.startOverviewRevealFallback();
 
-    await this.refreshOverviewSessions();
-    this.revealOverview();
+    try {
+      await this.refreshOverviewSessions();
+    } finally {
+      this.revealOverview();
+    }
   }
 
   ngOnDestroy(): void {
@@ -185,6 +190,11 @@ export class SessionOverviewPage implements OnInit, OnDestroy {
     if (this.overviewLoaderTimer) {
       clearTimeout(this.overviewLoaderTimer);
       this.overviewLoaderTimer = null;
+    }
+
+    if (this.overviewRevealFallbackTimer) {
+      clearTimeout(this.overviewRevealFallbackTimer);
+      this.overviewRevealFallbackTimer = null;
     }
   }
 
@@ -206,7 +216,26 @@ export class SessionOverviewPage implements OnInit, OnDestroy {
     }
   }
 
+  private startOverviewRevealFallback(): void {
+    if (typeof window === 'undefined' || this.overviewReady()) {
+      return;
+    }
+
+    this.overviewRevealFallbackTimer = window.setTimeout(() => {
+      this.revealOverview();
+    }, 900);
+  }
+
   private revealOverview(): void {
+    if (this.overviewReady()) {
+      return;
+    }
+
+    if (this.overviewRevealFallbackTimer) {
+      clearTimeout(this.overviewRevealFallbackTimer);
+      this.overviewRevealFallbackTimer = null;
+    }
+
     this.overviewReady.set(true);
     this.overviewLoaderLeaving.set(true);
 
