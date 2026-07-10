@@ -85,12 +85,6 @@ interface PlayerLedgerRow {
             </div>
           </div>
 
-          @if (currentPlayer.status === 'ACTIVE') {
-            <div class="rounded-lg border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-50">
-              Cash out has not been recorded yet, so net result remains pending.
-            </div>
-          }
-
           <div class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
             <div class="border-b border-white/10 px-4 py-3">
               <h2 class="text-lg font-semibold text-white">Game history</h2>

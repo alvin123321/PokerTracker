@@ -998,7 +998,9 @@ interface PlayerActivityEntry {
         .player-view,
         .activity-row,
         .player-feature-card-time-starting,
-        .player-feature-card-time-running {
+        .player-feature-card-time-running,
+        .player-feature-card-time-starting::before,
+        .player-feature-card-time-running::before {
           animation: none;
         }
 
