@@ -1002,6 +1002,7 @@ h3 {
 }
 
 .call-time-ring-track,
+.call-time-ring-progress-underlay,
 .call-time-ring-progress {
   fill: none;
   stroke-width: 4;
@@ -1011,10 +1012,19 @@ h3 {
   stroke: rgb(255 255 255 / 0.12);
 }
 
+.call-time-ring-progress-underlay {
+  stroke: rgb(14 165 233 / 0.42);
+  stroke-dasharray: 1;
+  stroke-linecap: round;
+  stroke-width: 6.2;
+  transition: stroke-dashoffset 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .call-time-ring-progress {
-  stroke: rgb(52 211 153);
+  stroke: url('#player-call-time-progress-gradient');
   stroke-linecap: round;
   stroke-dasharray: 1;
+  stroke-width: 4.2;
   transition: stroke-dashoffset 280ms cubic-bezier(0.16, 1, 0.3, 1);
   filter: none;
 }
@@ -1025,10 +1035,19 @@ h3 {
     calltime-progress-breathe 1.7s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
+.call-time-mini-ring-starting .call-time-ring-progress-underlay {
+  stroke: rgb(250 204 21 / 0.42);
+  animation: calltime-progress-underlay-sync 1.7s ease-in-out infinite alternate;
+}
+
 .call-time-mini-ring-running .call-time-ring-progress {
   animation:
     calltime-running-ring 2.2s ease-in-out infinite alternate,
     calltime-progress-breathe 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.call-time-mini-ring-running .call-time-ring-progress-underlay {
+  animation: calltime-progress-underlay-running 2.6s ease-in-out infinite alternate;
 }
 
 .call-time-mini-ring-starting span {
@@ -1045,17 +1064,18 @@ h3 {
 .player-feature-card::before {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -4px;
   z-index: 0;
   border-radius: inherit;
-  padding: 2px;
+  padding: 4px;
   background: conic-gradient(
     from 0deg,
-    transparent 0 18%,
-    rgb(34 197 94 / 0.82) 24%,
-    rgb(187 247 208 / 0.92) 28%,
-    rgb(14 165 233 / 0.32) 33%,
-    transparent 42% 100%
+    transparent 0 10%,
+    rgb(14 165 233 / 0.45) 16%,
+    rgb(34 197 94 / 0.9) 24%,
+    rgb(187 247 208 / 0.96) 30%,
+    rgb(250 204 21 / 0.42) 36%,
+    transparent 48% 100%
   );
   opacity: 0;
   pointer-events: none;
@@ -1066,10 +1086,32 @@ h3 {
   mask-composite: exclude;
 }
 
+.player-feature-card::after {
+  content: '';
+  position: absolute;
+  inset: -38%;
+  z-index: 0;
+  border-radius: 2rem;
+  background:
+    linear-gradient(115deg, transparent 0 24%, rgb(14 165 233 / 0.12) 32%, transparent 44%),
+    linear-gradient(65deg, transparent 0 35%, rgb(52 211 153 / 0.16) 48%, transparent 62%),
+    radial-gradient(circle at 24% 42%, rgb(250 204 21 / 0.08), transparent 22%),
+    radial-gradient(circle at 78% 58%, rgb(34 197 94 / 0.12), transparent 24%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-16%) rotate(-8deg) scale(1.05);
+}
+
 .player-feature-card-time-starting::before,
 .player-feature-card-time-running::before {
   opacity: 1;
-  animation: calltime-card-border-sweep 4.8s linear infinite;
+  animation: calltime-card-border-sweep 3.8s linear infinite;
+}
+
+.player-feature-card-time-starting::after,
+.player-feature-card-time-running::after {
+  opacity: 1;
+  animation: calltime-card-surface-sweep 5.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
 .player-hero-panel,
@@ -1321,7 +1363,12 @@ h3 {
 
   .player-call-time-orb,
   .call-time-mini-ring span,
+  .call-time-ring-progress-underlay,
   .call-time-ring-progress,
+  .player-feature-card-time-starting::before,
+  .player-feature-card-time-running::before,
+  .player-feature-card-time-starting::after,
+  .player-feature-card-time-running::after,
   .call-time-stage-ring-active .call-time-ring-visual,
   .call-time-stage-ring-starting .call-time-ring-face strong,
   .call-time-stage-ring-running .call-time-ring-face strong,
@@ -1346,21 +1393,45 @@ h3 {
 
 @keyframes calltime-sync-ring {
   from {
-    stroke: rgb(52 211 153);
+    opacity: 0.78;
   }
 
   to {
-    stroke: rgb(187 247 208);
+    opacity: 1;
   }
 }
 
 @keyframes calltime-running-ring {
   from {
-    stroke: rgb(52 211 153);
+    opacity: 0.82;
   }
 
   to {
-    stroke: rgb(110 231 183);
+    opacity: 1;
+  }
+}
+
+@keyframes calltime-progress-underlay-sync {
+  from {
+    stroke: rgb(250 204 21 / 0.34);
+    stroke-width: 5.8;
+  }
+
+  to {
+    stroke: rgb(14 165 233 / 0.54);
+    stroke-width: 7.2;
+  }
+}
+
+@keyframes calltime-progress-underlay-running {
+  from {
+    stroke: rgb(14 165 233 / 0.34);
+    stroke-width: 5.8;
+  }
+
+  to {
+    stroke: rgb(52 211 153 / 0.5);
+    stroke-width: 6.8;
   }
 }
 
@@ -1412,6 +1483,22 @@ h3 {
 @keyframes calltime-card-border-sweep {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes calltime-card-surface-sweep {
+  0% {
+    transform: translateX(-18%) rotate(-8deg) scale(1.05);
+    opacity: 0.42;
+  }
+
+  45% {
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: translateX(18%) rotate(8deg) scale(1.05);
+    opacity: 0.42;
   }
 }
 

@@ -172,7 +172,22 @@ interface PlayerActivityEntry {
                             [class.call-time-mini-ring-running]="!store.isTimeCallStarting(activeCall)"
                           >
                             <svg viewBox="0 0 44 44" aria-hidden="true">
+                              <defs>
+                                <linearGradient id="player-call-time-progress-gradient" x1="6" y1="6" x2="38" y2="38">
+                                  <stop offset="0%" stop-color="rgb(125 211 252)"></stop>
+                                  <stop offset="46%" stop-color="rgb(52 211 153)"></stop>
+                                  <stop offset="100%" stop-color="rgb(250 204 21)"></stop>
+                                </linearGradient>
+                              </defs>
                               <circle class="call-time-ring-track" cx="22" cy="22" r="18"></circle>
+                              <circle
+                                class="call-time-ring-progress-underlay"
+                                cx="22"
+                                cy="22"
+                                r="18"
+                                pathLength="1"
+                                [attr.stroke-dashoffset]="1 - store.timeCallProgressFor(activeCall)"
+                              ></circle>
                               <circle
                                 class="call-time-ring-progress"
                                 cx="22"
