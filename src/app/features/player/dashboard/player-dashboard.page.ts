@@ -574,11 +574,11 @@ interface PlayerActivityEntry {
       }
 
       .player-feature-card-time-starting {
-        animation: calltime-card-sync-glow 950ms cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+        animation: calltime-card-sync-glow 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
       }
 
       .player-feature-card-time-running {
-        animation: calltime-card-running-glow 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+        animation: calltime-card-running-glow 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
       }
 
       .feature-heading,
@@ -1038,7 +1038,7 @@ interface PlayerActivityEntry {
           box-shadow:
             inset 0 1px 0 rgb(255 255 255 / 0.05),
             0 18px 46px rgb(0 0 0 / 0.28),
-            0 0 20px rgb(34 197 94 / 0.12);
+            0 0 18px rgb(34 197 94 / 0.08);
         }
 
         to {
@@ -1046,7 +1046,7 @@ interface PlayerActivityEntry {
           box-shadow:
             inset 0 1px 0 rgb(255 255 255 / 0.08),
             0 20px 52px rgb(0 0 0 / 0.32),
-            0 0 46px rgb(34 197 94 / 0.28);
+            0 0 34px rgb(34 197 94 / 0.18);
         }
       }
 
@@ -1056,7 +1056,7 @@ interface PlayerActivityEntry {
           box-shadow:
             inset 0 1px 0 rgb(255 255 255 / 0.05),
             0 18px 46px rgb(0 0 0 / 0.28),
-            0 0 16px rgb(34 197 94 / 0.08);
+            0 0 14px rgb(34 197 94 / 0.06);
         }
 
         to {
@@ -1064,7 +1064,7 @@ interface PlayerActivityEntry {
           box-shadow:
             inset 0 1px 0 rgb(255 255 255 / 0.07),
             0 20px 50px rgb(0 0 0 / 0.3),
-            0 0 32px rgb(34 197 94 / 0.18);
+            0 0 24px rgb(34 197 94 / 0.12);
         }
       }
 
