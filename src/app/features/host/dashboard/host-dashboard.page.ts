@@ -12,6 +12,7 @@ import {
   PokerStoreService,
   SessionPlayer
 } from '../data/poker-store.service';
+import { shouldShowActiveSessionsEmptyState } from './host-dashboard.logic';
 import { gameTimelineTransactions } from '../data/session-timeline.logic';
 import {
   AddPlayerDialogComponent,
@@ -117,7 +118,18 @@ class TableNameDialogComponent {
         </div>
       }
 
-      @if (store.activeSessions().length === 0) {
+      @if (!store.sessionsLoaded() && store.activeSessions().length === 0) {
+        <section class="mx-auto w-full max-w-5xl">
+          <article class="overflow-hidden rounded-lg border border-emerald-300/25 bg-neutral-950/70 p-6 text-center shadow-[0_22px_60px_rgba(0,0,0,0.28)] ring-1 ring-emerald-300/10 sm:p-8">
+            <div class="deck-shuffle mx-auto mb-5" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p class="text-lg font-semibold text-white">Loading sessions</p>
+          </article>
+        </section>
+      } @else if (shouldShowEmptyState()) {
         <section class="dashboard-empty-state mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
           <article class="empty-session-hero overflow-hidden rounded-lg border border-emerald-300/35 bg-neutral-950/78 p-5 text-center shadow-[0_22px_60px_rgba(0,0,0,0.36)] ring-1 ring-emerald-300/10 sm:p-8">
             <div class="empty-poker-table mx-auto" aria-hidden="true">
@@ -1143,6 +1155,7 @@ class TableNameDialogComponent {
 })
 export class HostDashboardPage implements OnDestroy {
   protected readonly store = inject(PokerStoreService);
+  protected readonly shouldShowActiveSessionsEmptyState = shouldShowActiveSessionsEmptyState;
   private readonly dialog = inject(MatDialog);
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
@@ -1165,6 +1178,13 @@ export class HostDashboardPage implements OnDestroy {
     }
 
     return expandedSessionId === sessionId;
+  }
+
+  protected shouldShowEmptyState(): boolean {
+    return this.shouldShowActiveSessionsEmptyState({
+      activeSessionCount: this.store.activeSessions().length,
+      sessionsLoaded: this.store.sessionsLoaded()
+    });
   }
 
   protected toggleSession(sessionId: string): void {
