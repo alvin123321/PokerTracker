@@ -276,7 +276,7 @@ interface PlayerActivityEntry {
                           Active players
                         } @else {
                           <svg lucideBanknoteArrowDown [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                          Cash out
+                          Cashed out
                         }
                       </span>
                       <strong>
@@ -440,7 +440,7 @@ interface PlayerActivityEntry {
                     <div class="session-stat session-stat-buyin">
                       <span class="metric-label">
                         <svg lucideCircleDollarSign [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                        Buy-in
+                        Total buy in
                       </span>
                       <strong>{{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
                     </div>
@@ -451,7 +451,7 @@ interface PlayerActivityEntry {
                           Active
                         } @else {
                           <svg lucideBanknoteArrowDown [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                          Cash out
+                          Cashed out
                         }
                       </span>
                       <strong>
@@ -527,9 +527,9 @@ interface PlayerActivityEntry {
       .session-tile-stats span {
         color: rgb(161 161 170);
         font-size: 0.72rem;
-        font-weight: 760;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        font-weight: 650;
+        letter-spacing: 0;
+        text-transform: none;
       }
 
       .player-tabs {
@@ -791,12 +791,12 @@ interface PlayerActivityEntry {
       .feature-toggle-label {
         display: inline-grid;
         place-items: center;
-        width: 2.45rem;
-        height: 2.45rem;
-        border: 1px solid rgb(34 197 94 / 0.42);
-        border-radius: 999px;
-        background: rgb(34 197 94 / 0.14);
-        color: rgb(220 252 231);
+        width: 1.8rem;
+        height: 1.8rem;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: rgb(212 212 216);
         flex: 0 0 auto;
         padding: 0;
         text-decoration: none;
@@ -804,13 +804,16 @@ interface PlayerActivityEntry {
       }
 
       .feature-toggle-label svg {
-        width: 1.1rem;
-        height: 1.1rem;
+        width: 1rem;
+        height: 1rem;
+      }
+
+      .feature-toggle-label:hover {
+        color: rgb(134 239 172);
       }
 
       .player-feature-card-open .feature-toggle-label {
-        border-color: rgb(74 222 128 / 0.62);
-        background: rgb(34 197 94 / 0.22);
+        color: rgb(134 239 172);
         transform: rotate(90deg);
       }
 
@@ -900,30 +903,44 @@ interface PlayerActivityEntry {
       .player-metrics,
       .session-tile-stats {
         display: grid;
-        gap: 0.65rem;
+        align-items: start;
+        gap: 0.42rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .metric-card {
         display: grid;
-        gap: 0.35rem;
+        justify-items: center;
+        gap: 0.28rem;
         min-width: 0;
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 0.85rem;
-        background: rgb(0 0 0 / 0.23);
-        padding: 0.78rem;
+        padding: 0.15rem 0.1rem;
+        text-align: center;
+      }
+
+      .metric-card:first-child,
+      .session-tile-stats > div:first-child {
+        justify-items: start;
+        text-align: left;
+      }
+
+      .metric-card:last-child,
+      .session-tile-stats > div:last-child {
+        justify-items: end;
+        text-align: right;
       }
 
       .metric-label {
         display: inline-flex;
         align-items: center;
-        gap: 0.36rem;
-        min-width: 0;
+        justify-content: center;
+        gap: 0.22rem;
+        max-width: 100%;
+        white-space: nowrap;
       }
 
       .metric-label svg {
-        width: 0.95rem;
-        height: 0.95rem;
+        width: 0.82rem;
+        height: 0.82rem;
         flex: 0 0 auto;
       }
 
@@ -931,54 +948,37 @@ interface PlayerActivityEntry {
       .session-tile-stats strong {
         overflow: hidden;
         color: white;
-        font-size: 1.28rem;
-        font-weight: 680;
+        font-size: 1.16rem;
+        font-weight: 560;
         line-height: 1.05;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
       .metric-buyin strong {
-        color: rgb(253 224 71);
-      }
-
-      .metric-buyin .metric-label {
-        color: rgb(253 224 71);
-      }
-
-      .metric-buyin {
-        border-color: rgb(253 224 71 / 0.2);
-        background: linear-gradient(145deg, rgb(253 224 71 / 0.1), rgb(0 0 0 / 0.2));
-      }
-
-      .metric-active-players {
-        border-color: rgb(52 211 153 / 0.22);
-        background: linear-gradient(145deg, rgb(16 185 129 / 0.12), rgb(0 0 0 / 0.2));
-      }
-
-      .metric-active-players .metric-label,
-      .metric-active-players strong {
-        color: rgb(110 231 183);
-      }
-
-      .metric-total-chips {
-        border-color: rgb(125 211 252 / 0.22);
-        background: linear-gradient(145deg, rgb(14 165 233 / 0.12), rgb(0 0 0 / 0.2));
-      }
-
-      .metric-total-chips .metric-label,
-      .metric-total-chips strong {
         color: rgb(125 211 252);
       }
 
-      .metric-cashout {
-        border-color: rgb(251 191 36 / 0.24);
-        background: linear-gradient(145deg, rgb(245 158 11 / 0.12), rgb(0 0 0 / 0.2));
+      .metric-buyin .metric-label {
+        color: rgb(125 211 252);
+      }
+
+      .metric-active-players .metric-label {
+        color: rgb(110 231 183);
+      }
+
+      .metric-active-players strong {
+        color: rgb(74 222 128);
       }
 
       .metric-cashout .metric-label,
       .metric-cashout strong {
         color: rgb(251 191 36);
+      }
+
+      .metric-total-chips .metric-label,
+      .metric-total-chips strong {
+        color: rgb(125 211 252);
       }
 
       .positive {
@@ -995,17 +995,11 @@ interface PlayerActivityEntry {
       }
 
       .metric-net-positive {
-        border-color: rgb(34 197 94 / 0.22);
-        background: linear-gradient(145deg, rgb(34 197 94 / 0.1), rgb(0 0 0 / 0.2));
+        color: rgb(74 222 128);
       }
 
       .metric-net-positive .metric-label {
         color: rgb(134 239 172);
-      }
-
-      .metric-net-negative {
-        border-color: rgb(248 113 113 / 0.26);
-        background: linear-gradient(145deg, rgb(239 68 68 / 0.11), rgb(0 0 0 / 0.2));
       }
 
       .metric-net-negative .metric-label {
@@ -1142,8 +1136,8 @@ interface PlayerActivityEntry {
 
       .session-tile {
         display: grid;
-        gap: 0.9rem;
-        padding: 1rem;
+        gap: 0.72rem;
+        padding: 0.95rem 1rem;
         text-decoration: none;
         transition: all 180ms ease;
       }
@@ -1161,30 +1155,19 @@ interface PlayerActivityEntry {
 
       .session-tile-stats > div {
         display: grid;
-        gap: 0.25rem;
+        justify-items: center;
+        gap: 0.28rem;
         min-width: 0;
+        text-align: center;
       }
 
       .session-stat {
-        border: 1px solid rgb(255 255 255 / 0.08);
-        border-radius: 0.78rem;
-        background: rgb(255 255 255 / 0.035);
-        padding: 0.58rem;
-      }
-
-      .session-stat-buyin {
-        border-color: rgb(253 224 71 / 0.18);
-        background: rgb(253 224 71 / 0.075);
+        padding: 0.1rem 0;
       }
 
       .session-stat-buyin .metric-label,
       .session-stat-buyin strong {
-        color: rgb(253 224 71);
-      }
-
-      .session-stat-active {
-        border-color: rgb(52 211 153 / 0.2);
-        background: rgb(16 185 129 / 0.08);
+        color: rgb(125 211 252);
       }
 
       .session-stat-active .metric-label,
@@ -1192,19 +1175,9 @@ interface PlayerActivityEntry {
         color: rgb(110 231 183);
       }
 
-      .session-stat-chips {
-        border-color: rgb(125 211 252 / 0.22);
-        background: rgb(14 165 233 / 0.085);
-      }
-
       .session-stat-chips .metric-label,
       .session-stat-chips strong {
         color: rgb(125 211 252);
-      }
-
-      .session-stat-cashout {
-        border-color: rgb(251 191 36 / 0.22);
-        background: rgb(245 158 11 / 0.085);
       }
 
       .session-stat-cashout .metric-label,
@@ -1212,18 +1185,8 @@ interface PlayerActivityEntry {
         color: rgb(251 191 36);
       }
 
-      .session-stat-net-positive {
-        border-color: rgb(34 197 94 / 0.2);
-        background: rgb(34 197 94 / 0.075);
-      }
-
       .session-stat-net-positive .metric-label {
         color: rgb(134 239 172);
-      }
-
-      .session-stat-net-negative {
-        border-color: rgb(248 113 113 / 0.24);
-        background: rgb(239 68 68 / 0.085);
       }
 
       .session-stat-net-negative .metric-label {
@@ -1265,16 +1228,12 @@ interface PlayerActivityEntry {
 
         .player-metrics,
         .session-tile-stats {
-          gap: 0.45rem;
-        }
-
-        .metric-card {
-          padding: 0.62rem;
+          gap: 0.28rem;
         }
 
         .metric-card span,
         .session-tile-stats span {
-          font-size: 0.68rem;
+          font-size: 0.64rem;
         }
 
       }
