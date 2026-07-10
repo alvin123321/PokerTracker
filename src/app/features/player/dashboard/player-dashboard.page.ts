@@ -1051,15 +1051,18 @@ interface PlayerActivityEntry {
         width: 1.35rem;
         height: 1.35rem;
         place-items: center;
+        background: transparent;
+        box-shadow: none;
         color: rgb(250 204 21);
-        filter:
-          drop-shadow(0 0 7px rgb(250 204 21 / 0.62))
-          drop-shadow(0 0 18px rgb(250 204 21 / 0.28));
       }
 
       .recent-energy-icon svg {
         width: 1.08rem;
         height: 1.08rem;
+        stroke: rgb(250 204 21);
+        filter:
+          drop-shadow(0 0 4px rgb(250 204 21 / 0.86))
+          drop-shadow(0 0 12px rgb(250 204 21 / 0.48));
       }
 
       .activity-list {
