@@ -79,7 +79,27 @@ import { PokerStoreService } from '../data/poker-store.service';
       }
 
       .new-session-input[type='date'] {
+        appearance: none;
+        -webkit-appearance: none;
         inline-size: 100%;
+        overflow: hidden;
+      }
+
+      .new-session-input[type='date']::-webkit-date-and-time-value {
+        min-width: 0;
+        text-align: left;
+      }
+
+      .new-session-input[type='date']::-webkit-calendar-picker-indicator {
+        flex: 0 0 auto;
+        margin-inline-start: 0.25rem;
+        padding: 0;
+      }
+
+      @media (max-width: 380px) {
+        .new-session-input {
+          padding-inline: 0.875rem;
+        }
       }
     `
   ]
