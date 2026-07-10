@@ -2535,9 +2535,32 @@ h3 {
 .dashboard-player-row-open {
   border-color: rgb(52 211 153 / 0.28);
   background:
-    linear-gradient(90deg, rgb(52 211 153 / 11%), transparent 52%),
-    rgb(2 6 23 / 38%);
-  box-shadow: inset 0 0 0 1px rgb(52 211 153 / 0.12);
+    linear-gradient(90deg, rgb(16 185 129 / 24%), rgb(20 184 166 / 12%) 54%, rgb(2 6 23 / 18%)),
+    rgb(3 18 14 / 88%);
+  box-shadow:
+    inset 0 0 0 1px rgb(110 231 183 / 0.68),
+    inset 0 0 34px rgb(16 185 129 / 0.18),
+    0 0 0 1px rgb(16 185 129 / 0.18),
+    0 0 30px rgb(52 211 153 / 0.18);
+}
+
+.dashboard-player-net-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.22);
+  padding: 0.16rem 0.48rem;
+  color: rgb(161 161 170);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.dashboard-player-net-inline strong {
+  font-size: 0.78rem;
+  font-weight: 850;
 }
 
 .dashboard-player-timeline {
@@ -2601,6 +2624,22 @@ h3 {
     linear-gradient(135deg, rgb(14 165 233 / 0.13), transparent 62%),
     rgb(255 255 255 / 0.035);
   color: rgb(125 211 252);
+}
+
+.dashboard-timeline-item-cashout {
+  border-color: rgb(251 191 36 / 0.3);
+  background:
+    linear-gradient(135deg, rgb(245 158 11 / 0.14), transparent 62%),
+    rgb(255 255 255 / 0.035);
+  color: rgb(253 230 138);
+}
+
+.dashboard-player-net-positive strong {
+  color: rgb(134 239 172);
+}
+
+.dashboard-player-net-negative strong {
+  color: rgb(252 165 165);
 }
 
 .action-spinner {

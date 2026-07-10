@@ -12,6 +12,7 @@ import {
   PokerStoreService,
   SessionPlayer
 } from '../data/poker-store.service';
+import { gameTimelineTransactions } from '../data/session-timeline.logic';
 import {
   AddPlayerDialogComponent,
   AddPlayerDialogData,
@@ -424,10 +425,18 @@ class TableNameDialogComponent {
                                             </span>
                                             @if (player.status === 'COMPLETED') {
                                               <span class="text-sm font-bold leading-none text-emerald-300">&check;</span>
+                                              <span
+                                                class="dashboard-player-net-inline"
+                                                [class.dashboard-player-net-positive]="player.net >= 0"
+                                                [class.dashboard-player-net-negative]="player.net < 0"
+                                              >
+                                                Net
+                                                <strong>{{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                                              </span>
                                             }
                                           </div>
                                           <p class="mt-1 hidden text-xs text-neutral-500 md:block">
-                                            Tap to view buy-in timeline
+                                            Tap to view game timeline
                                           </p>
                                         </div>
 
@@ -491,23 +500,24 @@ class TableNameDialogComponent {
                                         >
                                           <div class="dashboard-player-timeline-inner">
                                             <div class="mb-2 flex items-center justify-between gap-3">
-                                              <span class="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">Buy-in timeline</span>
-                                              <span class="text-xs text-neutral-500">{{ dashboardPlayerBuyInTransactions(session, player.id).length }} records</span>
+                                              <span class="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">Game timeline</span>
+                                              <span class="text-xs text-neutral-500">{{ dashboardPlayerTimelineTransactions(session, player.id).length }} records</span>
                                             </div>
 
-                                            @if (dashboardPlayerBuyInTransactions(session, player.id).length === 0) {
+                                            @if (dashboardPlayerTimelineTransactions(session, player.id).length === 0) {
                                               <div class="rounded-lg border border-dashed border-white/10 bg-black/15 p-3 text-sm text-neutral-500">
-                                                No buy-ins recorded.
+                                                No timeline recorded.
                                               </div>
                                             } @else {
                                               <div class="grid gap-2 sm:grid-cols-2">
-                                                @for (transaction of dashboardPlayerBuyInTransactions(session, player.id); track transaction.id) {
+                                                @for (transaction of dashboardPlayerTimelineTransactions(session, player.id); track transaction.id) {
                                                   <div
                                                     class="dashboard-timeline-item"
                                                     [class.dashboard-timeline-item-buyin]="transaction.type === 'BUYIN'"
                                                     [class.dashboard-timeline-item-rebuy]="transaction.type === 'REBUY'"
+                                                    [class.dashboard-timeline-item-cashout]="transaction.type === 'CASHOUT'"
                                                   >
-                                                    <span class="text-xs font-semibold uppercase">{{ transaction.type }}</span>
+                                                    <span class="text-xs font-semibold uppercase">{{ transactionLabel(transaction.type) }}</span>
                                                     <span class="text-sm text-neutral-400">{{ transaction.createdAt | date: 'shortTime' }}</span>
                                                     <span class="text-right text-base font-semibold text-white">
                                                       {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
@@ -1195,13 +1205,24 @@ export class HostDashboardPage implements OnDestroy {
     return this.expandedDashboardPlayerId() === playerId;
   }
 
-  protected dashboardPlayerBuyInTransactions(
+  protected dashboardPlayerTimelineTransactions(
     session: PokerSession,
     playerId: string
   ): PokerTransaction[] {
-    return this.store.buyInTransactionsForPlayer(session, playerId).filter(
-      (transaction) => !transaction.deletedAt
+    return gameTimelineTransactions(
+      session.transactions.filter((transaction) => transaction.playerId === playerId)
     );
+  }
+
+  protected transactionLabel(type: PokerTransaction['type']): string {
+    switch (type) {
+      case 'BUYIN':
+        return 'Buy-in';
+      case 'REBUY':
+        return 'Rebuy';
+      case 'CASHOUT':
+        return 'Cash out';
+    }
   }
 
   protected tableAccent(tableNumber: number): 'cyan' | 'amber' | 'fuchsia' | 'emerald' {

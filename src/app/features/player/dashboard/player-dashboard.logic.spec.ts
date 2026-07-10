@@ -1,6 +1,12 @@
-import { playerCallTimeDisplayState } from './player-dashboard.logic';
+import { playerCallTimeDisplayState, playerGameTimeline } from './player-dashboard.logic';
 
-import type { PokerSession, SessionPlayer, TimeCall } from '../../host/data/poker-store.service';
+import type {
+  PokerSession,
+  PokerTransaction,
+  PokerTransactionType,
+  SessionPlayer,
+  TimeCall
+} from '../../host/data/poker-store.service';
 
 describe('player dashboard call-time display', () => {
   it('shows the shared countdown clock when another active player has called time', () => {
@@ -38,6 +44,42 @@ describe('player dashboard call-time display', () => {
     });
 
     expect(playerCallTimeDisplayState(session, player, undefined)).toBe('NONE');
+  });
+});
+
+describe('playerGameTimeline', () => {
+  it('includes buy-in, rebuy, and cash-out rows in time order', () => {
+    const rows = playerGameTimeline([
+      makeTransaction({
+        id: 'cashout',
+        type: 'CASHOUT',
+        amount: 500,
+        createdAt: '2026-07-08T04:00:00.000Z'
+      }),
+      makeTransaction({
+        id: 'buyin',
+        type: 'BUYIN',
+        amount: 200,
+        createdAt: '2026-07-08T01:00:00.000Z'
+      }),
+      makeTransaction({
+        id: 'rebuy',
+        type: 'REBUY',
+        amount: 300,
+        createdAt: '2026-07-08T02:00:00.000Z'
+      })
+    ]);
+
+    expect(rows.map((row) => row.id)).toEqual(['buyin', 'rebuy', 'cashout']);
+  });
+
+  it('omits deleted transaction rows', () => {
+    const rows = playerGameTimeline([
+      makeTransaction({ id: 'buyin', type: 'BUYIN' }),
+      makeTransaction({ id: 'deleted-cashout', type: 'CASHOUT', deletedAt: '2026-07-08T04:30:00.000Z' })
+    ]);
+
+    expect(rows.map((row) => row.id)).toEqual(['buyin']);
   });
 });
 
@@ -83,6 +125,21 @@ function makeTimeCall(overrides: Partial<TimeCall> = {}): TimeCall {
     expiresAt: '2026-07-08T01:00:30.000Z',
     resolvedAt: null,
     resolvedBy: null,
+    ...overrides
+  };
+}
+
+function makeTransaction(overrides: Partial<PokerTransaction> = {}): PokerTransaction {
+  const type: PokerTransactionType = overrides.type ?? 'BUYIN';
+
+  return {
+    id: `${type.toLowerCase()}-a`,
+    sessionId: 'session-a',
+    tableId: 'table-a',
+    playerId: 'seat-a',
+    type,
+    amount: 100,
+    createdAt: '2026-07-08T01:00:00.000Z',
     ...overrides
   };
 }
