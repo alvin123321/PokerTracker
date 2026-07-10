@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
@@ -12,7 +12,10 @@ import {
   PokerStoreService,
   SessionPlayer
 } from '../data/poker-store.service';
-import { shouldShowActiveSessionsEmptyState } from './host-dashboard.logic';
+import {
+  shouldShowActiveSessionsEmptyState,
+  shouldShowActiveSessionsLoadingState
+} from './host-dashboard.logic';
 import { gameTimelineTransactions } from '../data/session-timeline.logic';
 import {
   AddPlayerDialogComponent,
@@ -118,7 +121,7 @@ class TableNameDialogComponent {
         </div>
       }
 
-      @if (!store.sessionsLoaded() && store.activeSessions().length === 0) {
+      @if (shouldShowLoadingState()) {
         <section class="mx-auto w-full max-w-5xl">
           <article class="overflow-hidden rounded-lg border border-emerald-300/25 bg-neutral-950/70 p-6 text-center shadow-[0_22px_60px_rgba(0,0,0,0.28)] ring-1 ring-emerald-300/10 sm:p-8">
             <div class="deck-shuffle mx-auto mb-5" aria-hidden="true">
@@ -1183,20 +1186,40 @@ class TableNameDialogComponent {
     `
   ]
 })
-export class HostDashboardPage implements OnDestroy {
+export class HostDashboardPage implements OnInit, OnDestroy {
   protected readonly store = inject(PokerStoreService);
   protected readonly shouldShowActiveSessionsEmptyState = shouldShowActiveSessionsEmptyState;
+  protected readonly shouldShowActiveSessionsLoadingState = shouldShowActiveSessionsLoadingState;
   private readonly dialog = inject(MatDialog);
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly initialLoadingWindowExpired = signal(false);
   protected readonly expandedSessionId = signal<string | null | undefined>(undefined);
   protected readonly expandedTableId = signal<string | null | undefined>(undefined);
   protected readonly expandedDashboardPlayerId = signal<string | null>(null);
   protected readonly recentRebuyPlayerId = signal<string | null>(null);
   protected readonly recentRebuySessionId = signal<string | null>(null);
   private rebuyAnimationTimer: ReturnType<typeof setTimeout> | null = null;
+  private initialLoadingTimer: ReturnType<typeof setTimeout> | null = null;
+
+  ngOnInit(): void {
+    if (typeof window === 'undefined') {
+      this.initialLoadingWindowExpired.set(true);
+      return;
+    }
+
+    this.initialLoadingTimer = window.setTimeout(() => {
+      this.initialLoadingWindowExpired.set(true);
+      this.initialLoadingTimer = null;
+    }, 900);
+  }
 
   ngOnDestroy(): void {
+    if (this.initialLoadingTimer) {
+      clearTimeout(this.initialLoadingTimer);
+      this.initialLoadingTimer = null;
+    }
+
     this.clearRebuyAnimation();
   }
 
@@ -1213,7 +1236,16 @@ export class HostDashboardPage implements OnDestroy {
   protected shouldShowEmptyState(): boolean {
     return this.shouldShowActiveSessionsEmptyState({
       activeSessionCount: this.store.activeSessions().length,
-      sessionsLoaded: this.store.sessionsLoaded()
+      sessionsLoaded: this.store.sessionsLoaded(),
+      initialLoadingWindowExpired: this.initialLoadingWindowExpired()
+    });
+  }
+
+  protected shouldShowLoadingState(): boolean {
+    return this.shouldShowActiveSessionsLoadingState({
+      activeSessionCount: this.store.activeSessions().length,
+      sessionsLoaded: this.store.sessionsLoaded(),
+      initialLoadingWindowExpired: this.initialLoadingWindowExpired()
     });
   }
 
