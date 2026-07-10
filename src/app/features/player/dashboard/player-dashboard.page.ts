@@ -13,7 +13,8 @@ import {
   LucideAlarmClock,
   LucideReceiptText,
   LucideRefreshCcw,
-  LucideUsersRound
+  LucideUsersRound,
+  LucideZap
 } from '@lucide/angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -83,6 +84,7 @@ interface PlayerActivityEntry {
     LucideReceiptText,
     LucideRefreshCcw,
     LucideUsersRound,
+    LucideZap,
     RouterLink,
     PotCalculatorPage
   ],
@@ -184,7 +186,7 @@ interface PlayerActivityEntry {
                         title="View game detail"
                         (click)="preparePlayerRouteTransition('forward'); $event.stopPropagation()"
                       >
-                        <svg lucideReceiptText [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                        <svg lucideReceiptText [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                       </a>
                     </div>
                   </div>
@@ -345,7 +347,12 @@ interface PlayerActivityEntry {
 
               <section class="player-ledger-panel">
                 <div class="panel-heading">
-                  <h2>Recent</h2>
+                  <div>
+                    <h2>Recent</h2>
+                    <span class="recent-energy-icon" aria-hidden="true">
+                      <svg lucideZap [strokeWidth]="2.4" [absoluteStrokeWidth]="true"></svg>
+                    </span>
+                  </div>
                 </div>
 
                 <div class="activity-list">
@@ -676,6 +683,10 @@ interface PlayerActivityEntry {
         transition: all 190ms ease;
       }
 
+      .player-feature-card:not(.player-feature-card-open) {
+        padding-bottom: 0.66rem;
+      }
+
       .player-feature-card > * {
         position: relative;
         z-index: 1;
@@ -809,8 +820,8 @@ interface PlayerActivityEntry {
       }
 
       .feature-toggle-label svg {
-        width: 1rem;
-        height: 1rem;
+        width: 1.16rem;
+        height: 1.16rem;
       }
 
       .feature-toggle-label:hover {
@@ -1027,6 +1038,21 @@ interface PlayerActivityEntry {
         align-items: center;
         justify-content: space-between;
         margin-bottom: 0.75rem;
+      }
+
+      .recent-energy-icon {
+        display: inline-grid;
+        margin-top: 0.34rem;
+        width: 1.45rem;
+        height: 1.45rem;
+        place-items: center;
+        color: rgb(250 204 21);
+        filter: drop-shadow(0 0 12px rgb(250 204 21 / 0.28));
+      }
+
+      .recent-energy-icon svg {
+        width: 1.08rem;
+        height: 1.08rem;
       }
 
       .activity-list {
