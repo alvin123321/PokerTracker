@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DOCUMENT, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
@@ -6,12 +6,12 @@ import {
   LucideBanknoteArrowDown,
   LucideCalculator,
   LucideBadgeCheck,
-  LucideChevronRight,
   LucideCircleDollarSign,
   LucideCoins,
   LucideHistory,
   LucideHouse,
   LucideAlarmClock,
+  LucideReceiptText,
   LucideRefreshCcw,
   LucideUsersRound
 } from '@lucide/angular';
@@ -75,12 +75,12 @@ interface PlayerActivityEntry {
     LucideBanknoteArrowDown,
     LucideBadgeCheck,
     LucideCalculator,
-    LucideChevronRight,
     LucideCircleDollarSign,
     LucideCoins,
     LucideHistory,
     LucideHouse,
     LucideAlarmClock,
+    LucideReceiptText,
     LucideRefreshCcw,
     LucideUsersRound,
     RouterLink,
@@ -182,9 +182,9 @@ interface PlayerActivityEntry {
                         class="feature-toggle-label"
                         aria-label="View game detail"
                         title="View game detail"
-                        (click)="$event.stopPropagation()"
+                        (click)="preparePlayerRouteTransition('forward'); $event.stopPropagation()"
                       >
-                        <svg lucideChevronRight [strokeWidth]="3" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                        <svg lucideReceiptText [strokeWidth]="2.8" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                       </a>
                     </div>
                   </div>
@@ -350,7 +350,11 @@ interface PlayerActivityEntry {
 
                 <div class="activity-list">
                   @for (activity of recentActivity(); track activity.id) {
-                    <a [routerLink]="['/player/sessions', activity.sessionId]" class="activity-row">
+                    <a
+                      [routerLink]="['/player/sessions', activity.sessionId]"
+                      class="activity-row"
+                      (click)="preparePlayerRouteTransition('forward')"
+                    >
                       <span
                         class="activity-icon"
                         [class.activity-icon-buyin]="activity.type === 'BUYIN'"
@@ -415,6 +419,7 @@ interface PlayerActivityEntry {
                   [routerLink]="['/player/sessions', entry.session.id]"
                   class="session-tile"
                   [class.session-tile-active]="entry.player.status === 'ACTIVE'"
+                  (click)="preparePlayerRouteTransition('forward')"
                 >
                   <div class="session-tile-top">
                     <div>
@@ -814,20 +819,25 @@ interface PlayerActivityEntry {
 
       .player-feature-card-open .feature-toggle-label {
         color: rgb(134 239 172);
-        transform: rotate(90deg);
       }
 
       .feature-detail-panel {
         display: grid;
         grid-template-rows: 0fr;
         opacity: 0;
+        margin-top: -1rem;
         transform: translateY(-0.25rem);
-        transition: all 420ms cubic-bezier(0.16, 1, 0.3, 1);
+        transition:
+          grid-template-rows 420ms cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 260ms ease,
+          margin-top 260ms ease,
+          transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
       }
 
       .player-feature-card-open .feature-detail-panel {
         grid-template-rows: 1fr;
         opacity: 1;
+        margin-top: 0;
         transform: translateY(0);
       }
 
@@ -1189,7 +1199,15 @@ interface PlayerActivityEntry {
         color: rgb(134 239 172);
       }
 
+      .session-stat-net-positive strong {
+        color: rgb(74 222 128);
+      }
+
       .session-stat-net-negative .metric-label {
+        color: rgb(252 165 165);
+      }
+
+      .session-stat-net-negative strong {
         color: rgb(252 165 165);
       }
 
@@ -1321,6 +1339,7 @@ export class PlayerDashboardPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
+  private readonly document = inject(DOCUMENT);
   protected readonly store = inject(PokerStoreService);
   protected readonly callTimeLimit = CALL_TIME_LIMIT;
   protected readonly pendingTimeCallPlayerId = signal<string | null>(null);
@@ -1397,6 +1416,17 @@ export class PlayerDashboardPage implements OnInit {
 
   protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
+  }
+
+  protected preparePlayerRouteTransition(direction: 'forward' | 'back'): void {
+    if (!this.document.defaultView?.matchMedia('(max-width: 639px)').matches) {
+      return;
+    }
+
+    this.document.documentElement.dataset['playerRouteTransition'] = direction;
+    this.document.defaultView.setTimeout(() => {
+      delete this.document.documentElement.dataset['playerRouteTransition'];
+    }, 700);
   }
 
   protected callTimeDisplayState(
