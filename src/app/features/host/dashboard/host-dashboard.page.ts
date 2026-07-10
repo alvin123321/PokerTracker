@@ -240,6 +240,10 @@ class TableNameDialogComponent {
                         <span class="rounded-full border border-emerald-300/35 px-3 py-1 text-xs font-semibold text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.12)]">
                           {{ session.tables.length }} table{{ session.tables.length === 1 ? '' : 's' }}
                         </span>
+                        <span class="dashboard-status-pill dashboard-status-pill-active">
+                          <span class="dashboard-status-dot" aria-hidden="true"></span>
+                          Active
+                        </span>
                       </span>
                       <span class="mt-2 block text-sm text-neutral-400">
                         {{ session.sessionDate | date: 'mediumDate' }}
@@ -267,12 +271,12 @@ class TableNameDialogComponent {
                         </span>
                       </span>
                       <span class="dashboard-stat">
-                        <span class="dashboard-stat-icon dashboard-stat-icon-cashed" aria-hidden="true"></span>
+                        <span class="dashboard-stat-icon dashboard-stat-icon-players" aria-hidden="true"></span>
                         <span class="dashboard-stat-copy">
                           <span class="dashboard-stat-value">
-                            {{ totals.totalCashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                            {{ activePlayerCount(session) }}
                           </span>
-                          <span class="dashboard-stat-label">Cash out</span>
+                          <span class="dashboard-stat-label">Active</span>
                         </span>
                       </span>
                     </span>
@@ -939,6 +943,32 @@ class TableNameDialogComponent {
         content: '';
       }
 
+      .dashboard-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid rgba(52, 211, 153, 0.42);
+        border-radius: 999px;
+        background: rgba(22, 163, 74, 0.1);
+        color: rgb(134, 239, 172);
+        box-shadow: 0 0 18px rgba(34, 197, 94, 0.12);
+        padding: 0.3rem 0.72rem;
+        font-size: 0.72rem;
+        font-weight: 850;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .dashboard-status-dot {
+        width: 0.46rem;
+        height: 0.46rem;
+        border-radius: 999px;
+        background: rgb(34, 197, 94);
+        box-shadow:
+          0 0 0 0.22rem rgba(34, 197, 94, 0.12),
+          0 0 1rem rgba(34, 197, 94, 0.42);
+      }
+
       .table-add-player-button {
         display: inline-flex;
         align-items: center;
@@ -1232,6 +1262,10 @@ export class HostDashboardPage implements OnDestroy {
     return gameTimelineTransactions(
       session.transactions.filter((transaction) => transaction.playerId === playerId)
     );
+  }
+
+  protected activePlayerCount(session: PokerSession): number {
+    return session.players.filter((player) => player.status === 'ACTIVE').length;
   }
 
   protected transactionLabel(type: PokerTransaction['type']): string {
