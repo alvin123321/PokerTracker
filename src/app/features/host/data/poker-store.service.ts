@@ -117,6 +117,14 @@ export interface SessionTotals {
   totalNet: number;
 }
 
+export interface PlayerPublicTableSummary {
+  sessionPlayerId: string;
+  sessionId: string;
+  tableId: string | null;
+  activePlayerCount: number;
+  totalActivePlayerChips: number;
+}
+
 export interface RegisteredPlayerOption {
   id: string;
   username: string;
@@ -154,6 +162,14 @@ interface SessionPlayerRow {
   net: number | string;
   joined_at: string;
   completed_at: string | null;
+}
+
+interface PlayerPublicTableSummaryRow {
+  session_player_id: string;
+  session_id: string;
+  table_id: string | null;
+  active_player_count: number | string;
+  total_active_player_chips: number | string;
 }
 
 interface TransactionRow {
@@ -250,6 +266,7 @@ export class PokerStoreService implements OnDestroy {
   private readonly authState = inject(AuthStateService);
   private readonly supabaseService = inject(SupabaseService);
   private readonly sessionsSignal = signal<PokerSession[]>(this.loadSessions());
+  private readonly playerPublicTableSummariesSignal = signal<PlayerPublicTableSummary[]>([]);
   private readonly localRegisteredPlayersSignal = signal<RegisteredPlayerOption[]>(
     this.loadLocalRegisteredPlayers()
   );
@@ -273,6 +290,7 @@ export class PokerStoreService implements OnDestroy {
   private readonly expiringTimeCallIds = new Set<string>();
 
   readonly sessions = this.sessionsSignal.asReadonly();
+  readonly playerPublicTableSummaries = this.playerPublicTableSummariesSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
   readonly sessionsLoaded = this.sessionsLoadedSignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
@@ -407,6 +425,7 @@ export class PokerStoreService implements OnDestroy {
 
       if (sessionIds.length === 0) {
         this.sessionsSignal.set([]);
+        this.playerPublicTableSummariesSignal.set([]);
         return;
       }
 
@@ -471,6 +490,8 @@ export class PokerStoreService implements OnDestroy {
           this.mapSession(session, tables, sessionPlayers, playersById, transactions, timeCalls)
         )
       );
+
+      await this.refreshPlayerPublicTableSummaries(sessionIds);
     } catch (error) {
       this.setError(this.toMessage(error));
       throw error;
@@ -996,6 +1017,38 @@ export class PokerStoreService implements OnDestroy {
 
   playersForTable(session: PokerSession | undefined, tableId: string | null): SessionPlayer[] {
     return (session?.players ?? []).filter((player) => player.tableId === tableId);
+  }
+
+  private async refreshPlayerPublicTableSummaries(sessionIds: string[]): Promise<void> {
+    if (this.authState.role() !== 'PLAYER') {
+      this.playerPublicTableSummariesSignal.set([]);
+      return;
+    }
+
+    const { data, error } = await this.supabaseService
+      .requireClient()
+      .rpc('player_public_table_summaries', {
+        p_session_ids: sessionIds
+      });
+
+    if (error) {
+      if (this.isMissingPublicTableSummaryRpc(error)) {
+        this.playerPublicTableSummariesSignal.set([]);
+        return;
+      }
+
+      throw error;
+    }
+
+    this.playerPublicTableSummariesSignal.set(
+      ((data ?? []) as PlayerPublicTableSummaryRow[]).map((row) => ({
+        sessionPlayerId: row.session_player_id,
+        sessionId: row.session_id,
+        tableId: row.table_id ?? null,
+        activePlayerCount: this.toNumber(row.active_player_count),
+        totalActivePlayerChips: this.toNumber(row.total_active_player_chips)
+      }))
+    );
   }
 
   sortedPlayersForActiveSession(session: PokerSession | undefined): SessionPlayer[] {
@@ -2003,6 +2056,26 @@ export class PokerStoreService implements OnDestroy {
       (message.includes('time_calls') ||
         message.includes('request_time_call') ||
         message.includes('resolve_time_call'))
+    );
+  }
+
+  private isMissingPublicTableSummaryRpc(error: unknown): boolean {
+    if (!this.hasMessage(error)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    const code =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : '';
+
+    return (
+      (message.includes('schema cache') || code === 'PGRST202' || code === 'PGRST205') &&
+      message.includes('player_public_table_summaries')
     );
   }
 

@@ -41,9 +41,8 @@ import {
   playerGameTimeline,
   playerGameStatMode,
   playerGameStatusKind,
+  playerPublicTableStats,
   shouldPollPlayerCallTime,
-  totalActivePlayerChips,
-  totalActivePlayers,
   PlayerCallTimeDisplayState,
   PlayerGameStatMode,
   PlayerGameStatusKind
@@ -286,7 +285,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                       </span>
                       <strong>
                         @if (statMode === 'ACTIVE_GAME') {
-                          {{ activePlayerCount(entry.session) }}
+                          {{ activePlayerCount(entry) }}
                         } @else {
                           {{ entry.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                         }
@@ -309,7 +308,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                       </span>
                       <strong>
                         @if (statMode === 'ACTIVE_GAME') {
-                          {{ activePlayerChips(entry.session) | currency: 'USD' : 'symbol' : '1.0-0' }}
+                          {{ activePlayerChips(entry) | currency: 'USD' : 'symbol' : '1.0-0' }}
                         } @else {
                           {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                         }
@@ -322,7 +321,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                       <div class="feature-roster">
                         <div class="feature-detail-heading">
                           <span>Table players</span>
-                          <small>{{ activePlayerCount(entry.session) }} active</small>
+                          <small>{{ activePlayerCount(entry) }} active</small>
                         </div>
 
                         <div class="feature-player-list">
@@ -495,7 +494,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                       </span>
                       <strong>
                         @if (statMode === 'ACTIVE_GAME') {
-                          {{ activePlayerCount(entry.session) }}
+                          {{ activePlayerCount(entry) }}
                         } @else {
                           {{ entry.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                         }
@@ -518,7 +517,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                       </span>
                       <strong [class.positive]="entry.player.net >= 0" [class.negative]="entry.player.net < 0">
                         @if (statMode === 'ACTIVE_GAME') {
-                          {{ activePlayerChips(entry.session) | currency: 'USD' : 'symbol' : '1.0-0' }}
+                          {{ activePlayerChips(entry) | currency: 'USD' : 'symbol' : '1.0-0' }}
                         } @else {
                           {{ entry.player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
                         }
@@ -1599,12 +1598,12 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     return playerGameStatMode(entry.session, entry.player);
   }
 
-  protected activePlayerCount(session: PokerSession): number {
-    return totalActivePlayers(session);
+  protected activePlayerCount(entry: PlayerSessionEntry): number {
+    return this.publicTableStats(entry).activePlayerCount;
   }
 
-  protected activePlayerChips(session: PokerSession): number {
-    return totalActivePlayerChips(session);
+  protected activePlayerChips(entry: PlayerSessionEntry): number {
+    return this.publicTableStats(entry).totalActivePlayerChips;
   }
 
   private startCallTimeSync(): void {
@@ -1633,6 +1632,17 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
 
   protected tablePlayers(entry: PlayerSessionEntry): SessionPlayer[] {
     return this.store.sortedPlayersForActiveSession(entry.session);
+  }
+
+  private publicTableStats(entry: PlayerSessionEntry): {
+    activePlayerCount: number;
+    totalActivePlayerChips: number;
+  } {
+    return playerPublicTableStats(
+      entry.session,
+      entry.player,
+      this.store.playerPublicTableSummaries()
+    );
   }
 
   protected activityLabel(type: PokerTransactionType): string {
