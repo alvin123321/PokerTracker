@@ -1,4 +1,5 @@
 import {
+  sortDashboardTablePlayers,
   shouldShowActiveSessionsEmptyState,
   shouldShowActiveSessionsLoadingState
 } from './host-dashboard.logic';
@@ -58,5 +59,19 @@ describe('host dashboard empty state', () => {
         initialLoadingWindowExpired: true
       })
     ).toBeFalse();
+  });
+});
+
+describe('host dashboard table player sorting', () => {
+  it('sorts active players alphabetically and keeps cashed-out players at the bottom', () => {
+    const sorted = sortDashboardTablePlayers([
+      { id: '4', name: 'Maxi', status: 'COMPLETED' },
+      { id: '2', name: 'alvin', status: 'ACTIVE' },
+      { id: '5', name: 'Gene', status: 'COMPLETED' },
+      { id: '1', name: '1010', status: 'ACTIVE' },
+      { id: '3', name: 'kevin', status: 'ACTIVE' }
+    ]);
+
+    expect(sorted.map((player) => player.name)).toEqual(['1010', 'alvin', 'kevin', 'Gene', 'Maxi']);
   });
 });
