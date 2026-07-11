@@ -13,6 +13,7 @@ import {
   SessionPlayer
 } from '../data/poker-store.service';
 import {
+  sortDashboardTablePlayers,
   shouldShowActiveSessionsEmptyState,
   shouldShowActiveSessionsLoadingState
 } from './host-dashboard.logic';
@@ -424,7 +425,7 @@ class TableNameDialogComponent {
                                     [class.bg-emerald-300/[0.035]]="tableAccent(table.tableNumber) === 'emerald'"
                                     [class.opacity-100]="isTableExpanded(table.id)"
                                   >
-                                    @for (player of store.playersForTable(session, table.id); track player.id) {
+                                    @for (player of dashboardPlayersForTable(session, table.id); track player.id) {
                                       <div
                                         class="dashboard-player-row border-b border-white/10 last:border-b-0"
                                         [class.dashboard-player-row-open]="isDashboardPlayerExpanded(player.id)"
@@ -1383,6 +1384,13 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     return gameTimelineTransactions(
       session.transactions.filter((transaction) => transaction.playerId === playerId)
     );
+  }
+
+  protected dashboardPlayersForTable(
+    session: PokerSession | undefined,
+    tableId: string | null
+  ): SessionPlayer[] {
+    return sortDashboardTablePlayers(this.store.playersForTable(session, tableId));
   }
 
   protected activePlayerCount(session: PokerSession): number {
