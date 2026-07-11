@@ -365,6 +365,10 @@ export class PokerStoreService implements OnDestroy {
     await this.refreshHostSessions(options);
   }
 
+  supportsSharedSessionUpdates(): boolean {
+    return this.shouldUseSupabase() || this.shouldUseLocalSharedData();
+  }
+
   async refreshHostSessions(options: RefreshSessionsOptions = {}): Promise<void> {
     const showLoading = options.showLoading ?? true;
 
