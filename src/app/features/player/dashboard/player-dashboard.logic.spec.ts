@@ -4,6 +4,7 @@ import {
   playerGameTimeline,
   playerGameStatusKind,
   playerGameStatMode,
+  playerPublicTableStats,
   shouldPollPlayerCallTime,
   totalActivePlayerChips,
   totalActivePlayers
@@ -157,6 +158,44 @@ describe('player game status display', () => {
 
     expect(playerGameStatusKind(session, player)).toBe('COMPLETED');
     expect(playerGameStatMode(session, player)).toBe('COMPLETED_GAME');
+  });
+});
+
+describe('player public table stats', () => {
+  it('uses public table summary when RLS only exposes the current player row', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', totalBuyIn: 100 });
+    const session = makeSession({ players: [player] });
+
+    expect(
+      playerPublicTableStats(session, player, [
+        {
+          sessionPlayerId: player.id,
+          sessionId: session.id,
+          tableId: 'table-a',
+          activePlayerCount: 4,
+          totalActivePlayerChips: 1300
+        }
+      ])
+    ).toEqual({
+      activePlayerCount: 4,
+      totalActivePlayerChips: 1300
+    });
+  });
+
+  it('falls back to visible table players when no public summary is available', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', totalBuyIn: 100 });
+    const session = makeSession({
+      players: [
+        player,
+        makePlayer({ id: 'seat-b', tableId: 'table-a', totalBuyIn: 300 }),
+        makePlayer({ id: 'seat-c', tableId: 'table-b', totalBuyIn: 700 })
+      ]
+    });
+
+    expect(playerPublicTableStats(session, player, [])).toEqual({
+      activePlayerCount: 2,
+      totalActivePlayerChips: 400
+    });
   });
 });
 

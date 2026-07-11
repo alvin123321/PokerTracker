@@ -1,6 +1,12 @@
 import { gameTimelineTransactions } from '../../host/data/session-timeline.logic';
 
-import type { PokerSession, PokerTransaction, SessionPlayer, TimeCall } from '../../host/data/poker-store.service';
+import type {
+  PlayerPublicTableSummary,
+  PokerSession,
+  PokerTransaction,
+  SessionPlayer,
+  TimeCall
+} from '../../host/data/poker-store.service';
 
 export type PlayerCallTimeDisplayState = 'CLOCK' | 'BUTTON' | 'NONE';
 export type PlayerGameStatusKind = 'ACTIVE' | 'COMPLETED';
@@ -59,6 +65,35 @@ export function totalActivePlayerChips(session: PokerSession): number {
   return session.players
     .filter((player) => player.status === 'ACTIVE')
     .reduce((total, player) => total + player.totalBuyIn, 0);
+}
+
+export function playerPublicTableStats(
+  session: PokerSession,
+  player: SessionPlayer,
+  summaries: PlayerPublicTableSummary[]
+): { activePlayerCount: number; totalActivePlayerChips: number } {
+  const publicSummary = summaries.find(
+    (summary) => summary.sessionId === session.id && summary.sessionPlayerId === player.id
+  );
+
+  if (publicSummary) {
+    return {
+      activePlayerCount: publicSummary.activePlayerCount,
+      totalActivePlayerChips: publicSummary.totalActivePlayerChips
+    };
+  }
+
+  const tablePlayers = session.players.filter(
+    (sessionPlayer) => sessionPlayer.tableId === player.tableId && sessionPlayer.status === 'ACTIVE'
+  );
+
+  return {
+    activePlayerCount: tablePlayers.length,
+    totalActivePlayerChips: tablePlayers.reduce(
+      (total, sessionPlayer) => total + sessionPlayer.totalBuyIn,
+      0
+    )
+  };
 }
 
 export function shouldPollPlayerCallTime(input: PlayerCallTimePollingInput): boolean {
