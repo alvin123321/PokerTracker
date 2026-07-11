@@ -4,6 +4,7 @@ import {
   playerGameTimeline,
   playerGameStatusKind,
   playerGameStatMode,
+  shouldPollPlayerCallTime,
   totalActivePlayerChips,
   totalActivePlayers
 } from './player-dashboard.logic';
@@ -64,6 +65,36 @@ describe('player dashboard call-time display', () => {
     });
 
     expect(playerCallTimeDisplayState(session, player, undefined)).toBe('NONE');
+  });
+});
+
+describe('player dashboard call-time sync polling', () => {
+  it('polls quietly when an active player session can receive shared clock updates', () => {
+    expect(
+      shouldPollPlayerCallTime({
+        activeEntryCount: 1,
+        supportsSharedUpdates: true,
+        schemaReady: true
+      })
+    ).toBeTrue();
+  });
+
+  it('does not poll without active player sessions or call-time schema support', () => {
+    expect(
+      shouldPollPlayerCallTime({
+        activeEntryCount: 0,
+        supportsSharedUpdates: true,
+        schemaReady: true
+      })
+    ).toBeFalse();
+
+    expect(
+      shouldPollPlayerCallTime({
+        activeEntryCount: 1,
+        supportsSharedUpdates: true,
+        schemaReady: false
+      })
+    ).toBeFalse();
   });
 });
 

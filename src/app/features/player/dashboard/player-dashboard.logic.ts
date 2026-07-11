@@ -6,6 +6,12 @@ export type PlayerCallTimeDisplayState = 'CLOCK' | 'BUTTON' | 'NONE';
 export type PlayerGameStatusKind = 'ACTIVE' | 'COMPLETED';
 export type PlayerGameStatMode = 'ACTIVE_GAME' | 'COMPLETED_GAME';
 
+export interface PlayerCallTimePollingInput {
+  activeEntryCount: number;
+  supportsSharedUpdates: boolean;
+  schemaReady: boolean;
+}
+
 export function playerCallTimeDisplayState(
   session: PokerSession,
   player: SessionPlayer,
@@ -53,6 +59,10 @@ export function totalActivePlayerChips(session: PokerSession): number {
   return session.players
     .filter((player) => player.status === 'ACTIVE')
     .reduce((total, player) => total + player.totalBuyIn, 0);
+}
+
+export function shouldPollPlayerCallTime(input: PlayerCallTimePollingInput): boolean {
+  return input.activeEntryCount > 0 && input.supportsSharedUpdates && input.schemaReady;
 }
 
 function isActivePlayerAtActiveTable(session: PokerSession, player: SessionPlayer): boolean {

@@ -1,5 +1,5 @@
 import { CurrencyPipe, DOCUMENT, DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
   LucideArrowDownToLine,
@@ -41,6 +41,7 @@ import {
   playerGameTimeline,
   playerGameStatMode,
   playerGameStatusKind,
+  shouldPollPlayerCallTime,
   totalActivePlayerChips,
   totalActivePlayers,
   PlayerCallTimeDisplayState,
@@ -66,6 +67,8 @@ interface PlayerActivityEntry {
   amount: number;
   createdAt: string;
 }
+
+const playerCallTimeSyncIntervalMs = 1000;
 
 @Component({
   selector: 'app-player-dashboard-page',
@@ -1391,7 +1394,7 @@ interface PlayerActivityEntry {
     `
   ]
 })
-export class PlayerDashboardPage implements OnInit {
+export class PlayerDashboardPage implements OnInit, OnDestroy {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
@@ -1400,6 +1403,7 @@ export class PlayerDashboardPage implements OnInit {
   protected readonly callTimeLimit = CALL_TIME_LIMIT;
   protected readonly pendingTimeCallPlayerId = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
+  private callTimeSyncTimer: ReturnType<typeof setInterval> | null = null;
 
   protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string }> = [
     { id: 'calculator', label: 'Calculator' },
@@ -1462,11 +1466,19 @@ export class PlayerDashboardPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.applyInitialTab();
+    this.startCallTimeSync();
 
     try {
       await this.store.refreshSessions();
     } catch {
       // The store surfaces the error in the page-level error block.
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.callTimeSyncTimer) {
+      clearInterval(this.callTimeSyncTimer);
+      this.callTimeSyncTimer = null;
     }
   }
 
@@ -1593,6 +1605,30 @@ export class PlayerDashboardPage implements OnInit {
 
   protected activePlayerChips(session: PokerSession): number {
     return totalActivePlayerChips(session);
+  }
+
+  private startCallTimeSync(): void {
+    const windowRef = this.document.defaultView;
+
+    if (!windowRef || this.callTimeSyncTimer) {
+      return;
+    }
+
+    this.callTimeSyncTimer = windowRef.setInterval(() => {
+      if (
+        !shouldPollPlayerCallTime({
+          activeEntryCount: this.activeEntries().length,
+          supportsSharedUpdates: this.store.supportsSharedSessionUpdates(),
+          schemaReady: this.store.timeCallSchemaReady()
+        })
+      ) {
+        return;
+      }
+
+      void this.store.refreshSessions({ showLoading: false }).catch(() => {
+        // The store owns the visible error state; the polling loop must not disrupt the dashboard.
+      });
+    }, playerCallTimeSyncIntervalMs);
   }
 
   protected tablePlayers(entry: PlayerSessionEntry): SessionPlayer[] {
