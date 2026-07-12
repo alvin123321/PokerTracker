@@ -73,6 +73,13 @@ export function playerPublicTableStats(
   player: SessionPlayer,
   summaries: PlayerPublicTableSummary[]
 ): { activePlayerCount: number; totalActivePlayerChips: number } {
+  if (player.tableId === null) {
+    return {
+      activePlayerCount: player.status === 'ACTIVE' ? 1 : 0,
+      totalActivePlayerChips: player.status === 'ACTIVE' ? player.totalBuyIn : 0
+    };
+  }
+
   const publicSummary = summaries.find(
     (summary) => summary.sessionId === session.id && summary.sessionPlayerId === player.id
   );
@@ -102,6 +109,22 @@ export function playerPublicTableRoster(
   player: SessionPlayer,
   rosterEntries: PlayerPublicTableRosterEntry[]
 ): PlayerPublicTableRosterEntry[] {
+  if (player.tableId === null) {
+    const currentPlayer = rosterEntries.find(
+      (entry) => entry.sessionId === session.id && entry.sessionPlayerId === player.id
+    );
+
+    return [
+      currentPlayer ?? {
+        sessionPlayerId: player.id,
+        sessionId: session.id,
+        tableId: null,
+        name: player.name,
+        status: player.status
+      }
+    ];
+  }
+
   const publicRoster = rosterEntries.filter(
     (entry) => entry.sessionId === session.id && entry.tableId === player.tableId
   );
@@ -116,8 +139,7 @@ export function playerPublicTableRoster(
             sessionId: session.id,
             tableId: sessionPlayer.tableId,
             name: sessionPlayer.name,
-            status: sessionPlayer.status,
-            joinedAt: sessionPlayer.joinedAt
+            status: sessionPlayer.status
           }));
 
   return [...roster].sort((a, b) => {
@@ -132,12 +154,6 @@ export function playerPublicTableRoster(
 
     if (nameSort !== 0) {
       return nameSort;
-    }
-
-    const joinedSort = a.joinedAt.localeCompare(b.joinedAt);
-
-    if (joinedSort !== 0) {
-      return joinedSort;
     }
 
     return a.sessionPlayerId.localeCompare(b.sessionPlayerId);

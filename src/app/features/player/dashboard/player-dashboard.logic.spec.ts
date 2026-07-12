@@ -198,6 +198,28 @@ describe('player public table stats', () => {
       totalActivePlayerChips: 400
     });
   });
+
+  it('does not aggregate unassigned players as a table', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: null, totalBuyIn: 100 });
+    const session = makeSession({
+      players: [player, makePlayer({ id: 'seat-b', tableId: null, totalBuyIn: 300 })]
+    });
+
+    expect(
+      playerPublicTableStats(session, player, [
+        {
+          sessionPlayerId: player.id,
+          sessionId: session.id,
+          tableId: null,
+          activePlayerCount: 2,
+          totalActivePlayerChips: 400
+        }
+      ])
+    ).toEqual({
+      activePlayerCount: 1,
+      totalActivePlayerChips: 100
+    });
+  });
 });
 
 describe('player public table roster', () => {
@@ -211,24 +233,21 @@ describe('player public table roster', () => {
         sessionId: session.id,
         tableId: 'table-a',
         name: 'Gene',
-        status: 'COMPLETED',
-        joinedAt: '2026-07-08T01:02:00.000Z'
+        status: 'COMPLETED'
       },
       {
         sessionPlayerId: 'seat-c',
         sessionId: session.id,
         tableId: 'table-a',
         name: 'Kevin',
-        status: 'ACTIVE',
-        joinedAt: '2026-07-08T01:03:00.000Z'
+        status: 'ACTIVE'
       },
       {
         sessionPlayerId: 'seat-a',
         sessionId: session.id,
         tableId: 'table-a',
         name: 'Alvin',
-        status: 'ACTIVE',
-        joinedAt: '2026-07-08T01:01:00.000Z'
+        status: 'ACTIVE'
       }
     ]);
 
@@ -257,6 +276,35 @@ describe('player public table roster', () => {
       'Kevin:ACTIVE',
       'Gene:COMPLETED'
     ]);
+  });
+
+  it('does not treat unassigned players as sharing a table', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: null, name: 'Alvin' });
+    const session = makeSession({
+      players: [
+        player,
+        makePlayer({ id: 'seat-b', tableId: null, name: 'Gene' })
+      ]
+    });
+
+    const roster = playerPublicTableRoster(session, player, [
+      {
+        sessionPlayerId: 'seat-a',
+        sessionId: session.id,
+        tableId: null,
+        name: 'Alvin',
+        status: 'ACTIVE'
+      },
+      {
+        sessionPlayerId: 'seat-b',
+        sessionId: session.id,
+        tableId: null,
+        name: 'Gene',
+        status: 'ACTIVE'
+      }
+    ]);
+
+    expect(roster.map((entry) => entry.name)).toEqual(['Alvin']);
   });
 });
 

@@ -131,7 +131,6 @@ export interface PlayerPublicTableRosterEntry {
   tableId: string | null;
   name: string;
   status: PokerPlayerStatus;
-  joinedAt: string;
 }
 
 export interface RegisteredPlayerOption {
@@ -187,7 +186,6 @@ interface PlayerPublicTableRosterRow {
   table_id: string | null;
   player_name: string;
   status: PokerPlayerStatus;
-  joined_at: string;
 }
 
 interface TransactionRow {
@@ -1097,8 +1095,7 @@ export class PokerStoreService implements OnDestroy {
         sessionId: row.session_id,
         tableId: row.table_id ?? null,
         name: this.titleCaseName(row.player_name || 'Unknown player'),
-        status: row.status,
-        joinedAt: row.joined_at
+        status: row.status
       }))
     );
   }
