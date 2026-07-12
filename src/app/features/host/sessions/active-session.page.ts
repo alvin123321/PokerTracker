@@ -21,6 +21,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
 } from '../shared/confirmation-dialog.component';
+import { messageFromUnknownError } from '../shared/action-feedback.logic';
 import {
   CashOutDialogComponent,
   CashOutDialogData
@@ -1796,10 +1797,6 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   private toMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    return 'Unable to save changes.';
+    return messageFromUnknownError(error, 'Unable to save changes.');
   }
 }

@@ -117,16 +117,16 @@ Deno.serve(async (req) => {
     if (!message.includes('user not found')) {
       return json({ error: deleteError.message }, 400);
     }
+  }
 
-    const { error: profileDeleteError } = await serviceClient
-      .from('users')
-      .delete()
-      .eq('id', payload.userId)
-      .in('role', ['PLAYER', 'MANAGER']);
+  const { error: profileDeleteError } = await serviceClient
+    .from('users')
+    .delete()
+    .eq('id', payload.userId)
+    .in('role', ['PLAYER', 'MANAGER']);
 
-    if (profileDeleteError) {
-      return json({ error: profileDeleteError.message }, 400);
-    }
+  if (profileDeleteError) {
+    return json({ error: profileDeleteError.message }, 400);
   }
 
   return json({ ok: true });

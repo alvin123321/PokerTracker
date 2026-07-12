@@ -15,6 +15,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
 } from '../shared/confirmation-dialog.component';
+import { messageFromUnknownError } from '../shared/action-feedback.logic';
 
 interface PlayerLedgerRow {
   session: PokerSession;
@@ -35,15 +36,21 @@ interface PlayerLedgerRow {
         </div>
       </div>
 
-      @if (errorMessage() || successMessage()) {
-        <div
-          class="member-action-receipt pointer-events-none fixed left-1/2 top-5 z-50 w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 rounded-xl border px-5 py-4 text-center text-sm font-semibold shadow-2xl backdrop-blur"
-          [class.member-action-receipt-error]="errorMessage()"
-          [class.member-action-receipt-success]="successMessage() && !errorMessage()"
-          role="status"
-          aria-live="polite"
-        >
-          {{ errorMessage() || successMessage() }}
+      @if (actionToast(); as toast) {
+        <div class="member-action-toast pointer-events-none fixed bottom-4 right-4 z-50 w-[min(calc(100vw-2rem),22rem)] sm:bottom-6 sm:right-6">
+          <div
+            class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
+            [class.border-red-400/30]="toast.tone === 'error'"
+            [class.bg-red-400/15]="toast.tone === 'error'"
+            [class.text-red-50]="toast.tone === 'error'"
+            [class.border-emerald-300/30]="toast.tone === 'success'"
+            [class.bg-emerald-400/15]="toast.tone === 'success'"
+            [class.text-emerald-50]="toast.tone === 'success'"
+            role="status"
+            aria-live="polite"
+          >
+            {{ toast.message }}
+          </div>
         </div>
       }
 
@@ -326,22 +333,8 @@ interface PlayerLedgerRow {
         animation: action-spinner 700ms linear infinite;
       }
 
-      .member-action-receipt {
-        animation: member-receipt-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
-      }
-
-      .member-action-receipt-success {
-        border-color: rgba(110, 231, 183, 0.34);
-        background: rgba(4, 120, 87, 0.84);
-        color: rgb(236, 253, 245);
-        box-shadow: 0 18px 48px rgba(6, 95, 70, 0.34);
-      }
-
-      .member-action-receipt-error {
-        border-color: rgba(248, 113, 113, 0.4);
-        background: rgba(127, 29, 29, 0.88);
-        color: rgb(254, 226, 226);
-        box-shadow: 0 18px 48px rgba(127, 29, 29, 0.34);
+      .member-action-toast {
+        animation: member-toast-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .member-view-enter {
@@ -501,15 +494,15 @@ interface PlayerLedgerRow {
         }
       }
 
-      @keyframes member-receipt-in {
+      @keyframes member-toast-in {
         from {
           opacity: 0;
-          transform: translate(-50%, -0.5rem) scale(0.98);
+          transform: translateY(0.45rem) scale(0.98);
         }
 
         to {
           opacity: 1;
-          transform: translate(-50%, 0) scale(1);
+          transform: translateY(0) scale(1);
         }
       }
 
@@ -546,6 +539,19 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
   protected readonly openMemberActionMenuId = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly successMessage = signal<string | null>(null);
+  protected readonly actionToast = computed<{ message: string; tone: 'success' | 'error' } | null>(
+    () => {
+      const errorMessage = this.errorMessage();
+
+      if (errorMessage) {
+        return { message: errorMessage, tone: 'error' };
+      }
+
+      const successMessage = this.successMessage();
+
+      return successMessage ? { message: successMessage, tone: 'success' } : null;
+    }
+  );
   protected readonly expandedLedgerRowKey = signal<string | null | undefined>(undefined);
   private receiptTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly newPlayerLogin = new FormControl('', {
@@ -860,15 +866,7 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
   }
 
   private toMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    if (this.hasMessage(error)) {
-      return error.message;
-    }
-
-    return 'Unable to update the player directory.';
+    return messageFromUnknownError(error, 'Unable to update the player directory.');
   }
 
   private showActionReceipt(message: string, tone: 'success' | 'error'): void {
@@ -901,12 +899,4 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
     this.successMessage.set(null);
   }
 
-  private hasMessage(error: unknown): error is { message: string } {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'message' in error &&
-      typeof (error as { message?: unknown }).message === 'string'
-    );
-  }
 }
