@@ -4,6 +4,7 @@ import {
   playerGameTimeline,
   playerGameStatusKind,
   playerGameStatMode,
+  playerPublicTableRoster,
   playerPublicTableStats,
   shouldPollPlayerCallTime,
   totalActivePlayerChips,
@@ -196,6 +197,66 @@ describe('player public table stats', () => {
       activePlayerCount: 2,
       totalActivePlayerChips: 400
     });
+  });
+});
+
+describe('player public table roster', () => {
+  it('uses public roster entries when RLS only exposes the current player row', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
+    const session = makeSession({ players: [player] });
+
+    const roster = playerPublicTableRoster(session, player, [
+      {
+        sessionPlayerId: 'seat-b',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Gene',
+        status: 'COMPLETED',
+        joinedAt: '2026-07-08T01:02:00.000Z'
+      },
+      {
+        sessionPlayerId: 'seat-c',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Kevin',
+        status: 'ACTIVE',
+        joinedAt: '2026-07-08T01:03:00.000Z'
+      },
+      {
+        sessionPlayerId: 'seat-a',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Alvin',
+        status: 'ACTIVE',
+        joinedAt: '2026-07-08T01:01:00.000Z'
+      }
+    ]);
+
+    expect(roster.map((entry) => `${entry.name}:${entry.status}`)).toEqual([
+      'Alvin:ACTIVE',
+      'Kevin:ACTIVE',
+      'Gene:COMPLETED'
+    ]);
+  });
+
+  it('falls back to visible session players in development/local mode', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
+    const session = makeSession({
+      players: [
+        player,
+        makePlayer({ id: 'seat-b', tableId: 'table-a', name: 'Gene', status: 'COMPLETED' }),
+        makePlayer({ id: 'seat-c', tableId: 'table-a', name: 'Kevin' }),
+        makePlayer({ id: 'seat-d', tableId: 'table-b', name: 'Sarah' })
+      ]
+    });
+
+    const roster = playerPublicTableRoster(session, player, []);
+
+    expect(roster.map((entry) => `${entry.name}:${entry.status}`)).toEqual([
+      'Alvin:ACTIVE',
+      'Kevin:ACTIVE',
+      'Gene:COMPLETED'
+    ]);
   });
 });
 

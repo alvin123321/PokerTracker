@@ -125,6 +125,15 @@ export interface PlayerPublicTableSummary {
   totalActivePlayerChips: number;
 }
 
+export interface PlayerPublicTableRosterEntry {
+  sessionPlayerId: string;
+  sessionId: string;
+  tableId: string | null;
+  name: string;
+  status: PokerPlayerStatus;
+  joinedAt: string;
+}
+
 export interface RegisteredPlayerOption {
   id: string;
   username: string;
@@ -170,6 +179,15 @@ interface PlayerPublicTableSummaryRow {
   table_id: string | null;
   active_player_count: number | string;
   total_active_player_chips: number | string;
+}
+
+interface PlayerPublicTableRosterRow {
+  session_player_id: string;
+  session_id: string;
+  table_id: string | null;
+  player_name: string;
+  status: PokerPlayerStatus;
+  joined_at: string;
 }
 
 interface TransactionRow {
@@ -267,6 +285,7 @@ export class PokerStoreService implements OnDestroy {
   private readonly supabaseService = inject(SupabaseService);
   private readonly sessionsSignal = signal<PokerSession[]>(this.loadSessions());
   private readonly playerPublicTableSummariesSignal = signal<PlayerPublicTableSummary[]>([]);
+  private readonly playerPublicTableRosterSignal = signal<PlayerPublicTableRosterEntry[]>([]);
   private readonly localRegisteredPlayersSignal = signal<RegisteredPlayerOption[]>(
     this.loadLocalRegisteredPlayers()
   );
@@ -291,6 +310,7 @@ export class PokerStoreService implements OnDestroy {
 
   readonly sessions = this.sessionsSignal.asReadonly();
   readonly playerPublicTableSummaries = this.playerPublicTableSummariesSignal.asReadonly();
+  readonly playerPublicTableRoster = this.playerPublicTableRosterSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
   readonly sessionsLoaded = this.sessionsLoadedSignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
@@ -426,6 +446,7 @@ export class PokerStoreService implements OnDestroy {
       if (sessionIds.length === 0) {
         this.sessionsSignal.set([]);
         this.playerPublicTableSummariesSignal.set([]);
+        this.playerPublicTableRosterSignal.set([]);
         return;
       }
 
@@ -1022,6 +1043,7 @@ export class PokerStoreService implements OnDestroy {
   private async refreshPlayerPublicTableSummaries(sessionIds: string[]): Promise<void> {
     if (this.authState.role() !== 'PLAYER') {
       this.playerPublicTableSummariesSignal.set([]);
+      this.playerPublicTableRosterSignal.set([]);
       return;
     }
 
@@ -1047,6 +1069,36 @@ export class PokerStoreService implements OnDestroy {
         tableId: row.table_id ?? null,
         activePlayerCount: this.toNumber(row.active_player_count),
         totalActivePlayerChips: this.toNumber(row.total_active_player_chips)
+      }))
+    );
+
+    await this.refreshPlayerPublicTableRoster(sessionIds);
+  }
+
+  private async refreshPlayerPublicTableRoster(sessionIds: string[]): Promise<void> {
+    const { data, error } = await this.supabaseService
+      .requireClient()
+      .rpc('player_public_table_roster', {
+        p_session_ids: sessionIds
+      });
+
+    if (error) {
+      if (this.isMissingPublicTableRosterRpc(error)) {
+        this.playerPublicTableRosterSignal.set([]);
+        return;
+      }
+
+      throw error;
+    }
+
+    this.playerPublicTableRosterSignal.set(
+      ((data ?? []) as PlayerPublicTableRosterRow[]).map((row) => ({
+        sessionPlayerId: row.session_player_id,
+        sessionId: row.session_id,
+        tableId: row.table_id ?? null,
+        name: this.titleCaseName(row.player_name || 'Unknown player'),
+        status: row.status,
+        joinedAt: row.joined_at
       }))
     );
   }
@@ -2076,6 +2128,26 @@ export class PokerStoreService implements OnDestroy {
     return (
       (message.includes('schema cache') || code === 'PGRST202' || code === 'PGRST205') &&
       message.includes('player_public_table_summaries')
+    );
+  }
+
+  private isMissingPublicTableRosterRpc(error: unknown): boolean {
+    if (!this.hasMessage(error)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    const code =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : '';
+
+    return (
+      (message.includes('schema cache') || code === 'PGRST202' || code === 'PGRST205') &&
+      message.includes('player_public_table_roster')
     );
   }
 

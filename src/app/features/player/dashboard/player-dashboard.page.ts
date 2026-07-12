@@ -28,6 +28,7 @@ import {
 import {
   CALL_TIME_LIMIT,
   CALL_TIME_DURATION_SECONDS,
+  PlayerPublicTableRosterEntry,
   PokerSession,
   PokerStoreService,
   SessionPlayer,
@@ -41,6 +42,7 @@ import {
   playerGameTimeline,
   playerGameStatMode,
   playerGameStatusKind,
+  playerPublicTableRoster,
   playerPublicTableStats,
   shouldPollPlayerCallTime,
   PlayerCallTimeDisplayState,
@@ -325,12 +327,12 @@ const playerCallTimeSyncIntervalMs = 1000;
                         </div>
 
                         <div class="feature-player-list">
-                          @for (player of tablePlayers(entry); track player.id) {
+                          @for (player of tablePlayers(entry); track player.sessionPlayerId) {
                             <div
                               class="feature-player-row"
                               [class.feature-player-row-active]="player.status === 'ACTIVE'"
                               [class.feature-player-row-cashed]="player.status === 'COMPLETED'"
-                              [class.feature-player-row-current]="player.id === entry.player.id"
+                              [class.feature-player-row-current]="player.sessionPlayerId === entry.player.id"
                             >
                               <span class="feature-player-dot" aria-hidden="true"></span>
                               <strong>{{ player.name }}</strong>
@@ -1630,8 +1632,12 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     }, playerCallTimeSyncIntervalMs);
   }
 
-  protected tablePlayers(entry: PlayerSessionEntry): SessionPlayer[] {
-    return this.store.sortedPlayersForActiveSession(entry.session);
+  protected tablePlayers(entry: PlayerSessionEntry): PlayerPublicTableRosterEntry[] {
+    return playerPublicTableRoster(
+      entry.session,
+      entry.player,
+      this.store.playerPublicTableRoster()
+    );
   }
 
   private publicTableStats(entry: PlayerSessionEntry): {

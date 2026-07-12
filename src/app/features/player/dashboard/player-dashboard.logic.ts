@@ -1,6 +1,7 @@
 import { gameTimelineTransactions } from '../../host/data/session-timeline.logic';
 
 import type {
+  PlayerPublicTableRosterEntry,
   PlayerPublicTableSummary,
   PokerSession,
   PokerTransaction,
@@ -94,6 +95,53 @@ export function playerPublicTableStats(
       0
     )
   };
+}
+
+export function playerPublicTableRoster(
+  session: PokerSession,
+  player: SessionPlayer,
+  rosterEntries: PlayerPublicTableRosterEntry[]
+): PlayerPublicTableRosterEntry[] {
+  const publicRoster = rosterEntries.filter(
+    (entry) => entry.sessionId === session.id && entry.tableId === player.tableId
+  );
+
+  const roster =
+    publicRoster.length > 0
+      ? publicRoster
+      : session.players
+          .filter((sessionPlayer) => sessionPlayer.tableId === player.tableId)
+          .map((sessionPlayer) => ({
+            sessionPlayerId: sessionPlayer.id,
+            sessionId: session.id,
+            tableId: sessionPlayer.tableId,
+            name: sessionPlayer.name,
+            status: sessionPlayer.status,
+            joinedAt: sessionPlayer.joinedAt
+          }));
+
+  return [...roster].sort((a, b) => {
+    if (a.status !== b.status) {
+      return a.status === 'ACTIVE' ? -1 : 1;
+    }
+
+    const nameSort = a.name.localeCompare(b.name, undefined, {
+      numeric: true,
+      sensitivity: 'base'
+    });
+
+    if (nameSort !== 0) {
+      return nameSort;
+    }
+
+    const joinedSort = a.joinedAt.localeCompare(b.joinedAt);
+
+    if (joinedSort !== 0) {
+      return joinedSort;
+    }
+
+    return a.sessionPlayerId.localeCompare(b.sessionPlayerId);
+  });
 }
 
 export function shouldPollPlayerCallTime(input: PlayerCallTimePollingInput): boolean {
