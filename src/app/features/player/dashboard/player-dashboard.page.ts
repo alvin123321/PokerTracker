@@ -152,13 +152,11 @@ const playerCallTimeSyncIntervalMs = 1000;
             <section class="player-view player-view-overview">
               @if (featuredEntry(); as entry) {
                 <article
-                  class="player-feature-card"
+                  class="player-feature-card player-feature-card-open"
                   [class.player-feature-card-active]="entry.player.status === 'ACTIVE'"
-                  [class.player-feature-card-open]="isFeaturedExpanded(entry)"
                   [class.player-feature-card-time-starting]="store.isTimeCallStarting(store.activeTimeCallForSession(entry.session))"
                   [class.player-feature-card-time-running]="store.activeTimeCallForSession(entry.session) && !store.isTimeCallStarting(store.activeTimeCallForSession(entry.session))"
-                  [attr.aria-expanded]="isFeaturedExpanded(entry)"
-                  (click)="toggleFeaturedDetails(entry)"
+                  aria-expanded="true"
                 >
                   @let activeCall = store.activeTimeCallForSession(entry.session);
                   @let remainingCalls = store.remainingTimeCallsForPlayer(entry.session, entry.player.id);
@@ -267,32 +265,23 @@ const playerCallTimeSyncIntervalMs = 1000;
                     <p class="player-clock-warning">Clock setup needed</p>
                   }
 
-                  <div class="player-metrics">
+                  <div class="player-metrics" [class.player-metrics-active-game]="statMode === 'ACTIVE_GAME'">
                     <div class="metric-card metric-buyin">
                       <span class="metric-label">
                         <svg lucideCircleDollarSign [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                        Total buy in
+                        My total buy in
                       </span>
                       <strong>{{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
                     </div>
-                    <div class="metric-card" [class.metric-active-players]="statMode === 'ACTIVE_GAME'" [class.metric-cashout]="statMode === 'COMPLETED_GAME'">
-                      <span class="metric-label">
-                        @if (statMode === 'ACTIVE_GAME') {
-                          <svg lucideUsersRound [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                          Active players
-                        } @else {
+                    @if (statMode === 'COMPLETED_GAME') {
+                      <div class="metric-card metric-cashout">
+                        <span class="metric-label">
                           <svg lucideBanknoteArrowDown [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Cashed out
-                        }
-                      </span>
-                      <strong>
-                        @if (statMode === 'ACTIVE_GAME') {
-                          {{ activePlayerCount(entry) }}
-                        } @else {
-                          {{ entry.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
-                        }
-                      </strong>
-                    </div>
+                        </span>
+                        <strong>{{ entry.player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                      </div>
+                    }
                     <div
                       class="metric-card"
                       [class.metric-total-chips]="statMode === 'ACTIVE_GAME'"
@@ -302,7 +291,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                       <span class="metric-label">
                         @if (statMode === 'ACTIVE_GAME') {
                           <svg lucideCoins [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                          Player chips
+                          Total table chips
                         } @else {
                           <svg lucideBadgeCheck [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
                           Net
@@ -318,12 +307,17 @@ const playerCallTimeSyncIntervalMs = 1000;
                     </div>
                   </div>
 
-                  <div class="feature-detail-panel" [attr.aria-hidden]="!isFeaturedExpanded(entry)">
+                  <div class="feature-detail-panel" aria-hidden="false">
                     <div class="feature-detail-panel-inner">
                       <div class="feature-roster">
                         <div class="feature-detail-heading">
                           <span>Game players</span>
-                          <small>{{ activePlayerCount(entry) }} active</small>
+                          @if (statMode === 'ACTIVE_GAME') {
+                            <span class="feature-active-count">
+                              <svg lucideUsersRound [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                              <strong>{{ activePlayerCount(entry) }}</strong>
+                            </span>
+                          }
                         </div>
 
                         <div class="feature-player-list">
@@ -480,7 +474,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                     <div class="session-stat session-stat-buyin">
                       <span class="metric-label">
                         <svg lucideCircleDollarSign [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                        Total buy in
+                        My total buy in
                       </span>
                       <strong>{{ entry.player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
                     </div>
@@ -707,12 +701,8 @@ const playerCallTimeSyncIntervalMs = 1000;
         overflow: hidden;
         padding: 1rem;
         position: relative;
-        cursor: pointer;
+        cursor: default;
         transition: all 190ms ease;
-      }
-
-      .player-feature-card:not(.player-feature-card-open) {
-        padding-bottom: 0.42rem;
       }
 
       .player-feature-card > * {
@@ -858,35 +848,32 @@ const playerCallTimeSyncIntervalMs = 1000;
 
       .feature-detail-panel {
         display: grid;
-        grid-template-rows: 0fr;
-        opacity: 0;
-        margin-top: -1rem;
-        transform: translateY(-0.25rem);
-        transition:
-          grid-template-rows 420ms cubic-bezier(0.16, 1, 0.3, 1),
-          opacity 260ms ease,
-          margin-top 260ms ease,
-          transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
-      }
-
-      .player-feature-card-open .feature-detail-panel {
-        grid-template-rows: 1fr;
-        opacity: 1;
-        margin-top: 0;
-        transform: translateY(0);
       }
 
       .feature-detail-panel-inner {
         min-height: 0;
-        overflow: hidden;
       }
 
       .feature-detail-heading {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 0.75rem;
         border-top: 1px solid rgb(255 255 255 / 0.09);
         padding-top: 0.9rem;
+      }
+
+      .feature-active-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.24rem;
+        color: rgb(110 231 183);
+        white-space: nowrap;
+      }
+
+      .feature-active-count svg {
+        width: 1.08rem;
+        height: 1.08rem;
       }
 
       .feature-buyin-list {
@@ -953,6 +940,10 @@ const playerCallTimeSyncIntervalMs = 1000;
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
+      .player-metrics-active-game {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .metric-card {
         display: grid;
         justify-items: center;
@@ -981,6 +972,11 @@ const playerCallTimeSyncIntervalMs = 1000;
         gap: 0.22rem;
         max-width: 100%;
         white-space: nowrap;
+      }
+
+      .player-metrics-active-game .metric-label {
+        line-height: 1.1;
+        white-space: normal;
       }
 
       .metric-label svg {
@@ -1412,7 +1408,6 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     { id: 'sessions', label: 'History' }
   ];
   protected readonly activeTab = signal<PlayerDashboardTab>('overview');
-  protected readonly expandedFeatureKey = signal<string | null>(null);
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {
     const userId = this.authState.user()?.id ?? null;
@@ -1528,15 +1523,6 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     if (tab === 'calculator') {
       this.activeTab.set('calculator');
     }
-  }
-
-  protected isFeaturedExpanded(entry: PlayerSessionEntry): boolean {
-    return this.expandedFeatureKey() === this.entryKey(entry);
-  }
-
-  protected toggleFeaturedDetails(entry: PlayerSessionEntry): void {
-    const key = this.entryKey(entry);
-    this.expandedFeatureKey.set(this.expandedFeatureKey() === key ? null : key);
   }
 
   protected isRequesting(sessionPlayerId: string): boolean {
@@ -1660,9 +1646,5 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
       case 'CASHOUT':
         return 'Cash out';
     }
-  }
-
-  private entryKey(entry: PlayerSessionEntry): string {
-    return `${entry.session.id}:${entry.player.id}`;
   }
 }
