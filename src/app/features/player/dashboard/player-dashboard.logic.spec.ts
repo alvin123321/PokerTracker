@@ -183,7 +183,7 @@ describe('player public table stats', () => {
     });
   });
 
-  it('falls back to visible table players when no public summary is available', () => {
+  it('falls back to visible active game players when no public summary is available', () => {
     const player = makePlayer({ id: 'seat-a', tableId: 'table-a', totalBuyIn: 100 });
     const session = makeSession({
       players: [
@@ -194,12 +194,12 @@ describe('player public table stats', () => {
     });
 
     expect(playerPublicTableStats(session, player, [])).toEqual({
-      activePlayerCount: 2,
-      totalActivePlayerChips: 400
+      activePlayerCount: 3,
+      totalActivePlayerChips: 1100
     });
   });
 
-  it('does not aggregate unassigned players as a table', () => {
+  it('includes visible unassigned active game players in fallback stats', () => {
     const player = makePlayer({ id: 'seat-a', tableId: null, totalBuyIn: 100 });
     const session = makeSession({
       players: [player, makePlayer({ id: 'seat-b', tableId: null, totalBuyIn: 300 })]
@@ -216,13 +216,48 @@ describe('player public table stats', () => {
         }
       ])
     ).toEqual({
-      activePlayerCount: 1,
-      totalActivePlayerChips: 100
+      activePlayerCount: 2,
+      totalActivePlayerChips: 400
     });
   });
 });
 
 describe('player public table roster', () => {
+  it('uses public roster entries for the whole active game, including cashed-out players', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
+    const session = makeSession({ players: [player] });
+
+    const roster = playerPublicTableRoster(session, player, [
+      {
+        sessionPlayerId: 'seat-b',
+        sessionId: session.id,
+        tableId: 'table-b',
+        name: 'Gene',
+        status: 'COMPLETED'
+      },
+      {
+        sessionPlayerId: 'seat-c',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Kevin',
+        status: 'ACTIVE'
+      },
+      {
+        sessionPlayerId: 'seat-a',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Alvin',
+        status: 'ACTIVE'
+      }
+    ]);
+
+    expect(roster.map((entry) => `${entry.name}:${entry.status}`)).toEqual([
+      'Alvin:ACTIVE',
+      'Kevin:ACTIVE',
+      'Gene:COMPLETED'
+    ]);
+  });
+
   it('uses public roster entries when RLS only exposes the current player row', () => {
     const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
     const session = makeSession({ players: [player] });
@@ -258,7 +293,7 @@ describe('player public table roster', () => {
     ]);
   });
 
-  it('falls back to visible session players in development/local mode', () => {
+  it('falls back to visible active game players in development/local mode', () => {
     const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
     const session = makeSession({
       players: [
@@ -274,11 +309,12 @@ describe('player public table roster', () => {
     expect(roster.map((entry) => `${entry.name}:${entry.status}`)).toEqual([
       'Alvin:ACTIVE',
       'Kevin:ACTIVE',
+      'Sarah:ACTIVE',
       'Gene:COMPLETED'
     ]);
   });
 
-  it('does not treat unassigned players as sharing a table', () => {
+  it('includes unassigned players from the active game when the public roster exposes them', () => {
     const player = makePlayer({ id: 'seat-a', tableId: null, name: 'Alvin' });
     const session = makeSession({
       players: [
@@ -304,7 +340,7 @@ describe('player public table roster', () => {
       }
     ]);
 
-    expect(roster.map((entry) => entry.name)).toEqual(['Alvin']);
+    expect(roster.map((entry) => entry.name)).toEqual(['Alvin', 'Gene']);
   });
 });
 

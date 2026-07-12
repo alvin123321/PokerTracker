@@ -322,12 +322,12 @@ const playerCallTimeSyncIntervalMs = 1000;
                     <div class="feature-detail-panel-inner">
                       <div class="feature-roster">
                         <div class="feature-detail-heading">
-                          <span>Table players</span>
+                          <span>Game players</span>
                           <small>{{ activePlayerCount(entry) }} active</small>
                         </div>
 
                         <div class="feature-player-list">
-                          @for (player of tablePlayers(entry); track player.sessionPlayerId) {
+                          @for (player of gamePlayers(entry); track player.sessionPlayerId) {
                             <div
                               class="feature-player-row"
                               [class.feature-player-row-active]="player.status === 'ACTIVE'"
@@ -1632,7 +1632,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     }, playerCallTimeSyncIntervalMs);
   }
 
-  protected tablePlayers(entry: PlayerSessionEntry): PlayerPublicTableRosterEntry[] {
+  protected gamePlayers(entry: PlayerSessionEntry): PlayerPublicTableRosterEntry[] {
     return playerPublicTableRoster(
       entry.session,
       entry.player,
