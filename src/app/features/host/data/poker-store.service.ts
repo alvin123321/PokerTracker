@@ -22,6 +22,10 @@ import {
   timeCallSecondsRemaining,
   timeCallStartsInSeconds
 } from './time-call.logic';
+import {
+  messageFromSupabaseFunctionError,
+  messageFromUnknownError
+} from '../shared/action-feedback.logic';
 
 export { CALL_TIME_DURATION_SECONDS, CALL_TIME_LIMIT } from './time-call.logic';
 
@@ -1165,11 +1169,14 @@ export class PokerStoreService implements OnDestroy {
           displayName: cleanDisplayName,
           username
         }
-      });
+    });
 
     if (error) {
       throw new Error(
-        `${this.toMessage(error)} Deploy the latest create-registered-player Edge Function, then try again.`
+        `${await messageFromSupabaseFunctionError(
+          error,
+          'Unable to create registered player.'
+        )} Deploy the latest create-registered-player Edge Function, then try again.`
       );
     }
 
@@ -1209,7 +1216,9 @@ export class PokerStoreService implements OnDestroy {
       });
 
     if (error) {
-      throw error;
+      throw new Error(
+        await messageFromSupabaseFunctionError(error, 'Unable to delete registered player.')
+      );
     }
 
     if (!data?.ok) {
@@ -1234,7 +1243,9 @@ export class PokerStoreService implements OnDestroy {
       });
 
     if (error) {
-      throw error;
+      throw new Error(
+        await messageFromSupabaseFunctionError(error, 'Unable to reset registered player password.')
+      );
     }
 
     if (!data?.ok) {
@@ -2066,15 +2077,7 @@ export class PokerStoreService implements OnDestroy {
   }
 
   private toMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    if (this.hasMessage(error)) {
-      return error.message;
-    }
-
-    return 'Unable to sync poker data.';
+    return messageFromUnknownError(error, 'Unable to sync poker data.');
   }
 
   private hasMessage(error: unknown): error is { message: string } {

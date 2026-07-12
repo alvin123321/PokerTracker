@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
@@ -29,6 +29,7 @@ import {
   CashOutDialogComponent,
   CashOutDialogData
 } from '../transactions/cash-out-dialog.component';
+import { messageFromUnknownError } from '../shared/action-feedback.logic';
 import {
   RebuyDialogComponent,
   RebuyDialogData,
@@ -109,18 +110,6 @@ class TableNameDialogComponent {
         <h1 class="sr-only">Dashboard</h1>
       </div>
 
-      @if (actionReceipt() || store.error()) {
-        <div
-          class="dashboard-action-receipt pointer-events-none fixed left-1/2 top-5 z-50 w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 rounded-xl border px-5 py-4 text-center text-sm font-semibold shadow-2xl backdrop-blur"
-          [class.dashboard-action-receipt-error]="actionReceipt()?.tone === 'error' || store.error()"
-          [class.dashboard-action-receipt-success]="actionReceipt()?.tone === 'success' && !store.error()"
-          role="status"
-          aria-live="polite"
-        >
-          {{ actionReceipt()?.message ?? store.error() }}
-        </div>
-      }
-
       @if (pendingAction()) {
         <div class="pokertrack-sync-overlay fixed inset-0 z-40 grid place-items-center bg-neutral-950/50 px-6 backdrop-blur-sm">
           <div class="rounded-xl border border-emerald-300/20 bg-neutral-950/90 px-6 py-5 text-center shadow-2xl shadow-black/50">
@@ -131,6 +120,24 @@ class TableNameDialogComponent {
             </div>
             <p class="text-base font-semibold text-white">{{ loadingMessage() }}</p>
             <p class="mt-1 text-sm text-neutral-400">Syncing before controls unlock.</p>
+          </div>
+        </div>
+      }
+
+      @if (actionToast(); as toast) {
+        <div class="dashboard-action-toast pointer-events-none fixed bottom-4 right-4 z-50 w-[min(calc(100vw-2rem),22rem)] sm:bottom-6 sm:right-6">
+          <div
+            class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
+            [class.border-red-400/30]="toast.tone === 'error'"
+            [class.bg-red-400/15]="toast.tone === 'error'"
+            [class.text-red-50]="toast.tone === 'error'"
+            [class.border-emerald-300/30]="toast.tone === 'success'"
+            [class.bg-emerald-400/15]="toast.tone === 'success'"
+            [class.text-emerald-50]="toast.tone === 'success'"
+            role="status"
+            aria-live="polite"
+          >
+            {{ toast.message }}
           </div>
         </div>
       }
@@ -1036,9 +1043,25 @@ class TableNameDialogComponent {
         min-height: 100dvh;
       }
 
+      .dashboard-action-toast {
+        animation: dashboard-action-toast-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
       @supports (height: 100dvh) {
         .pokertrack-sync-overlay {
           height: 100dvh;
+        }
+      }
+
+      @keyframes dashboard-action-toast-in {
+        from {
+          opacity: 0;
+          transform: translateY(0.45rem) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
         }
       }
 
@@ -1309,6 +1332,16 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
   protected readonly actionReceipt = signal<DashboardActionReceipt | null>(null);
+  protected readonly actionToast = computed<DashboardActionReceipt | null>(() => {
+    const receipt = this.actionReceipt();
+    const storeError = this.store.error();
+
+    if (receipt) {
+      return receipt;
+    }
+
+    return storeError ? { message: storeError, tone: 'error' } : null;
+  });
   protected readonly initialLoadingWindowExpired = signal(false);
   protected readonly dashboardLoaderVisible = signal(true);
   protected readonly dashboardLoaderLeaving = signal(false);
@@ -1751,10 +1784,6 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   }
 
   private toMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    return 'Unable to save changes.';
+    return messageFromUnknownError(error, 'Unable to save changes.');
   }
 }
