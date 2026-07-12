@@ -60,3 +60,19 @@ export function sortDashboardTablePlayers<T extends DashboardTablePlayerSortInpu
     return a.id.localeCompare(b.id);
   });
 }
+
+export interface DashboardTablePlayerGroups<T extends DashboardTablePlayerSortInput> {
+  activePlayers: T[];
+  cashedOutPlayers: T[];
+}
+
+export function groupDashboardTablePlayers<T extends DashboardTablePlayerSortInput>(
+  players: T[]
+): DashboardTablePlayerGroups<T> {
+  const sortedPlayers = sortDashboardTablePlayers(players);
+
+  return {
+    activePlayers: sortedPlayers.filter((player) => player.status === 'ACTIVE'),
+    cashedOutPlayers: sortedPlayers.filter((player) => player.status === 'COMPLETED')
+  };
+}

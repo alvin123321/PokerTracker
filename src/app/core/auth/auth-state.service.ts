@@ -356,7 +356,9 @@ export class AuthStateService {
           throw error;
         }
 
-        await this.recordPasswordChange(currentUser.id);
+        await this.recordPasswordChange(currentUser.id).catch((error) => {
+          console.warn('Password changed, but audit logging failed.', error);
+        });
 
         return;
       }
