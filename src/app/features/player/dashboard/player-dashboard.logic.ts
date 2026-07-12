@@ -73,13 +73,6 @@ export function playerPublicTableStats(
   player: SessionPlayer,
   summaries: PlayerPublicTableSummary[]
 ): { activePlayerCount: number; totalActivePlayerChips: number } {
-  if (player.tableId === null) {
-    return {
-      activePlayerCount: player.status === 'ACTIVE' ? 1 : 0,
-      totalActivePlayerChips: player.status === 'ACTIVE' ? player.totalBuyIn : 0
-    };
-  }
-
   const publicSummary = summaries.find(
     (summary) => summary.sessionId === session.id && summary.sessionPlayerId === player.id
   );
@@ -91,13 +84,13 @@ export function playerPublicTableStats(
     };
   }
 
-  const tablePlayers = session.players.filter(
-    (sessionPlayer) => sessionPlayer.tableId === player.tableId && sessionPlayer.status === 'ACTIVE'
+  const activePlayers = session.players.filter(
+    (sessionPlayer) => sessionPlayer.status === 'ACTIVE'
   );
 
   return {
-    activePlayerCount: tablePlayers.length,
-    totalActivePlayerChips: tablePlayers.reduce(
+    activePlayerCount: activePlayers.length,
+    totalActivePlayerChips: activePlayers.reduce(
       (total, sessionPlayer) => total + sessionPlayer.totalBuyIn,
       0
     )
@@ -109,31 +102,12 @@ export function playerPublicTableRoster(
   player: SessionPlayer,
   rosterEntries: PlayerPublicTableRosterEntry[]
 ): PlayerPublicTableRosterEntry[] {
-  if (player.tableId === null) {
-    const currentPlayer = rosterEntries.find(
-      (entry) => entry.sessionId === session.id && entry.sessionPlayerId === player.id
-    );
-
-    return [
-      currentPlayer ?? {
-        sessionPlayerId: player.id,
-        sessionId: session.id,
-        tableId: null,
-        name: player.name,
-        status: player.status
-      }
-    ];
-  }
-
-  const publicRoster = rosterEntries.filter(
-    (entry) => entry.sessionId === session.id && entry.tableId === player.tableId
-  );
+  const publicRoster = rosterEntries.filter((entry) => entry.sessionId === session.id);
 
   const roster =
     publicRoster.length > 0
       ? publicRoster
       : session.players
-          .filter((sessionPlayer) => sessionPlayer.tableId === player.tableId)
           .map((sessionPlayer) => ({
             sessionPlayerId: sessionPlayer.id,
             sessionId: session.id,

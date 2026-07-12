@@ -45,7 +45,7 @@ interface PlayerLedgerRow {
 
           <div class="grid grid-cols-2 gap-3 md:max-w-3xl md:gap-4">
             <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-5">
-              <p class="text-sm text-neutral-400">Total buy in</p>
+              <p class="text-sm text-neutral-400">My total buy in</p>
               <p class="mt-1 text-2xl font-semibold text-white sm:mt-2 sm:text-3xl">
                 {{ currentPlayer.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
               </p>

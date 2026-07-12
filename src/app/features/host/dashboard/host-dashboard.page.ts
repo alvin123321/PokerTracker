@@ -1,7 +1,12 @@
 import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -10,30 +15,36 @@ import {
   PokerTransaction,
   PokerSession,
   PokerStoreService,
-  SessionPlayer
+  SessionPlayer,
 } from '../data/poker-store.service';
 import {
   DashboardTablePlayerGroups,
   groupDashboardTablePlayers,
   sortDashboardTablePlayers,
   shouldShowActiveSessionsEmptyState,
-  shouldShowActiveSessionsLoadingState
+  shouldShowActiveSessionsLoadingState,
 } from './host-dashboard.logic';
 import { gameTimelineTransactions } from '../data/session-timeline.logic';
 import {
   AddPlayerDialogComponent,
   AddPlayerDialogData,
-  AddPlayerDialogResult
+  AddPlayerDialogResult,
 } from '../players/add-player-dialog.component';
 import {
   CashOutDialogComponent,
-  CashOutDialogData
+  CashOutDialogData,
 } from '../transactions/cash-out-dialog.component';
 import { messageFromUnknownError } from '../shared/action-feedback.logic';
+import { ActionFeedbackToastComponent } from '../shared/action-feedback-toast.component';
+import {
+  formatSignedMoney,
+  netResultTone,
+  NetResultTone,
+} from '../shared/session-player-display.logic';
 import {
   RebuyDialogComponent,
   RebuyDialogData,
-  RebuyDialogResult
+  RebuyDialogResult,
 } from '../transactions/rebuy-dialog.component';
 interface TableNameDialogData {
   tableName: string;
@@ -54,7 +65,9 @@ interface DashboardActionReceipt {
         <p class="mt-1 text-sm text-neutral-400">Name this table before adding players.</p>
       </div>
 
-      <label class="mt-5 block text-sm font-medium text-neutral-200" for="tableName">Table name</label>
+      <label class="mt-5 block text-sm font-medium text-neutral-200" for="tableName"
+        >Table name</label
+      >
       <input
         id="tableName"
         [formControl]="tableName"
@@ -81,14 +94,14 @@ interface DashboardActionReceipt {
         </button>
       </div>
     </section>
-  `
+  `,
 })
 class TableNameDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<TableNameDialogComponent, string | undefined>);
   private readonly data = inject<TableNameDialogData>(MAT_DIALOG_DATA);
   protected readonly tableName = new FormControl(this.data.tableName, {
     nonNullable: true,
-    validators: [Validators.required]
+    validators: [Validators.required],
   });
 
   protected save(): void {
@@ -103,7 +116,14 @@ class TableNameDialogComponent {
 
 @Component({
   selector: 'app-host-dashboard-page',
-  imports: [CurrencyPipe, DatePipe, MatDialogModule, NgTemplateOutlet, RouterLink],
+  imports: [
+    ActionFeedbackToastComponent,
+    CurrencyPipe,
+    DatePipe,
+    MatDialogModule,
+    NgTemplateOutlet,
+    RouterLink,
+  ],
   template: `
     <section class="space-y-6 sm:space-y-8">
       <div>
@@ -125,21 +145,7 @@ class TableNameDialogComponent {
       }
 
       @if (actionToast(); as toast) {
-        <div class="dashboard-action-toast pointer-events-none fixed bottom-4 right-4 z-50 w-[min(calc(100vw-2rem),22rem)] sm:bottom-6 sm:right-6">
-          <div
-            class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
-            [class.border-red-400/30]="toast.tone === 'error'"
-            [class.bg-red-400/15]="toast.tone === 'error'"
-            [class.text-red-50]="toast.tone === 'error'"
-            [class.border-emerald-300/30]="toast.tone === 'success'"
-            [class.bg-emerald-400/15]="toast.tone === 'success'"
-            [class.text-emerald-50]="toast.tone === 'success'"
-            role="status"
-            aria-live="polite"
-          >
-            {{ toast.message }}
-          </div>
-        </div>
+        <app-action-feedback-toast [message]="toast.message" [tone]="toast.tone" />
       }
 
       @if (shouldShowDashboardLoader()) {
@@ -502,55 +508,85 @@ class TableNameDialogComponent {
           [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
         >
           <div
-            class="grid cursor-pointer gap-3 px-3 py-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-            role="button"
-            tabindex="0"
-            [attr.aria-expanded]="isDashboardPlayerExpanded(player.id)"
-            (click)="toggleDashboardPlayer(player.id)"
-            (keydown.enter)="toggleDashboardPlayer(player.id)"
-            (keydown.space)="$event.preventDefault(); toggleDashboardPlayer(player.id)"
+            class="dashboard-player-summary grid gap-3 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
           >
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <p class="truncate font-semibold text-white">{{ player.name }}</p>
-                <span
-                  class="dashboard-player-buyin-mobile ml-auto sm:hidden"
-                  [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
-                >
-                  {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                </span>
-                @if (player.status === 'COMPLETED') {
-                  <span class="text-sm font-bold leading-none text-emerald-300">&check;</span>
-                  <span
-                    class="dashboard-player-net-inline"
-                    [class.dashboard-player-net-positive]="player.net >= 0"
-                    [class.dashboard-player-net-negative]="player.net < 0"
-                  >
-                    Net
-                    <strong>{{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
-                  </span>
-                }
-              </div>
-              <p class="mt-1 hidden text-xs text-neutral-500 md:block">
-                Tap to view game timeline
-              </p>
-            </div>
-
-            <div
-              class="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-[8rem_7rem_7rem] md:min-w-[22rem]"
-              (keydown.enter)="$event.stopPropagation()"
-              (keydown.space)="$event.stopPropagation()"
+            <button
+              type="button"
+              class="dashboard-player-disclosure min-w-0 text-left"
+              [class.dashboard-player-disclosure-completed]="player.status === 'COMPLETED'"
+              [attr.aria-expanded]="isDashboardPlayerExpanded(player.id)"
+              [attr.aria-controls]="'dashboard-player-timeline-' + player.id"
+              (click)="toggleDashboardPlayer(player.id)"
             >
-              <span class="hidden rounded-lg bg-white/[0.04] px-3 py-2 md:col-span-1 md:block">
-                <span class="block text-xs text-neutral-500">Buy-in</span>
-                <span
-                  class="mt-1 block font-semibold text-white"
-                  [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
-                >
-                  {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+              <span class="dashboard-player-identity min-w-0">
+                <span class="flex min-w-0 items-center gap-2">
+                  <span class="truncate font-semibold text-white">{{ player.name }}</span>
+                  @if (player.status === 'ACTIVE') {
+                    <span
+                      class="dashboard-player-buyin-mobile ml-auto sm:hidden"
+                      [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
+                    >
+                      {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                    </span>
+                  } @else {
+                    <span class="sr-only">Cashed out.</span>
+                    <span class="ml-auto text-sm font-bold leading-none text-emerald-300" aria-hidden="true">
+                      &check;
+                    </span>
+                  }
+                  <span
+                    class="dashboard-player-disclosure-icon shrink-0 text-xs text-neutral-500"
+                    aria-hidden="true"
+                  >
+                    {{ isDashboardPlayerExpanded(player.id) ? 'v' : '>' }}
+                  </span>
                 </span>
+                <span class="mt-1 hidden text-xs text-neutral-500 md:block">View game timeline</span>
               </span>
-              @if (player.status === 'ACTIVE') {
+
+              @if (player.status === 'COMPLETED') {
+                <span class="dashboard-player-settlement-grid">
+                  <span class="dashboard-player-settlement-cell">
+                    <span>Total buy in</span>
+                    <strong class="dashboard-player-settlement-value-buyin">
+                      {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                    </strong>
+                  </span>
+                  <span class="dashboard-player-settlement-cell">
+                    <span>Cashed out</span>
+                    <strong class="dashboard-player-settlement-value-cashout">
+                      {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                    </strong>
+                  </span>
+                  <span class="dashboard-player-settlement-cell">
+                    <span>Net</span>
+                    <strong
+                      [class.dashboard-player-settlement-value-positive]="netTone(player.net) === 'positive'"
+                      [class.dashboard-player-settlement-value-negative]="netTone(player.net) === 'negative'"
+                      [class.dashboard-player-settlement-value-neutral]="netTone(player.net) === 'neutral'"
+                    >
+                      {{ signedMoney(player.net) }}
+                    </strong>
+                  </span>
+                </span>
+              }
+            </button>
+
+            @if (player.status === 'ACTIVE') {
+              <div
+                class="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-[8rem_7rem_7rem] md:min-w-[22rem]"
+                (keydown.enter)="$event.stopPropagation()"
+                (keydown.space)="$event.stopPropagation()"
+              >
+                <span class="hidden rounded-lg bg-white/[0.04] px-3 py-2 md:col-span-1 md:block">
+                  <span class="block text-xs text-neutral-500">Buy-in</span>
+                  <span
+                    class="mt-1 block font-semibold text-white"
+                    [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
+                  >
+                    {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                  </span>
+                </span>
                 <button
                   type="button"
                   [disabled]="isBusy()"
@@ -575,21 +611,12 @@ class TableNameDialogComponent {
                     Cashout
                   }
                 </button>
-              } @else {
-                <span class="dashboard-player-action dashboard-player-action-disabled" aria-disabled="true">
-                  Rebuy
-                </span>
-                <span
-                  class="dashboard-player-action dashboard-player-action-cashout dashboard-player-action-disabled"
-                  aria-disabled="true"
-                >
-                  Cashout
-                </span>
-              }
-            </div>
+              </div>
+            }
           </div>
 
           <div
+            [id]="'dashboard-player-timeline-' + player.id"
             class="dashboard-player-timeline"
             [class.dashboard-player-timeline-open]="isDashboardPlayerExpanded(player.id)"
             [attr.aria-hidden]="!isDashboardPlayerExpanded(player.id)"
@@ -745,7 +772,9 @@ class TableNameDialogComponent {
         border: 1px solid rgba(94, 234, 212, 0.46);
         border-radius: 8px;
         background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.82));
-        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.035), 0 0 18px rgba(45, 212, 191, 0.16);
+        box-shadow:
+          inset 0 0 0 2px rgba(255, 255, 255, 0.035),
+          0 0 18px rgba(45, 212, 191, 0.16);
       }
 
       .empty-poker-seat-top {
@@ -830,7 +859,10 @@ class TableNameDialogComponent {
         place-items: center;
         color: rgb(110, 231, 183);
         transform: translateY(-0.08rem);
-        transition: color 180ms ease, filter 180ms ease, transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+        transition:
+          color 180ms ease,
+          filter 180ms ease,
+          transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
       }
 
       .empty-session-action-cross svg {
@@ -840,7 +872,8 @@ class TableNameDialogComponent {
       }
 
       .empty-session-action-label {
-        font-family: 'OCR A Extended', 'Agency FB', 'Bahnschrift SemiCondensed', Consolas, monospace;
+        font-family:
+          'OCR A Extended', 'Agency FB', 'Bahnschrift SemiCondensed', Consolas, monospace;
         font-weight: 700;
         line-height: 1;
         letter-spacing: 0.07em;
@@ -1032,7 +1065,6 @@ class TableNameDialogComponent {
           line-height: 1.15;
           text-align: center;
         }
-
       }
 
       .pokertrack-sync-overlay {
@@ -1043,25 +1075,9 @@ class TableNameDialogComponent {
         min-height: 100dvh;
       }
 
-      .dashboard-action-toast {
-        animation: dashboard-action-toast-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
-      }
-
       @supports (height: 100dvh) {
         .pokertrack-sync-overlay {
           height: 100dvh;
-        }
-      }
-
-      @keyframes dashboard-action-toast-in {
-        from {
-          opacity: 0;
-          transform: translateY(0.45rem) scale(0.98);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
         }
       }
 
@@ -1279,40 +1295,56 @@ class TableNameDialogComponent {
       @keyframes table-breathe-cyan {
         0%,
         100% {
-          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(34, 211, 238, 0.08);
+          box-shadow:
+            0 16px 34px rgba(0, 0, 0, 0.22),
+            0 0 18px rgba(34, 211, 238, 0.08);
         }
         50% {
-          box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26), 0 0 30px rgba(34, 211, 238, 0.18);
+          box-shadow:
+            0 18px 38px rgba(0, 0, 0, 0.26),
+            0 0 30px rgba(34, 211, 238, 0.18);
         }
       }
 
       @keyframes table-breathe-amber {
         0%,
         100% {
-          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(251, 191, 36, 0.08);
+          box-shadow:
+            0 16px 34px rgba(0, 0, 0, 0.22),
+            0 0 18px rgba(251, 191, 36, 0.08);
         }
         50% {
-          box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26), 0 0 30px rgba(251, 191, 36, 0.17);
+          box-shadow:
+            0 18px 38px rgba(0, 0, 0, 0.26),
+            0 0 30px rgba(251, 191, 36, 0.17);
         }
       }
 
       @keyframes table-breathe-fuchsia {
         0%,
         100% {
-          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(217, 70, 239, 0.08);
+          box-shadow:
+            0 16px 34px rgba(0, 0, 0, 0.22),
+            0 0 18px rgba(217, 70, 239, 0.08);
         }
         50% {
-          box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26), 0 0 30px rgba(217, 70, 239, 0.17);
+          box-shadow:
+            0 18px 38px rgba(0, 0, 0, 0.26),
+            0 0 30px rgba(217, 70, 239, 0.17);
         }
       }
 
       @keyframes table-breathe-emerald {
         0%,
         100% {
-          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), 0 0 18px rgba(52, 211, 153, 0.08);
+          box-shadow:
+            0 16px 34px rgba(0, 0, 0, 0.22),
+            0 0 18px rgba(52, 211, 153, 0.08);
         }
         50% {
-          box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26), 0 0 30px rgba(52, 211, 153, 0.18);
+          box-shadow:
+            0 18px 38px rgba(0, 0, 0, 0.26),
+            0 0 30px rgba(52, 211, 153, 0.18);
         }
       }
 
@@ -1321,8 +1353,8 @@ class TableNameDialogComponent {
           animation: none;
         }
       }
-    `
-  ]
+    `,
+  ],
 })
 export class HostDashboardPage implements OnInit, OnDestroy {
   protected readonly store = inject(PokerStoreService);
@@ -1407,7 +1439,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     return this.shouldShowActiveSessionsEmptyState({
       activeSessionCount: this.store.activeSessions().length,
       sessionsLoaded: this.store.sessionsLoaded(),
-      initialLoadingWindowExpired: this.initialLoadingWindowExpired()
+      initialLoadingWindowExpired: this.initialLoadingWindowExpired(),
     });
   }
 
@@ -1415,7 +1447,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     return this.shouldShowActiveSessionsLoadingState({
       activeSessionCount: this.store.activeSessions().length,
       sessionsLoaded: this.store.sessionsLoaded(),
-      initialLoadingWindowExpired: this.initialLoadingWindowExpired()
+      initialLoadingWindowExpired: this.initialLoadingWindowExpired(),
     });
   }
 
@@ -1425,7 +1457,8 @@ export class HostDashboardPage implements OnInit, OnDestroy {
 
   protected toggleSession(sessionId: string): void {
     const expandedSessionId = this.expandedSessionId();
-    const isDefaultOpen = expandedSessionId === undefined && this.store.activeSessions()[0]?.id === sessionId;
+    const isDefaultOpen =
+      expandedSessionId === undefined && this.store.activeSessions()[0]?.id === sessionId;
     const isCurrentlyOpen = expandedSessionId === sessionId || isDefaultOpen;
 
     this.expandedSessionId.set(isCurrentlyOpen ? null : sessionId);
@@ -1453,7 +1486,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
 
   protected toggleDashboardPlayer(playerId: string): void {
     this.expandedDashboardPlayerId.update((currentPlayerId) =>
-      currentPlayerId === playerId ? null : playerId
+      currentPlayerId === playerId ? null : playerId,
     );
   }
 
@@ -1463,29 +1496,37 @@ export class HostDashboardPage implements OnInit, OnDestroy {
 
   protected dashboardPlayerTimelineTransactions(
     session: PokerSession,
-    playerId: string
+    playerId: string,
   ): PokerTransaction[] {
     return gameTimelineTransactions(
-      session.transactions.filter((transaction) => transaction.playerId === playerId)
+      session.transactions.filter((transaction) => transaction.playerId === playerId),
     );
   }
 
   protected dashboardPlayersForTable(
     session: PokerSession | undefined,
-    tableId: string | null
+    tableId: string | null,
   ): SessionPlayer[] {
     return sortDashboardTablePlayers(this.store.playersForTable(session, tableId));
   }
 
   protected dashboardPlayerGroupsForTable(
     session: PokerSession | undefined,
-    tableId: string | null
+    tableId: string | null,
   ): DashboardTablePlayerGroups<SessionPlayer> {
     return groupDashboardTablePlayers(this.store.playersForTable(session, tableId));
   }
 
   protected activePlayerCount(session: PokerSession): number {
     return session.players.filter((player) => player.status === 'ACTIVE').length;
+  }
+
+  protected signedMoney(amount: number): string {
+    return formatSignedMoney(amount);
+  }
+
+  protected netTone(amount: number): NetResultTone {
+    return netResultTone(amount);
   }
 
   protected transactionLabel(type: PokerTransaction['type']): string {
@@ -1514,14 +1555,15 @@ export class HostDashboardPage implements OnInit, OnDestroy {
 
     const session = this.store.getSession(sessionId);
     const nextNumber = (session?.tables.length ?? 0) + 1;
-    const dialogRef = this.dialog.open<TableNameDialogComponent, TableNameDialogData, string | undefined>(
+    const dialogRef = this.dialog.open<
       TableNameDialogComponent,
-      {
-        autoFocus: 'first-tabbable',
-        data: { tableName: defaultPokerTableName(nextNumber) },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
+      TableNameDialogData,
+      string | undefined
+    >(TableNameDialogComponent, {
+      autoFocus: 'first-tabbable',
+      data: { tableName: defaultPokerTableName(nextNumber) },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
     const tableName = (await firstValueFrom(dialogRef.afterClosed()))?.trim();
 
@@ -1565,7 +1607,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     >(AddPlayerDialogComponent, {
       autoFocus: 'first-tabbable',
       data: { registeredPlayers },
-      panelClass: 'pokertrack-dialog-panel'
+      panelClass: 'pokertrack-dialog-panel',
     });
 
     dialogRef.afterClosed().subscribe(async (result?: AddPlayerDialogResult) => {
@@ -1581,8 +1623,8 @@ export class HostDashboardPage implements OnInit, OnDestroy {
           result.comment,
           result.playerUserId,
           result.createRegisteredPlayer,
-          tableId
-        )
+          tableId,
+        ),
       );
     });
   }
@@ -1597,14 +1639,14 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       {
         autoFocus: false,
         data: { player },
-        panelClass: 'pokertrack-dialog-panel'
-      }
+        panelClass: 'pokertrack-dialog-panel',
+      },
     );
 
     dialogRef.afterClosed().subscribe(async (result?: RebuyDialogResult) => {
       if (result && result.amount > 0) {
         const succeeded = await this.runAction(this.playerAction('rebuy', player.id), () =>
-          this.store.recordRebuy(sessionId, player.id, result.amount, result.comment)
+          this.store.recordRebuy(sessionId, player.id, result.amount, result.comment),
         );
 
         if (succeeded) {
@@ -1624,14 +1666,14 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       {
         autoFocus: 'first-tabbable',
         data: { player, mode: player.status === 'COMPLETED' ? 'edit' : 'record' },
-        panelClass: 'pokertrack-dialog-panel'
-      }
+        panelClass: 'pokertrack-dialog-panel',
+      },
     );
 
     dialogRef.afterClosed().subscribe(async (amount?: number) => {
       if (amount !== undefined && amount >= 0) {
         await this.runAction(this.playerAction('cash-out', player.id), () =>
-          this.store.recordCashOut(sessionId, player.id, amount)
+          this.store.recordCashOut(sessionId, player.id, amount),
         );
       }
     });
@@ -1757,10 +1799,13 @@ export class HostDashboardPage implements OnInit, OnDestroy {
 
     this.actionError.set(tone === 'error' ? message : null);
     this.actionReceipt.set({ message, tone });
-    this.actionReceiptTimer = setTimeout(() => {
-      this.actionReceipt.set(null);
-      this.actionReceiptTimer = null;
-    }, tone === 'error' ? 5000 : 2800);
+    this.actionReceiptTimer = setTimeout(
+      () => {
+        this.actionReceipt.set(null);
+        this.actionReceiptTimer = null;
+      },
+      tone === 'error' ? 4300 : 2700,
+    );
   }
 
   private successMessageForAction(action: string): string {
