@@ -16,6 +16,7 @@ import {
   ConfirmationDialogData
 } from '../shared/confirmation-dialog.component';
 import { messageFromUnknownError } from '../shared/action-feedback.logic';
+import { ActionFeedbackToastComponent } from '../shared/action-feedback-toast.component';
 
 interface PlayerLedgerRow {
   session: PokerSession;
@@ -25,7 +26,7 @@ interface PlayerLedgerRow {
 
 @Component({
   selector: 'app-players-admin-page',
-  imports: [CurrencyPipe, DatePipe, MatDialogModule, ReactiveFormsModule],
+  imports: [ActionFeedbackToastComponent, CurrencyPipe, DatePipe, MatDialogModule, ReactiveFormsModule],
   template: `
     <section class="space-y-5 sm:space-y-6">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -37,21 +38,7 @@ interface PlayerLedgerRow {
       </div>
 
       @if (actionToast(); as toast) {
-        <div class="member-action-toast pointer-events-none fixed bottom-4 right-4 z-50 w-[min(calc(100vw-2rem),22rem)] sm:bottom-6 sm:right-6">
-          <div
-            class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
-            [class.border-red-400/30]="toast.tone === 'error'"
-            [class.bg-red-400/15]="toast.tone === 'error'"
-            [class.text-red-50]="toast.tone === 'error'"
-            [class.border-emerald-300/30]="toast.tone === 'success'"
-            [class.bg-emerald-400/15]="toast.tone === 'success'"
-            [class.text-emerald-50]="toast.tone === 'success'"
-            role="status"
-            aria-live="polite"
-          >
-            {{ toast.message }}
-          </div>
-        </div>
+        <app-action-feedback-toast [message]="toast.message" [tone]="toast.tone" />
       }
 
       @if (selectedPlayer(); as player) {
@@ -331,10 +318,6 @@ interface PlayerLedgerRow {
         border-top-color: transparent;
         border-radius: 9999px;
         animation: action-spinner 700ms linear infinite;
-      }
-
-      .member-action-toast {
-        animation: member-toast-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .member-view-enter {
@@ -886,7 +869,7 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
     this.receiptTimer = setTimeout(() => {
       this.clearActionReceipt();
       this.receiptTimer = null;
-    }, tone === 'error' ? 5000 : 2800);
+    }, tone === 'error' ? 7600 : 5400);
   }
 
   private clearActionReceipt(): void {

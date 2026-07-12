@@ -30,6 +30,7 @@ import {
   CashOutDialogData
 } from '../transactions/cash-out-dialog.component';
 import { messageFromUnknownError } from '../shared/action-feedback.logic';
+import { ActionFeedbackToastComponent } from '../shared/action-feedback-toast.component';
 import {
   RebuyDialogComponent,
   RebuyDialogData,
@@ -103,7 +104,14 @@ class TableNameDialogComponent {
 
 @Component({
   selector: 'app-host-dashboard-page',
-  imports: [CurrencyPipe, DatePipe, MatDialogModule, NgTemplateOutlet, RouterLink],
+  imports: [
+    ActionFeedbackToastComponent,
+    CurrencyPipe,
+    DatePipe,
+    MatDialogModule,
+    NgTemplateOutlet,
+    RouterLink
+  ],
   template: `
     <section class="space-y-6 sm:space-y-8">
       <div>
@@ -125,21 +133,7 @@ class TableNameDialogComponent {
       }
 
       @if (actionToast(); as toast) {
-        <div class="dashboard-action-toast pointer-events-none fixed bottom-4 right-4 z-50 w-[min(calc(100vw-2rem),22rem)] sm:bottom-6 sm:right-6">
-          <div
-            class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
-            [class.border-red-400/30]="toast.tone === 'error'"
-            [class.bg-red-400/15]="toast.tone === 'error'"
-            [class.text-red-50]="toast.tone === 'error'"
-            [class.border-emerald-300/30]="toast.tone === 'success'"
-            [class.bg-emerald-400/15]="toast.tone === 'success'"
-            [class.text-emerald-50]="toast.tone === 'success'"
-            role="status"
-            aria-live="polite"
-          >
-            {{ toast.message }}
-          </div>
-        </div>
+        <app-action-feedback-toast [message]="toast.message" [tone]="toast.tone" />
       }
 
       @if (shouldShowDashboardLoader()) {
@@ -1043,25 +1037,9 @@ class TableNameDialogComponent {
         min-height: 100dvh;
       }
 
-      .dashboard-action-toast {
-        animation: dashboard-action-toast-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
-      }
-
       @supports (height: 100dvh) {
         .pokertrack-sync-overlay {
           height: 100dvh;
-        }
-      }
-
-      @keyframes dashboard-action-toast-in {
-        from {
-          opacity: 0;
-          transform: translateY(0.45rem) scale(0.98);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
         }
       }
 
@@ -1760,7 +1738,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     this.actionReceiptTimer = setTimeout(() => {
       this.actionReceipt.set(null);
       this.actionReceiptTimer = null;
-    }, tone === 'error' ? 5000 : 2800);
+    }, tone === 'error' ? 7600 : 5400);
   }
 
   private successMessageForAction(action: string): string {

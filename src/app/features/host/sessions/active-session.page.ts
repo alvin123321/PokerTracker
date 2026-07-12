@@ -23,6 +23,10 @@ import {
 } from '../shared/confirmation-dialog.component';
 import { messageFromUnknownError } from '../shared/action-feedback.logic';
 import {
+  ActionFeedbackToastComponent,
+  ActionFeedbackToastTone
+} from '../shared/action-feedback-toast.component';
+import {
   CashOutDialogComponent,
   CashOutDialogData
 } from '../transactions/cash-out-dialog.component';
@@ -37,29 +41,26 @@ import {
   RebuyDialogResult
 } from '../transactions/rebuy-dialog.component';
 
+interface SessionActionReceipt {
+  message: string;
+  tone: ActionFeedbackToastTone;
+}
+
 @Component({
   selector: 'app-active-session-page',
-  imports: [CurrencyPipe, DatePipe, MatDialogModule, NgTemplateOutlet, RouterLink],
+  imports: [
+    ActionFeedbackToastComponent,
+    CurrencyPipe,
+    DatePipe,
+    MatDialogModule,
+    NgTemplateOutlet,
+    RouterLink
+  ],
   template: `
     @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
-      @if (toastMessage(); as message) {
-        <div class="pokertrack-toast pointer-events-none fixed bottom-4 right-4 z-50 w-[min(calc(100vw-2rem),22rem)] sm:bottom-6 sm:right-6">
-          <div
-            class="rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl shadow-black/40 backdrop-blur"
-            [class.border-red-400/30]="toastTone() === 'error'"
-            [class.bg-red-400/15]="toastTone() === 'error'"
-            [class.text-red-50]="toastTone() === 'error'"
-            [class.border-emerald-300/25]="toastTone() === 'saving'"
-            [class.bg-neutral-900/90]="toastTone() === 'saving'"
-            [class.text-emerald-50]="toastTone() === 'saving'"
-            [class.border-emerald-300/30]="toastTone() === 'success'"
-            [class.bg-emerald-400/15]="toastTone() === 'success'"
-            [class.text-emerald-50]="toastTone() === 'success'"
-          >
-            {{ message }}
-          </div>
-        </div>
+      @if (actionToast(); as toast) {
+        <app-action-feedback-toast [message]="toast.message" [tone]="toast.tone" />
       }
 
       @if (pendingAction()) {
@@ -667,10 +668,6 @@ import {
   `,
   styles: [
     `
-      .pokertrack-toast {
-        animation: pokertrack-toast-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
-      }
-
       .action-spinner {
         display: inline-block;
         width: 1rem;
@@ -1116,17 +1113,6 @@ import {
         }
       }
 
-      @keyframes pokertrack-toast-in {
-        from {
-          opacity: 0;
-          transform: translateY(0.75rem) scale(0.98);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
     `
   ]
 })
@@ -1149,8 +1135,7 @@ export class ActiveSessionPage implements OnDestroy {
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private rebuyGlowTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly pendingAction = signal<string | null>(null);
-  protected readonly actionError = signal<string | null>(null);
-  protected readonly successToast = signal<string | null>(null);
+  protected readonly actionReceipt = signal<SessionActionReceipt | null>(null);
   protected readonly selectedTableId = signal<string | null>(null);
   protected readonly expandedTableIds = signal<string[]>([]);
 
@@ -1167,23 +1152,14 @@ export class ActiveSessionPage implements OnDestroy {
       players: this.store.playersForTable(this.session(), this.selectedTable()?.id ?? null)
     })
   );
-  protected readonly toastMessage = computed(() => {
-    if (this.actionError() || this.store.error()) {
-      return this.actionError() ?? this.store.error();
+  protected readonly actionToast = computed<SessionActionReceipt | null>(() => {
+    const storeError = this.store.error();
+
+    if (storeError) {
+      return { message: storeError, tone: 'error' };
     }
 
-    return this.successToast();
-  });
-  protected readonly toastTone = computed<'saving' | 'error' | 'success'>(() => {
-    if (this.actionError() || this.store.error()) {
-      return 'error';
-    }
-
-    if (this.pendingAction()) {
-      return 'saving';
-    }
-
-    return 'success';
+    return this.actionReceipt();
   });
   protected readonly loadingMessage = computed(() => {
     const action = this.pendingAction();
@@ -1224,7 +1200,7 @@ export class ActiveSessionPage implements OnDestroy {
   });
 
   ngOnDestroy(): void {
-    this.clearSuccessToast();
+    this.clearActionReceipt();
     this.clearRebuyGlow();
   }
 
@@ -1280,10 +1256,10 @@ export class ActiveSessionPage implements OnDestroy {
     let registeredPlayers: AddPlayerDialogData['registeredPlayers'] = [];
 
     try {
-      this.actionError.set(null);
+      this.clearActionReceipt();
       registeredPlayers = await this.store.listRegisteredPlayers();
     } catch (error) {
-      this.actionError.set(this.toMessage(error));
+      this.showActionReceipt(this.toMessage(error), 'error');
       return;
     }
 
@@ -1523,7 +1499,7 @@ export class ActiveSessionPage implements OnDestroy {
     const pendingPlayers = currentSession.players.filter((player) => player.status === 'ACTIVE');
 
     if (!this.canCloseSession(currentSession)) {
-      this.actionError.set('Cash out all players before closing this session.');
+      this.showActionReceipt('Cash out all players before closing this session.', 'error');
       return;
     }
 
@@ -1704,23 +1680,25 @@ export class ActiveSessionPage implements OnDestroy {
       return false;
     }
 
-    this.clearSuccessToast();
+    this.clearActionReceipt();
     this.pendingAction.set(action);
-    this.actionError.set(null);
     const startedAt = Date.now();
     let succeeded = false;
+    let errorMessage: string | null = null;
 
     try {
       await task();
       succeeded = true;
     } catch (error) {
-      this.actionError.set(this.toMessage(error));
+      errorMessage = this.toMessage(error);
     } finally {
       await this.waitForMinimumActionDelay(startedAt);
       this.pendingAction.set(null);
 
       if (succeeded) {
-        this.showSuccessToast('Saved');
+        this.showActionReceipt(this.successMessageForAction(action), 'success');
+      } else if (errorMessage) {
+        this.showActionReceipt(errorMessage, 'error');
       }
 
       return succeeded;
@@ -1745,22 +1723,22 @@ export class ActiveSessionPage implements OnDestroy {
     this.recentRebuyPlayerId.set(null);
   }
 
-  private showSuccessToast(message: string): void {
-    this.clearSuccessToast();
-    this.successToast.set(message);
+  private showActionReceipt(message: string, tone: ActionFeedbackToastTone): void {
+    this.clearActionReceipt();
+    this.actionReceipt.set({ message, tone });
     this.toastTimer = setTimeout(() => {
-      this.successToast.set(null);
+      this.actionReceipt.set(null);
       this.toastTimer = null;
-    }, 2400);
+    }, tone === 'error' ? 7600 : 5400);
   }
 
-  private clearSuccessToast(): void {
+  private clearActionReceipt(): void {
     if (this.toastTimer) {
       clearTimeout(this.toastTimer);
       this.toastTimer = null;
     }
 
-    this.successToast.set(null);
+    this.actionReceipt.set(null);
   }
 
   private waitForMinimumActionDelay(startedAt: number): Promise<void> {
@@ -1779,6 +1757,50 @@ export class ActiveSessionPage implements OnDestroy {
       currency: 'USD',
       maximumFractionDigits: 0
     }).format(amount);
+  }
+
+  private successMessageForAction(action: string): string {
+    if (action === 'add-player') {
+      return 'Player added.';
+    }
+
+    if (action === 'add-table') {
+      return 'Table added.';
+    }
+
+    if (action.startsWith('delete-table:')) {
+      return 'Table deleted.';
+    }
+
+    if (action.startsWith('rebuy:')) {
+      return 'Rebuy saved.';
+    }
+
+    if (action.startsWith('cash-out:')) {
+      return 'Cash out saved.';
+    }
+
+    if (action.startsWith('edit-buy-in:')) {
+      return 'Buy-in updated.';
+    }
+
+    if (action.startsWith('delete-buy-in:')) {
+      return 'Buy-in deleted.';
+    }
+
+    if (action.startsWith('remove-player:')) {
+      return 'Player removed.';
+    }
+
+    if (action === 'close-session') {
+      return 'Session closed.';
+    }
+
+    if (action === 'delete-session') {
+      return 'Session deleted.';
+    }
+
+    return 'Changes saved.';
   }
 
   private emptySession() {
