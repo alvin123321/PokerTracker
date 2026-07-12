@@ -31,6 +31,7 @@ export interface DashboardTablePlayerSortInput {
   id: string;
   name: string;
   status: 'ACTIVE' | 'COMPLETED';
+  net?: number;
   joinedAt?: string;
 }
 
@@ -40,6 +41,14 @@ export function sortDashboardTablePlayers<T extends DashboardTablePlayerSortInpu
   return [...players].sort((a, b) => {
     if (a.status !== b.status) {
       return a.status === 'ACTIVE' ? -1 : 1;
+    }
+
+    if (a.status === 'COMPLETED') {
+      const netSort = (b.net ?? 0) - (a.net ?? 0);
+
+      if (netSort !== 0) {
+        return netSort;
+      }
     }
 
     const nameSort = a.name.localeCompare(b.name, undefined, {

@@ -1606,7 +1606,12 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       AddPlayerDialogResult
     >(AddPlayerDialogComponent, {
       autoFocus: 'first-tabbable',
-      data: { registeredPlayers },
+      data: {
+        registeredPlayers,
+        sessionMemberUserIds: (this.store.getSession(sessionId)?.players ?? [])
+          .map((player) => player.userId)
+          .filter((userId): userId is string => Boolean(userId)),
+      },
       panelClass: 'pokertrack-dialog-panel',
     });
 

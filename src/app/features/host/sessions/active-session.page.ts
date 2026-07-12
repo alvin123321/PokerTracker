@@ -45,6 +45,8 @@ import {
   netResultTone,
   NetResultTone,
 } from '../shared/session-player-display.logic';
+import { gameTimelineTransactions } from '../data/session-timeline.logic';
+import { initialExpandedTableIds } from './active-session-display.logic';
 
 interface SessionActionReceipt {
   message: string;
@@ -568,9 +570,9 @@ interface SessionActionReceipt {
                   <div class="player-detail-panel-inner border-t border-emerald-300/10 bg-neutral-950/80 px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
                     <div class="player-detail-toolbar mb-3">
                       <div class="min-w-0">
-                        <p class="text-sm font-semibold text-white">Buy-in timeline</p>
+                        <p class="text-sm font-semibold text-white">Game timeline</p>
                         <p class="hidden text-xs text-neutral-500 lg:block">
-                          {{ canDelete() ? 'Host can edit or delete buy-ins' : 'Managers can edit buy-ins' }}
+                          {{ canDelete() ? 'Host can edit cash-outs and delete buy-ins' : 'Managers can edit cash-outs and buy-ins' }}
                         </p>
                       </div>
                       <div class="player-detail-toolbar-actions">
@@ -581,16 +583,17 @@ interface SessionActionReceipt {
                     </div>
 
                     <div class="space-y-2">
-                      @if (buyInTransactions(player.id).length === 0) {
+                      @if (timelineTransactions(player.id).length === 0) {
                         <div class="rounded-lg border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-500">
-                          No buy-ins recorded for this player.
+                          No transactions recorded for this player.
                         </div>
                       } @else {
-                        @for (transaction of buyInTransactions(player.id); track transaction.id) {
+                        @for (transaction of timelineTransactions(player.id); track transaction.id) {
                           <div
                             class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-[0.75fr_0.9fr_0.7fr_1.2fr_auto] sm:gap-3"
                             [class.transaction-row-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                             [class.transaction-row-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
+                            [class.border-sky-300/25]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                             [class.border-neutral-800]="transaction.deletedAt"
                             [class.opacity-60]="transaction.deletedAt"
                           >
@@ -598,6 +601,7 @@ interface SessionActionReceipt {
                               class="text-xs font-semibold uppercase text-emerald-300"
                               [class.transaction-label-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                               [class.transaction-label-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
+                              [class.text-sky-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
@@ -619,6 +623,7 @@ interface SessionActionReceipt {
                               class="col-start-2 row-start-1 self-center text-right text-lg font-semibold text-white sm:col-auto sm:row-auto sm:self-auto sm:text-left sm:text-base"
                               [class.transaction-amount-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                               [class.transaction-amount-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
+                              [class.text-sky-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
@@ -639,10 +644,10 @@ interface SessionActionReceipt {
                               type="button"
                               [disabled]="isBusy()"
                               class="col-start-3 row-start-1 inline-flex h-8 items-center justify-center gap-2 self-center rounded-lg border border-white/10 px-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:col-auto sm:row-auto sm:h-auto sm:px-3 sm:py-2"
-                              (click)="openEditBuyInDialog(player, transaction)"
+                              (click)="transaction.type === 'CASHOUT' ? openCashOutDialog(player) : openEditBuyInDialog(player, transaction)"
                             >
                               @if (
-                                isPending(transactionAction('edit-buy-in', transaction.id)) ||
+                                (transaction.type !== 'CASHOUT' && isPending(transactionAction('edit-buy-in', transaction.id))) ||
                                 isPending(transactionAction('delete-buy-in', transaction.id))
                               ) {
                                 <span class="action-spinner" aria-hidden="true"></span>
@@ -1209,6 +1214,7 @@ export class ActiveSessionPage implements OnDestroy {
   protected readonly actionReceipt = signal<SessionActionReceipt | null>(null);
   protected readonly selectedTableId = signal<string | null>(null);
   protected readonly expandedTableIds = signal<string[]>([]);
+  private readonly collapsedTableIds = signal<string[]>([]);
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly selectedTable = computed(() => {
@@ -1276,17 +1282,28 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected selectTable(tableId: string): void {
-    this.expandedTableIds.update((tableIds) =>
-      tableIds.includes(tableId)
-        ? tableIds.filter((currentTableId) => currentTableId !== tableId)
-        : [...tableIds, tableId],
-    );
+    if (this.isTableExpanded(tableId)) {
+      this.expandedTableIds.update((tableIds) =>
+        tableIds.filter((currentTableId) => currentTableId !== tableId)
+      );
+      this.collapsedTableIds.update((tableIds) => [...tableIds, tableId]);
+    } else {
+      this.collapsedTableIds.update((tableIds) =>
+        tableIds.filter((currentTableId) => currentTableId !== tableId)
+      );
+      this.expandedTableIds.update((tableIds) => [...tableIds, tableId]);
+    }
     this.selectedTableId.set(tableId);
     this.expandedPlayerId.set(null);
   }
 
   protected isTableExpanded(tableId: string): boolean {
-    return this.expandedTableIds().includes(tableId);
+    if (this.expandedTableIds().includes(tableId)) {
+      return true;
+    }
+
+    const firstTableId = initialExpandedTableIds(this.session()?.tables ?? [])[0];
+    return firstTableId === tableId && !this.collapsedTableIds().includes(tableId);
   }
 
   protected playersForTable(
@@ -1343,7 +1360,12 @@ export class ActiveSessionPage implements OnDestroy {
       AddPlayerDialogResult
     >(AddPlayerDialogComponent, {
       autoFocus: 'first-tabbable',
-      data: { registeredPlayers },
+      data: {
+        registeredPlayers,
+        sessionMemberUserIds: (this.session()?.players ?? [])
+          .map((player) => player.userId)
+          .filter((userId): userId is string => Boolean(userId)),
+      },
       panelClass: 'pokertrack-dialog-panel',
     });
 
@@ -1503,6 +1525,12 @@ export class ActiveSessionPage implements OnDestroy {
 
   protected buyInTransactions(playerId: string): PokerTransaction[] {
     return this.store.buyInTransactionsForPlayer(this.session(), playerId);
+  }
+
+  protected timelineTransactions(playerId: string): PokerTransaction[] {
+    return gameTimelineTransactions(
+      (this.session()?.transactions ?? []).filter((transaction) => transaction.playerId === playerId)
+    );
   }
 
   protected activeBuyInCount(playerId: string): number {

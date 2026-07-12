@@ -88,4 +88,14 @@ describe('host dashboard table player sorting', () => {
     expect(groups.activePlayers.map((player) => player.name)).toEqual(['1010', 'alvin', 'kevin']);
     expect(groups.cashedOutPlayers.map((player) => player.name)).toEqual(['Gene', 'Maxi']);
   });
+
+  it('sorts cashed-out players by net from highest to lowest', () => {
+    const sorted = sortDashboardTablePlayers([
+      { id: 'low', name: 'Alpha', status: 'COMPLETED', net: -100 },
+      { id: 'high', name: 'Zebra', status: 'COMPLETED', net: 250 },
+      { id: 'active', name: 'Active', status: 'ACTIVE', net: -50 }
+    ]);
+
+    expect(sorted.map((player) => player.id)).toEqual(['active', 'high', 'low']);
+  });
 });

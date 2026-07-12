@@ -4,11 +4,13 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { RegisteredPlayerOption } from '../data/poker-store.service';
+import { sortRegisteredPlayerOptions } from './add-player-dialog.logic';
 
 type AddPlayerMode = 'existing' | 'new';
 
 export interface AddPlayerDialogData {
   registeredPlayers: RegisteredPlayerOption[];
+  sessionMemberUserIds: readonly string[];
 }
 
 export interface AddPlayerDialogResult {
@@ -74,8 +76,9 @@ export interface AddPlayerDialogResult {
             @for (player of filteredRegisteredPlayers(); track player.id) {
               <button
                 type="button"
-                class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10"
+                class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/[0.015] disabled:text-neutral-600"
                 [class.member-option-selected]="form.controls.playerUserId.value === player.id"
+                [disabled]="isSessionMember(player.id)"
                 (click)="selectRegisteredPlayer(player.id)"
               >
                 <span>
@@ -83,6 +86,8 @@ export interface AddPlayerDialogResult {
                 </span>
                 @if (form.controls.playerUserId.value === player.id) {
                   <span class="selected-dot" aria-hidden="true"></span>
+                } @else if (isSessionMember(player.id)) {
+                  <span class="text-xs font-semibold uppercase text-neutral-600">Already in game</span>
                 }
               </button>
             } @empty {
@@ -265,6 +270,7 @@ export class AddPlayerDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<AddPlayerDialogComponent>);
   private readonly data = inject<AddPlayerDialogData>(MAT_DIALOG_DATA);
   protected readonly registeredPlayers = this.data.registeredPlayers;
+  private readonly sessionMemberUserIds = new Set(this.data.sessionMemberUserIds);
   protected readonly buyInPresets = [300, 400, 500, 600];
   protected readonly searchControl = new FormControl('', {
     nonNullable: true
@@ -274,7 +280,7 @@ export class AddPlayerDialogComponent {
     mode: new FormControl<AddPlayerMode>(this.registeredPlayers.length > 0 ? 'existing' : 'new', {
       nonNullable: true
     }),
-    playerUserId: new FormControl(this.registeredPlayers[0]?.id ?? '', {
+    playerUserId: new FormControl(this.firstSelectableRegisteredPlayerId(), {
       nonNullable: true
     }),
     name: new FormControl('', {
@@ -345,6 +351,10 @@ export class AddPlayerDialogComponent {
   }
 
   protected selectRegisteredPlayer(playerId: string): void {
+    if (this.isSessionMember(playerId)) {
+      return;
+    }
+
     this.form.controls.playerUserId.setValue(playerId);
   }
 
@@ -358,7 +368,10 @@ export class AddPlayerDialogComponent {
     }
 
     if (this.mode.value === 'existing') {
-      return Boolean(this.form.controls.playerUserId.value);
+      return (
+        Boolean(this.form.controls.playerUserId.value) &&
+        !this.isSessionMember(this.form.controls.playerUserId.value)
+      );
     }
 
     return this.form.controls.name.valid && this.form.controls.name.value.trim().length > 0 && !this.duplicateName();
@@ -368,12 +381,19 @@ export class AddPlayerDialogComponent {
     const search = this.searchControl.value.trim().toLocaleLowerCase();
 
     if (!search) {
-      return this.registeredPlayers;
+      return sortRegisteredPlayerOptions(this.registeredPlayers, this.data.sessionMemberUserIds);
     }
 
-    return this.registeredPlayers.filter((player) =>
-      this.playerLabel(player).toLocaleLowerCase().includes(search)
+    return sortRegisteredPlayerOptions(
+      this.registeredPlayers.filter((player) =>
+        this.playerLabel(player).toLocaleLowerCase().includes(search)
+      ),
+      this.data.sessionMemberUserIds
     );
+  }
+
+  protected isSessionMember(playerId: string): boolean {
+    return this.sessionMemberUserIds.has(playerId);
   }
 
   protected duplicateName(): boolean {
@@ -391,6 +411,10 @@ export class AddPlayerDialogComponent {
 
   protected playerLabel(player: RegisteredPlayerOption): string {
     return this.titleCaseName(player.displayName ?? player.username);
+  }
+
+  private firstSelectableRegisteredPlayerId(): string {
+    return this.filteredRegisteredPlayers().find((player) => !this.isSessionMember(player.id))?.id ?? '';
   }
 
   private titleCaseName(name: string): string {
