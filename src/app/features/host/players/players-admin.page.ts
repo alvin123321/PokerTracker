@@ -869,7 +869,7 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
     this.receiptTimer = setTimeout(() => {
       this.clearActionReceipt();
       this.receiptTimer = null;
-    }, tone === 'error' ? 7600 : 5400);
+    }, tone === 'error' ? 4800 : 3200);
   }
 
   private clearActionReceipt(): void {

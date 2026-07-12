@@ -40,6 +40,7 @@ import {
   RebuyDialogData,
   RebuyDialogResult
 } from '../transactions/rebuy-dialog.component';
+import { formatSignedMoney } from './active-session-display.logic';
 
 interface SessionActionReceipt {
   message: string;
@@ -365,7 +366,7 @@ interface SessionActionReceipt {
                               [class.text-emerald-300]="player.net >= 0"
                               [class.text-red-300]="player.net < 0"
                             >
-                              Net {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                              Net {{ signedMoney(player.net) }}
                             </span>
                           }
                         </span>
@@ -389,8 +390,29 @@ interface SessionActionReceipt {
                       }
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                      @if (player.status !== 'COMPLETED') {
+                    @if (player.status === 'COMPLETED') {
+                      <div class="completed-player-settlement-grid">
+                        <div class="completed-player-settlement-cell">
+                          <p>Total buy in</p>
+                          <strong>{{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                        </div>
+                        <div class="completed-player-settlement-cell">
+                          <p>Cashed out</p>
+                          <strong>{{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                        </div>
+                        <div class="completed-player-settlement-cell">
+                          <p>Net</p>
+                          <strong
+                            [class.text-emerald-300]="player.net > 0"
+                            [class.text-red-300]="player.net < 0"
+                            [class.text-neutral-100]="player.net === 0"
+                          >
+                            {{ signedMoney(player.net) }}
+                          </strong>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="grid grid-cols-2 gap-2">
                         <button
                           type="button"
                           [disabled]="isBusy()"
@@ -404,22 +426,21 @@ interface SessionActionReceipt {
                             Rebuy
                           }
                         </button>
-                      }
-                      <button
-                        type="button"
-                        [disabled]="isBusy()"
-                        class="inline-flex min-h-10 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
-                        [class.col-span-2]="player.status === 'COMPLETED'"
-                        (click)="$event.stopPropagation(); openCashOutDialog(player)"
-                      >
-                        @if (isPending(playerAction('cash-out', player.id))) {
-                          <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
-                          Saving
-                        } @else {
-                          {{ player.status === 'COMPLETED' ? 'Edit Cash Out' : 'Cash Out' }}
-                        }
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          [disabled]="isBusy()"
+                          class="inline-flex min-h-10 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                          (click)="$event.stopPropagation(); openCashOutDialog(player)"
+                        >
+                          @if (isPending(playerAction('cash-out', player.id))) {
+                            <span class="action-spinner action-spinner-sm" aria-hidden="true"></span>
+                            Saving
+                          } @else {
+                            Cash Out
+                          }
+                        </button>
+                      </div>
+                    }
                   </div>
                 </div>
 
@@ -473,10 +494,11 @@ interface SessionActionReceipt {
                     @if (player.status === 'COMPLETED') {
                       <p
                         class="font-semibold"
-                        [class.text-emerald-300]="player.net >= 0"
+                        [class.text-emerald-300]="player.net > 0"
                         [class.text-red-300]="player.net < 0"
+                        [class.text-neutral-100]="player.net === 0"
                       >
-                        {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                        {{ signedMoney(player.net) }}
                       </p>
                     } @else {
                       <span aria-hidden="true"></span>
@@ -498,20 +520,20 @@ interface SessionActionReceipt {
                           Rebuy
                         }
                       </button>
+                      <button
+                        type="button"
+                        [disabled]="isBusy()"
+                        class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
+                        (click)="$event.stopPropagation(); openCashOutDialog(player)"
+                      >
+                        @if (isPending(playerAction('cash-out', player.id))) {
+                          <span class="action-spinner" aria-hidden="true"></span>
+                          Saving...
+                        } @else {
+                          Cash Out
+                        }
+                      </button>
                     }
-                    <button
-                      type="button"
-                      [disabled]="isBusy()"
-                      class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-neutral-500"
-                      (click)="$event.stopPropagation(); openCashOutDialog(player)"
-                    >
-                      @if (isPending(playerAction('cash-out', player.id))) {
-                        <span class="action-spinner" aria-hidden="true"></span>
-                        Saving...
-                      } @else {
-                        {{ player.status === 'COMPLETED' ? 'Edit Cash Out' : 'Cash Out' }}
-                      }
-                    </button>
                     @if (canRemovePlayer(currentSession, player)) {
                       <button
                         type="button"
@@ -539,9 +561,15 @@ interface SessionActionReceipt {
                 >
                   <div class="player-detail-panel-inner border-t border-emerald-300/10 bg-neutral-950/80 px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
                     @if (player.status === 'COMPLETED') {
-                      <div class="mb-3 grid grid-cols-2 gap-2 text-sm lg:hidden">
+                      <div class="mb-3 grid grid-cols-3 gap-2 text-sm lg:hidden">
                         <div class="rounded-lg bg-white/[0.03] p-3">
-                          <p class="text-xs text-neutral-500">Cash out</p>
+                          <p class="text-xs text-neutral-500">Total buy in</p>
+                          <p class="mt-1 font-semibold text-white">
+                            {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                          </p>
+                        </div>
+                        <div class="rounded-lg bg-white/[0.03] p-3">
+                          <p class="text-xs text-neutral-500">Cashed out</p>
                           <p class="mt-1 font-semibold text-white">
                             {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                           </p>
@@ -550,10 +578,11 @@ interface SessionActionReceipt {
                           <p class="text-xs text-neutral-500">Net</p>
                           <p
                             class="mt-1 font-semibold"
-                            [class.text-emerald-300]="player.net >= 0"
+                            [class.text-emerald-300]="player.net > 0"
                             [class.text-red-300]="player.net < 0"
+                            [class.text-neutral-100]="player.net === 0"
                           >
-                            {{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}
+                            {{ signedMoney(player.net) }}
                           </p>
                         </div>
                       </div>
@@ -964,6 +993,38 @@ interface SessionActionReceipt {
       .session-player-mobile-card:hover {
         border-color: rgb(255 255 255 / 0.14);
         background: rgb(255 255 255 / 0.04);
+      }
+
+      .completed-player-settlement-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.5rem;
+      }
+
+      .completed-player-settlement-cell {
+        min-width: 0;
+        border: 1px solid rgb(255 255 255 / 0.08);
+        border-radius: 0.6rem;
+        background: rgb(255 255 255 / 0.035);
+        padding: 0.65rem 0.55rem;
+      }
+
+      .completed-player-settlement-cell p {
+        margin: 0;
+        color: rgb(163 163 163);
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1.15;
+      }
+
+      .completed-player-settlement-cell strong {
+        display: block;
+        margin-top: 0.25rem;
+        overflow-wrap: anywhere;
+        color: white;
+        font-size: 0.9rem;
+        font-weight: 800;
+        line-height: 1.1;
       }
 
       .session-player-remove-mobile-button {
@@ -1434,6 +1495,10 @@ export class ActiveSessionPage implements OnDestroy {
     return this.buyInTransactions(playerId).filter((transaction) => !transaction.deletedAt).length;
   }
 
+  protected signedMoney(amount: number): string {
+    return formatSignedMoney(amount);
+  }
+
   protected togglePlayer(playerId: string): void {
     this.expandedPlayerId.update((currentPlayerId) =>
       currentPlayerId === playerId ? null : playerId
@@ -1729,7 +1794,7 @@ export class ActiveSessionPage implements OnDestroy {
     this.toastTimer = setTimeout(() => {
       this.actionReceipt.set(null);
       this.toastTimer = null;
-    }, tone === 'error' ? 7600 : 5400);
+    }, tone === 'error' ? 4800 : 3200);
   }
 
   private clearActionReceipt(): void {

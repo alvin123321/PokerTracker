@@ -1738,7 +1738,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     this.actionReceiptTimer = setTimeout(() => {
       this.actionReceipt.set(null);
       this.actionReceiptTimer = null;
-    }, tone === 'error' ? 7600 : 5400);
+    }, tone === 'error' ? 4800 : 3200);
   }
 
   private successMessageForAction(action: string): string {

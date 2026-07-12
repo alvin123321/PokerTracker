@@ -57,16 +57,16 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
         --action-feedback-bg: rgba(6, 78, 59, 0.96);
         --action-feedback-border: rgba(110, 231, 183, 0.34);
         --action-feedback-shadow: rgba(16, 185, 129, 0.22);
-        --action-feedback-exit-delay: 4.55s;
+        --action-feedback-exit-delay: 2.65s;
 
         position: absolute;
-        top: 48%;
+        top: calc(max(1rem, env(safe-area-inset-top)) + 4.75rem);
         left: 50%;
         width: min(calc(100vw - 2rem), 23rem);
-        transform: translate(-50%, -50%);
+        transform: translateX(-50%);
         animation:
           action-feedback-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both,
-          action-feedback-out 520ms ease-in forwards var(--action-feedback-exit-delay);
+          action-feedback-out 420ms ease-in forwards var(--action-feedback-exit-delay);
       }
 
       .action-feedback-toast-error {
@@ -74,7 +74,7 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
         --action-feedback-bg: rgba(127, 29, 29, 0.96);
         --action-feedback-border: rgba(252, 165, 165, 0.42);
         --action-feedback-shadow: rgba(239, 68, 68, 0.25);
-        --action-feedback-exit-delay: 6.8s;
+        --action-feedback-exit-delay: 4.25s;
       }
 
       .action-feedback-toast-info,
@@ -136,19 +136,19 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
       @keyframes action-feedback-in {
         from {
           opacity: 0;
-          transform: translate(-50%, calc(-50% + 0.7rem)) scale(0.96);
+          transform: translate(-50%, -0.45rem) scale(0.96);
         }
 
         to {
           opacity: 1;
-          transform: translate(-50%, -50%) scale(1);
+          transform: translateX(-50%) scale(1);
         }
       }
 
       @keyframes action-feedback-out {
         to {
           opacity: 0;
-          transform: translate(-50%, calc(-50% - 0.45rem)) scale(0.98);
+          transform: translate(-50%, -0.45rem) scale(0.98);
         }
       }
 
@@ -160,7 +160,7 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
 
       @media (min-width: 640px) {
         .action-feedback-toast {
-          top: 42%;
+          top: calc(max(1.25rem, env(safe-area-inset-top)) + 4.25rem);
         }
       }
 
