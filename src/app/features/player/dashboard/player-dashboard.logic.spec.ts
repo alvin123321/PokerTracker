@@ -4,6 +4,7 @@ import {
   playerGameTimeline,
   playerGameStatusKind,
   playerGameStatMode,
+  playerPublicTableRoster,
   playerPublicTableStats,
   shouldPollPlayerCallTime,
   totalActivePlayerChips,
@@ -196,6 +197,114 @@ describe('player public table stats', () => {
       activePlayerCount: 2,
       totalActivePlayerChips: 400
     });
+  });
+
+  it('does not aggregate unassigned players as a table', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: null, totalBuyIn: 100 });
+    const session = makeSession({
+      players: [player, makePlayer({ id: 'seat-b', tableId: null, totalBuyIn: 300 })]
+    });
+
+    expect(
+      playerPublicTableStats(session, player, [
+        {
+          sessionPlayerId: player.id,
+          sessionId: session.id,
+          tableId: null,
+          activePlayerCount: 2,
+          totalActivePlayerChips: 400
+        }
+      ])
+    ).toEqual({
+      activePlayerCount: 1,
+      totalActivePlayerChips: 100
+    });
+  });
+});
+
+describe('player public table roster', () => {
+  it('uses public roster entries when RLS only exposes the current player row', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
+    const session = makeSession({ players: [player] });
+
+    const roster = playerPublicTableRoster(session, player, [
+      {
+        sessionPlayerId: 'seat-b',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Gene',
+        status: 'COMPLETED'
+      },
+      {
+        sessionPlayerId: 'seat-c',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Kevin',
+        status: 'ACTIVE'
+      },
+      {
+        sessionPlayerId: 'seat-a',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Alvin',
+        status: 'ACTIVE'
+      }
+    ]);
+
+    expect(roster.map((entry) => `${entry.name}:${entry.status}`)).toEqual([
+      'Alvin:ACTIVE',
+      'Kevin:ACTIVE',
+      'Gene:COMPLETED'
+    ]);
+  });
+
+  it('falls back to visible session players in development/local mode', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
+    const session = makeSession({
+      players: [
+        player,
+        makePlayer({ id: 'seat-b', tableId: 'table-a', name: 'Gene', status: 'COMPLETED' }),
+        makePlayer({ id: 'seat-c', tableId: 'table-a', name: 'Kevin' }),
+        makePlayer({ id: 'seat-d', tableId: 'table-b', name: 'Sarah' })
+      ]
+    });
+
+    const roster = playerPublicTableRoster(session, player, []);
+
+    expect(roster.map((entry) => `${entry.name}:${entry.status}`)).toEqual([
+      'Alvin:ACTIVE',
+      'Kevin:ACTIVE',
+      'Gene:COMPLETED'
+    ]);
+  });
+
+  it('does not treat unassigned players as sharing a table', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: null, name: 'Alvin' });
+    const session = makeSession({
+      players: [
+        player,
+        makePlayer({ id: 'seat-b', tableId: null, name: 'Gene' })
+      ]
+    });
+
+    const roster = playerPublicTableRoster(session, player, [
+      {
+        sessionPlayerId: 'seat-a',
+        sessionId: session.id,
+        tableId: null,
+        name: 'Alvin',
+        status: 'ACTIVE'
+      },
+      {
+        sessionPlayerId: 'seat-b',
+        sessionId: session.id,
+        tableId: null,
+        name: 'Gene',
+        status: 'ACTIVE'
+      }
+    ]);
+
+    expect(roster.map((entry) => entry.name)).toEqual(['Alvin']);
   });
 });
 
