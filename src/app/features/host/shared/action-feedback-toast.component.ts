@@ -57,10 +57,10 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
         --action-feedback-bg: rgba(6, 78, 59, 0.96);
         --action-feedback-border: rgba(110, 231, 183, 0.34);
         --action-feedback-shadow: rgba(16, 185, 129, 0.22);
-        --action-feedback-exit-delay: 2.65s;
+        --action-feedback-exit-delay: 2.15s;
 
         position: absolute;
-        top: calc(max(1rem, env(safe-area-inset-top)) + 4.75rem);
+        top: max(0.75rem, env(safe-area-inset-top));
         left: 50%;
         width: min(calc(100vw - 2rem), 23rem);
         transform: translateX(-50%);
@@ -74,7 +74,7 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
         --action-feedback-bg: rgba(127, 29, 29, 0.96);
         --action-feedback-border: rgba(252, 165, 165, 0.42);
         --action-feedback-shadow: rgba(239, 68, 68, 0.25);
-        --action-feedback-exit-delay: 4.25s;
+        --action-feedback-exit-delay: 3.75s;
       }
 
       .action-feedback-toast-info,
@@ -160,7 +160,7 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
 
       @media (min-width: 640px) {
         .action-feedback-toast {
-          top: calc(max(1.25rem, env(safe-area-inset-top)) + 4.25rem);
+          top: max(1rem, env(safe-area-inset-top));
         }
       }
 

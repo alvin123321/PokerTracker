@@ -9,11 +9,11 @@ import {
   PokerStoreService,
   PokerTransaction,
   RegisteredPlayerOption,
-  SessionPlayer
+  SessionPlayer,
 } from '../data/poker-store.service';
 import {
   ConfirmationDialogComponent,
-  ConfirmationDialogData
+  ConfirmationDialogData,
 } from '../shared/confirmation-dialog.component';
 import { messageFromUnknownError } from '../shared/action-feedback.logic';
 import { ActionFeedbackToastComponent } from '../shared/action-feedback-toast.component';
@@ -26,7 +26,13 @@ interface PlayerLedgerRow {
 
 @Component({
   selector: 'app-players-admin-page',
-  imports: [ActionFeedbackToastComponent, CurrencyPipe, DatePipe, MatDialogModule, ReactiveFormsModule],
+  imports: [
+    ActionFeedbackToastComponent,
+    CurrencyPipe,
+    DatePipe,
+    MatDialogModule,
+    ReactiveFormsModule,
+  ],
   template: `
     <section class="space-y-5 sm:space-y-6">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -343,10 +349,7 @@ interface PlayerLedgerRow {
         font-size: 1.15rem;
         font-weight: 800;
         letter-spacing: 0.08em;
-        transition:
-          border-color 160ms ease,
-          background 160ms ease,
-          color 160ms ease,
+        transition: border-color 160ms ease, background 160ms ease, color 160ms ease,
           transform 160ms ease;
       }
 
@@ -391,9 +394,7 @@ interface PlayerLedgerRow {
         font-size: 0.86rem;
         font-weight: 700;
         text-align: left;
-        transition:
-          background 150ms ease,
-          color 150ms ease;
+        transition: background 150ms ease, color 150ms ease;
       }
 
       .member-action-menu-item:hover {
@@ -429,9 +430,7 @@ interface PlayerLedgerRow {
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
-        transition:
-          grid-template-rows 280ms ease-in-out,
-          opacity 220ms ease-in-out,
+        transition: grid-template-rows 280ms ease-in-out, opacity 220ms ease-in-out,
           visibility 0ms linear 280ms;
       }
 
@@ -440,18 +439,14 @@ interface PlayerLedgerRow {
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
-        transition:
-          grid-template-rows 280ms ease-in-out,
-          opacity 220ms ease-in-out;
+        transition: grid-template-rows 280ms ease-in-out, opacity 220ms ease-in-out;
       }
 
       .member-ledger-panel-inner {
         min-height: 0;
         overflow: hidden;
         transform: translateY(-0.25rem);
-        transition:
-          padding 260ms ease-in-out,
-          transform 260ms ease-in-out,
+        transition: padding 260ms ease-in-out, transform 260ms ease-in-out,
           border-color 260ms ease-in-out;
       }
 
@@ -506,8 +501,8 @@ interface PlayerLedgerRow {
           transform: rotate(360deg);
         }
       }
-    `
-  ]
+    `,
+  ],
 })
 export class PlayersAdminPage implements OnInit, OnDestroy {
   protected readonly store = inject(PokerStoreService);
@@ -539,13 +534,13 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
   private receiptTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly newPlayerLogin = new FormControl('', {
     nonNullable: true,
-    validators: [Validators.required, Validators.maxLength(80)]
+    validators: [Validators.required, Validators.maxLength(80)],
   });
   protected readonly searchControl = new FormControl('', {
-    nonNullable: true
+    nonNullable: true,
   });
   private readonly searchTerm = toSignal(this.searchControl.valueChanges, {
-    initialValue: ''
+    initialValue: '',
   });
 
   protected readonly filteredPlayers = computed(() => {
@@ -553,7 +548,7 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
     const sortedPlayers = [...this.players()].sort((a, b) =>
       this.playerLabel(a).localeCompare(this.playerLabel(b), undefined, {
         sensitivity: 'base',
-        numeric: true
+        numeric: true,
       })
     );
 
@@ -565,8 +560,8 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
       `${player.displayName ?? ''} ${player.username}`.toLocaleLowerCase().includes(search)
     );
   });
-  protected readonly selectedPlayer = computed(() =>
-    this.players().find((player) => player.id === this.selectedPlayerId()) ?? null
+  protected readonly selectedPlayer = computed(
+    () => this.players().find((player) => player.id === this.selectedPlayerId()) ?? null
   );
   protected readonly selectedRows = computed(() => this.rowsForPlayer(this.selectedPlayerId()));
 
@@ -610,21 +605,22 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
 
     this.openMemberActionMenuId.set(null);
 
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+    const dialogRef = this.dialog.open<
       ConfirmationDialogComponent,
-      {
-        autoFocus: false,
-        data: {
-          title: 'Delete player user?',
-          message:
-            'This deletes the player login account. Existing poker records stay in session history but will no longer be linked to a player login.',
-          confirmLabel: 'Delete user',
-          tone: 'danger',
-          details: [this.playerLabel(player), `Login: ${player.username}`]
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Delete player user?',
+        message:
+          'This deletes the player login account. Existing poker records stay in session history but will no longer be linked to a player login.',
+        confirmLabel: 'Delete user',
+        tone: 'danger',
+        details: [this.playerLabel(player), `Login: ${player.username}`],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) {
@@ -654,20 +650,21 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
 
     this.openMemberActionMenuId.set(null);
 
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+    const dialogRef = this.dialog.open<
       ConfirmationDialogComponent,
-      {
-        autoFocus: false,
-        data: {
-          title: 'Reset password?',
-          message: 'This resets the player login password to 123456.',
-          confirmLabel: 'Reset password',
-          tone: 'primary',
-          details: [this.playerLabel(player), `Login ID: ${player.username}`]
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Reset password?',
+        message: 'This resets the player login password to 123456.',
+        confirmLabel: 'Reset password',
+        tone: 'primary',
+        details: [this.playerLabel(player), `Login ID: ${player.username}`],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) {
@@ -702,7 +699,10 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
     try {
       await this.store.setRegisteredPlayerRole(player.id, nextRole);
       await this.loadPlayers(player.id);
-      this.showActionReceipt(nextRole === 'MANAGER' ? 'Manager access saved.' : 'Player access saved.', 'success');
+      this.showActionReceipt(
+        nextRole === 'MANAGER' ? 'Manager access saved.' : 'Player access saved.',
+        'success'
+      );
     } catch (error) {
       this.showActionReceipt(this.toMessage(error), 'error');
     } finally {
@@ -775,7 +775,7 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
     window.requestAnimationFrame(() => {
       window.scrollTo({
         top: 0,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     });
   }
@@ -826,12 +826,15 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
       .flatMap((session) =>
         session.players
           .filter(
-            (player) => player.userId === playerId || this.localRegisteredPlayerId(player.name) === playerId
+            (player) =>
+              player.userId === playerId || this.localRegisteredPlayerId(player.name) === playerId
           )
           .map((player) => ({
             session,
             player,
-            transactions: session.transactions.filter((transaction) => transaction.playerId === player.id)
+            transactions: session.transactions.filter(
+              (transaction) => transaction.playerId === player.id
+            ),
           }))
       )
       .sort((a, b) => b.session.sessionDate.localeCompare(a.session.sessionDate));
@@ -866,10 +869,13 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
       this.errorMessage.set(message);
     }
 
-    this.receiptTimer = setTimeout(() => {
-      this.clearActionReceipt();
-      this.receiptTimer = null;
-    }, tone === 'error' ? 4800 : 3200);
+    this.receiptTimer = setTimeout(
+      () => {
+        this.clearActionReceipt();
+        this.receiptTimer = null;
+      },
+      tone === 'error' ? 4300 : 2700
+    );
   }
 
   private clearActionReceipt(): void {
@@ -881,5 +887,4 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
     this.errorMessage.set(null);
     this.successMessage.set(null);
   }
-
 }

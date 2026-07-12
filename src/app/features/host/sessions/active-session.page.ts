@@ -10,37 +10,41 @@ import {
   PokerSession,
   PokerTable,
   SessionPlayer,
-  PokerTransaction
+  PokerTransaction,
 } from '../data/poker-store.service';
 import {
   AddPlayerDialogData,
   AddPlayerDialogComponent,
-  AddPlayerDialogResult
+  AddPlayerDialogResult,
 } from '../players/add-player-dialog.component';
 import {
   ConfirmationDialogComponent,
-  ConfirmationDialogData
+  ConfirmationDialogData,
 } from '../shared/confirmation-dialog.component';
 import { messageFromUnknownError } from '../shared/action-feedback.logic';
 import {
   ActionFeedbackToastComponent,
-  ActionFeedbackToastTone
+  ActionFeedbackToastTone,
 } from '../shared/action-feedback-toast.component';
 import {
   CashOutDialogComponent,
-  CashOutDialogData
+  CashOutDialogData,
 } from '../transactions/cash-out-dialog.component';
 import {
   EditBuyInDialogComponent,
   EditBuyInDialogData,
-  EditBuyInDialogResult
+  EditBuyInDialogResult,
 } from '../transactions/edit-buy-in-dialog.component';
 import {
   RebuyDialogComponent,
   RebuyDialogData,
-  RebuyDialogResult
+  RebuyDialogResult,
 } from '../transactions/rebuy-dialog.component';
-import { formatSignedMoney } from './active-session-display.logic';
+import {
+  formatSignedMoney,
+  netResultTone,
+  NetResultTone,
+} from '../shared/session-player-display.logic';
 
 interface SessionActionReceipt {
   message: string;
@@ -55,7 +59,7 @@ interface SessionActionReceipt {
     DatePipe,
     MatDialogModule,
     NgTemplateOutlet,
-    RouterLink
+    RouterLink,
   ],
   template: `
     @if (session(); as currentSession) {
@@ -294,7 +298,7 @@ interface SessionActionReceipt {
                         }
                       </div>
                     } @else {
-                      <div class="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+                      <div class="session-player-list">
                         <div
                           class="hidden grid-cols-[1.35fr_0.9fr_0.65fr_0.9fr_0.85fr_1.4fr] gap-3 border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase text-neutral-500 lg:grid"
                         >
@@ -336,40 +340,35 @@ interface SessionActionReceipt {
 
         <ng-template #playerRow let-player let-playerIndex="index">
               <div
-                class="player-row border-b border-white/5 transition last:border-b-0 hover:bg-white/[0.035]"
+                class="player-row"
                 [class.player-row-accent-cyan]="playerAccent(playerIndex) === 'cyan'"
                 [class.player-row-accent-amber]="playerAccent(playerIndex) === 'amber'"
                 [class.player-row-accent-fuchsia]="playerAccent(playerIndex) === 'fuchsia'"
                 [class.player-row-accent-emerald]="playerAccent(playerIndex) === 'emerald'"
-                [class.opacity-70]="player.status === 'COMPLETED'"
+                [class.player-row-completed]="player.status === 'COMPLETED'"
                 [class.player-row-rebuy-glow]="recentRebuyPlayerId() === player.id"
               >
                 <div class="lg:hidden">
-                  <div class="grid cursor-pointer gap-2 px-3 py-2.5" (click)="togglePlayer(player.id)">
+                  <div class="grid cursor-pointer" (click)="togglePlayer(player.id)">
                     <div class="session-player-mobile-card">
                       <button
                         type="button"
-                        class="min-w-0 px-3 py-2 text-left transition"
+                        class="min-w-0 px-3 py-2.5 text-left transition"
+                        [attr.aria-expanded]="isExpanded(player.id)"
+                        [attr.aria-controls]="'player-timeline-' + player.id"
                         (click)="$event.stopPropagation(); togglePlayer(player.id)"
                       >
                         <span class="flex min-w-0 items-center gap-2">
                           <span class="truncate text-base font-semibold text-white">{{ player.name }}</span>
-                          <span class="shrink-0 text-xs text-neutral-500">
+                          <span class="shrink-0 text-xs text-neutral-500" aria-hidden="true">
                             {{ isExpanded(player.id) ? 'v' : '>' }}
                           </span>
                         </span>
-                        <span class="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-neutral-400">
-                          <span>{{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }} buy-in</span>
-                          @if (player.status === 'COMPLETED') {
-                            <span
-                              class="font-semibold"
-                              [class.text-emerald-300]="player.net >= 0"
-                              [class.text-red-300]="player.net < 0"
-                            >
-                              Net {{ signedMoney(player.net) }}
-                            </span>
-                          }
-                        </span>
+                        @if (player.status === 'ACTIVE') {
+                          <span class="mt-0.5 block text-xs text-neutral-400">
+                            {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }} buy-in
+                          </span>
+                        }
                       </button>
 
                       @if (canRemovePlayer(currentSession, player)) {
@@ -394,25 +393,29 @@ interface SessionActionReceipt {
                       <div class="completed-player-settlement-grid">
                         <div class="completed-player-settlement-cell">
                           <p>Total buy in</p>
-                          <strong>{{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                          <strong class="completed-player-settlement-value-buyin">
+                            {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                          </strong>
                         </div>
                         <div class="completed-player-settlement-cell">
                           <p>Cashed out</p>
-                          <strong>{{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                          <strong class="completed-player-settlement-value-cashout">
+                            {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
+                          </strong>
                         </div>
                         <div class="completed-player-settlement-cell">
                           <p>Net</p>
                           <strong
-                            [class.text-emerald-300]="player.net > 0"
-                            [class.text-red-300]="player.net < 0"
-                            [class.text-neutral-100]="player.net === 0"
+                            [class.completed-player-settlement-value-positive]="netTone(player.net) === 'positive'"
+                            [class.completed-player-settlement-value-negative]="netTone(player.net) === 'negative'"
+                            [class.completed-player-settlement-value-neutral]="netTone(player.net) === 'neutral'"
                           >
                             {{ signedMoney(player.net) }}
                           </strong>
                         </div>
                       </div>
                     } @else {
-                      <div class="grid grid-cols-2 gap-2">
+                      <div class="grid grid-cols-2 gap-2 border-t border-white/10 px-3 pb-3 pt-2.5">
                         <button
                           type="button"
                           [disabled]="isBusy()"
@@ -451,6 +454,8 @@ interface SessionActionReceipt {
                   <button
                     type="button"
                     class="group flex items-center gap-3 text-left"
+                    [attr.aria-expanded]="isExpanded(player.id)"
+                    [attr.aria-controls]="'player-timeline-' + player.id"
                     (click)="$event.stopPropagation(); togglePlayer(player.id)"
                   >
                     <span
@@ -468,7 +473,7 @@ interface SessionActionReceipt {
 
                   <div class="grid grid-cols-2 gap-3 rounded-lg bg-neutral-950 p-3 lg:block lg:bg-transparent lg:p-0">
                     <p class="text-xs text-neutral-500 lg:hidden">Buy-in</p>
-                    <p class="font-semibold text-white">
+                    <p class="font-semibold text-amber-200">
                       {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
                     </p>
                   </div>
@@ -481,7 +486,7 @@ interface SessionActionReceipt {
                   <div class="grid grid-cols-2 gap-3 rounded-lg bg-neutral-950 p-3 lg:block lg:bg-transparent lg:p-0">
                     <p class="text-xs text-neutral-500 lg:hidden">Cash out</p>
                     @if (player.status === 'COMPLETED') {
-                      <p class="font-semibold text-white">
+                      <p class="font-semibold text-sky-200">
                         {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
                       </p>
                     } @else {
@@ -554,40 +559,13 @@ interface SessionActionReceipt {
                 </div>
 
                 <div
+                  [id]="'player-timeline-' + player.id"
                   class="player-detail-panel"
                   [class.player-detail-panel-open]="isExpanded(player.id)"
                   [attr.aria-hidden]="!isExpanded(player.id)"
                   [attr.inert]="isExpanded(player.id) ? null : ''"
                 >
                   <div class="player-detail-panel-inner border-t border-emerald-300/10 bg-neutral-950/80 px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
-                    @if (player.status === 'COMPLETED') {
-                      <div class="mb-3 grid grid-cols-3 gap-2 text-sm lg:hidden">
-                        <div class="rounded-lg bg-white/[0.03] p-3">
-                          <p class="text-xs text-neutral-500">Total buy in</p>
-                          <p class="mt-1 font-semibold text-white">
-                            {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                          </p>
-                        </div>
-                        <div class="rounded-lg bg-white/[0.03] p-3">
-                          <p class="text-xs text-neutral-500">Cashed out</p>
-                          <p class="mt-1 font-semibold text-white">
-                            {{ player.cashOut | currency: 'USD' : 'symbol' : '1.0-0' }}
-                          </p>
-                        </div>
-                        <div class="rounded-lg bg-white/[0.03] p-3">
-                          <p class="text-xs text-neutral-500">Net</p>
-                          <p
-                            class="mt-1 font-semibold"
-                            [class.text-emerald-300]="player.net > 0"
-                            [class.text-red-300]="player.net < 0"
-                            [class.text-neutral-100]="player.net === 0"
-                          >
-                            {{ signedMoney(player.net) }}
-                          </p>
-                        </div>
-                      </div>
-                    }
-
                     <div class="player-detail-toolbar mb-3">
                       <div class="min-w-0">
                         <p class="text-sm font-semibold text-white">Buy-in timeline</p>
@@ -978,35 +956,30 @@ interface SessionActionReceipt {
         transform: none;
       }
 
+      .session-player-list {
+        display: grid;
+        gap: 0.65rem;
+      }
+
       .session-player-mobile-card {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
-        overflow: hidden;
-        border: 1px solid rgb(255 255 255 / 0.08);
-        border-radius: 0.65rem;
-        background: rgb(255 255 255 / 0.025);
-        transition:
-          background 180ms ease,
-          border-color 180ms ease;
-      }
-
-      .session-player-mobile-card:hover {
-        border-color: rgb(255 255 255 / 0.14);
-        background: rgb(255 255 255 / 0.04);
       }
 
       .completed-player-settlement-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.5rem;
+        border-top: 1px solid rgb(255 255 255 / 0.1);
+        background: rgb(0 0 0 / 0.18);
       }
 
       .completed-player-settlement-cell {
         min-width: 0;
-        border: 1px solid rgb(255 255 255 / 0.08);
-        border-radius: 0.6rem;
-        background: rgb(255 255 255 / 0.035);
-        padding: 0.65rem 0.55rem;
+        padding: 0.7rem 0.65rem;
+      }
+
+      .completed-player-settlement-cell + .completed-player-settlement-cell {
+        border-left: 1px solid rgb(255 255 255 / 0.08);
       }
 
       .completed-player-settlement-cell p {
@@ -1025,6 +998,26 @@ interface SessionActionReceipt {
         font-size: 0.9rem;
         font-weight: 800;
         line-height: 1.1;
+      }
+
+      .completed-player-settlement-cell .completed-player-settlement-value-buyin {
+        color: rgb(253 230 138);
+      }
+
+      .completed-player-settlement-cell .completed-player-settlement-value-cashout {
+        color: rgb(186 230 253);
+      }
+
+      .completed-player-settlement-cell .completed-player-settlement-value-positive {
+        color: rgb(134 239 172);
+      }
+
+      .completed-player-settlement-cell .completed-player-settlement-value-negative {
+        color: rgb(252 165 165);
+      }
+
+      .completed-player-settlement-cell .completed-player-settlement-value-neutral {
+        color: rgb(245 245 245);
       }
 
       .session-player-remove-mobile-button {
@@ -1046,21 +1039,18 @@ interface SessionActionReceipt {
         .player-detail-toolbar-actions {
           max-width: 52%;
         }
-
       }
 
       .transaction-row-buyin {
         border-color: rgb(52 211 153 / 0.24);
         background:
-          linear-gradient(135deg, rgb(16 185 129 / 0.12), transparent 62%),
-          rgb(255 255 255 / 0.03);
+          linear-gradient(135deg, rgb(16 185 129 / 0.12), transparent 62%), rgb(255 255 255 / 0.03);
       }
 
       .transaction-row-rebuy {
         border-color: rgb(56 189 248 / 0.28);
         background:
-          linear-gradient(135deg, rgb(14 165 233 / 0.14), transparent 62%),
-          rgb(255 255 255 / 0.03);
+          linear-gradient(135deg, rgb(14 165 233 / 0.14), transparent 62%), rgb(255 255 255 / 0.03);
       }
 
       .transaction-label-buyin,
@@ -1075,46 +1065,71 @@ interface SessionActionReceipt {
 
       .player-row {
         position: relative;
+        overflow: hidden;
+        border: 1px solid rgb(255 255 255 / 0.13);
+        border-radius: 0.65rem;
+        background: rgb(10 10 10 / 0.72);
+        box-shadow: 0 0.45rem 1.1rem rgb(0 0 0 / 0.16);
+        transition:
+          background 180ms ease,
+          border-color 180ms ease,
+          box-shadow 180ms ease;
       }
 
-      .player-row::before {
-        position: absolute;
-        inset: 0 auto 0 0;
-        width: 0.18rem;
-        content: '';
-        opacity: 0.8;
+      .player-row:hover {
+        border-color: rgb(255 255 255 / 0.2);
+        background: rgb(23 23 23 / 0.82);
       }
 
       .player-row-accent-cyan {
-        background: linear-gradient(90deg, rgb(34 211 238 / 0.08), transparent 42%);
+        border-color: rgb(34 211 238 / 0.22);
+        background:
+          linear-gradient(115deg, rgb(34 211 238 / 0.09), transparent 46%), rgb(10 10 10 / 0.72);
       }
 
       .player-row-accent-amber {
-        background: linear-gradient(90deg, rgb(251 191 36 / 0.08), transparent 42%);
+        border-color: rgb(251 191 36 / 0.22);
+        background:
+          linear-gradient(115deg, rgb(251 191 36 / 0.09), transparent 46%), rgb(10 10 10 / 0.72);
       }
 
       .player-row-accent-fuchsia {
-        background: linear-gradient(90deg, rgb(217 70 239 / 0.08), transparent 42%);
+        border-color: rgb(217 70 239 / 0.22);
+        background:
+          linear-gradient(115deg, rgb(217 70 239 / 0.09), transparent 46%), rgb(10 10 10 / 0.72);
       }
 
       .player-row-accent-emerald {
-        background: linear-gradient(90deg, rgb(52 211 153 / 0.08), transparent 42%);
+        border-color: rgb(52 211 153 / 0.22);
+        background:
+          linear-gradient(115deg, rgb(52 211 153 / 0.09), transparent 46%), rgb(10 10 10 / 0.72);
       }
 
-      .player-row-accent-cyan::before {
-        background: rgb(34 211 238 / 0.75);
+      .player-row-completed {
+        border-color: rgb(255 255 255 / 0.14);
+        background:
+          linear-gradient(115deg, rgb(255 255 255 / 0.045), transparent 46%), rgb(10 10 10 / 0.78);
       }
 
-      .player-row-accent-amber::before {
-        background: rgb(251 191 36 / 0.75);
-      }
+      @media (min-width: 1024px) {
+        .session-player-list {
+          gap: 0;
+          overflow: hidden;
+          border: 1px solid rgb(255 255 255 / 0.1);
+          border-radius: 0.5rem;
+          background: rgb(255 255 255 / 0.04);
+        }
 
-      .player-row-accent-fuchsia::before {
-        background: rgb(217 70 239 / 0.75);
-      }
+        .session-player-list > .player-row {
+          border-width: 0 0 1px;
+          border-color: rgb(255 255 255 / 0.08);
+          border-radius: 0;
+          box-shadow: none;
+        }
 
-      .player-row-accent-emerald::before {
-        background: rgb(52 211 153 / 0.75);
+        .session-player-list > .player-row:last-child {
+          border-bottom-width: 0;
+        }
       }
 
       .player-row-rebuy-glow {
@@ -1173,9 +1188,8 @@ interface SessionActionReceipt {
           opacity: 1;
         }
       }
-
-    `
-  ]
+    `,
+  ],
 })
 export class ActiveSessionPage implements OnDestroy {
   protected readonly store = inject(PokerStoreService);
@@ -1185,12 +1199,8 @@ export class ActiveSessionPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
   protected readonly isHistoryView = this.route.snapshot.queryParamMap.get('from') === 'history';
-  protected readonly backLink =
-    this.isHistoryView
-      ? '/host/sessions/history'
-      : '/host/dashboard';
-  protected readonly backLabel =
-    this.isHistoryView ? 'History' : 'Dashboard';
+  protected readonly backLink = this.isHistoryView ? '/host/sessions/history' : '/host/dashboard';
+  protected readonly backLabel = this.isHistoryView ? 'History' : 'Dashboard';
   private readonly expandedPlayerId = signal<string | null>(null);
   protected readonly recentRebuyPlayerId = signal<string | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1210,8 +1220,8 @@ export class ActiveSessionPage implements OnDestroy {
   protected readonly sortedPlayers = computed(() =>
     this.store.sortedPlayersForActiveSession({
       ...(this.session() ?? this.emptySession()),
-      players: this.store.playersForTable(this.session(), this.selectedTable()?.id ?? null)
-    })
+      players: this.store.playersForTable(this.session(), this.selectedTable()?.id ?? null),
+    }),
   );
   protected readonly actionToast = computed<SessionActionReceipt | null>(() => {
     const storeError = this.store.error();
@@ -1269,7 +1279,7 @@ export class ActiveSessionPage implements OnDestroy {
     this.expandedTableIds.update((tableIds) =>
       tableIds.includes(tableId)
         ? tableIds.filter((currentTableId) => currentTableId !== tableId)
-        : [...tableIds, tableId]
+        : [...tableIds, tableId],
     );
     this.selectedTableId.set(tableId);
     this.expandedPlayerId.set(null);
@@ -1279,10 +1289,13 @@ export class ActiveSessionPage implements OnDestroy {
     return this.expandedTableIds().includes(tableId);
   }
 
-  protected playersForTable(currentSession: PokerSession | undefined, tableId: string): SessionPlayer[] {
+  protected playersForTable(
+    currentSession: PokerSession | undefined,
+    tableId: string,
+  ): SessionPlayer[] {
     return this.store.sortedPlayersForActiveSession({
       ...(currentSession ?? this.emptySession()),
-      players: this.store.playersForTable(currentSession ?? undefined, tableId)
+      players: this.store.playersForTable(currentSession ?? undefined, tableId),
     });
   }
 
@@ -1331,7 +1344,7 @@ export class ActiveSessionPage implements OnDestroy {
     >(AddPlayerDialogComponent, {
       autoFocus: 'first-tabbable',
       data: { registeredPlayers },
-      panelClass: 'pokertrack-dialog-panel'
+      panelClass: 'pokertrack-dialog-panel',
     });
 
     dialogRef.afterClosed().subscribe(async (result?: AddPlayerDialogResult) => {
@@ -1347,8 +1360,8 @@ export class ActiveSessionPage implements OnDestroy {
           result.comment,
           result.playerUserId,
           result.createRegisteredPlayer,
-          selectedTable.id
-        )
+          selectedTable.id,
+        ),
       );
     });
   }
@@ -1363,14 +1376,14 @@ export class ActiveSessionPage implements OnDestroy {
       {
         autoFocus: false,
         data: { player },
-        panelClass: 'pokertrack-dialog-panel'
-      }
+        panelClass: 'pokertrack-dialog-panel',
+      },
     );
 
     dialogRef.afterClosed().subscribe(async (result?: RebuyDialogResult) => {
       if (result && result.amount > 0) {
         const succeeded = await this.runAction(this.playerAction('rebuy', player.id), () =>
-          this.store.recordRebuy(this.sessionId, player.id, result.amount, result.comment)
+          this.store.recordRebuy(this.sessionId, player.id, result.amount, result.comment),
         );
 
         if (succeeded) {
@@ -1390,14 +1403,14 @@ export class ActiveSessionPage implements OnDestroy {
       {
         autoFocus: 'first-tabbable',
         data: { player, mode: player.status === 'COMPLETED' ? 'edit' : 'record' },
-        panelClass: 'pokertrack-dialog-panel'
-      }
+        panelClass: 'pokertrack-dialog-panel',
+      },
     );
 
     dialogRef.afterClosed().subscribe(async (amount?: number) => {
       if (amount !== undefined && amount >= 0) {
         await this.runAction(this.playerAction('cash-out', player.id), () =>
-          this.store.recordCashOut(this.sessionId, player.id, amount)
+          this.store.recordCashOut(this.sessionId, player.id, amount),
         );
       }
     });
@@ -1417,9 +1430,9 @@ export class ActiveSessionPage implements OnDestroy {
       data: {
         playerName: player.name,
         transaction,
-        canDelete: this.canDelete()
+        canDelete: this.canDelete(),
       },
-      panelClass: 'pokertrack-dialog-panel'
+      panelClass: 'pokertrack-dialog-panel',
     });
 
     dialogRef.afterClosed().subscribe(async (result?: EditBuyInDialogResult) => {
@@ -1438,39 +1451,40 @@ export class ActiveSessionPage implements OnDestroy {
             this.sessionId,
             transaction.id,
             result.amount,
-            result.comment
-          )
+            result.comment,
+          ),
         );
       }
     });
   }
 
   private confirmDeleteBuyIn(player: SessionPlayer, transaction: PokerTransaction): void {
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+    const dialogRef = this.dialog.open<
       ConfirmationDialogComponent,
-      {
-        autoFocus: false,
-        data: {
-          title: 'Delete buy-in?',
-          message:
-            'This marks the transaction as deleted, moves it to the bottom of the timeline, and recalculates the player total immediately.',
-          confirmLabel: 'Delete',
-          tone: 'danger',
-          details: [
-            player.name,
-            `${transaction.type} - ${this.formatMoney(transaction.amount)} - ${new Date(
-              transaction.createdAt
-            ).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-          ]
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Delete buy-in?',
+        message:
+          'This marks the transaction as deleted, moves it to the bottom of the timeline, and recalculates the player total immediately.',
+        confirmLabel: 'Delete',
+        tone: 'danger',
+        details: [
+          player.name,
+          `${transaction.type} - ${this.formatMoney(transaction.amount)} - ${new Date(
+            transaction.createdAt,
+          ).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
+        ],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (confirmed) {
         await this.runAction(this.transactionAction('delete-buy-in', transaction.id), () =>
-          this.store.deleteBuyInTransaction(this.sessionId, transaction.id)
+          this.store.deleteBuyInTransaction(this.sessionId, transaction.id),
         );
       }
     });
@@ -1482,7 +1496,7 @@ export class ActiveSessionPage implements OnDestroy {
         (transaction) =>
           transaction.playerId === playerId &&
           (transaction.type === 'BUYIN' || transaction.type === 'REBUY') &&
-          !transaction.deletedAt
+          !transaction.deletedAt,
       ).length ?? 0
     );
   }
@@ -1499,9 +1513,13 @@ export class ActiveSessionPage implements OnDestroy {
     return formatSignedMoney(amount);
   }
 
+  protected netTone(amount: number): NetResultTone {
+    return netResultTone(amount);
+  }
+
   protected togglePlayer(playerId: string): void {
     this.expandedPlayerId.update((currentPlayerId) =>
-      currentPlayerId === playerId ? null : playerId
+      currentPlayerId === playerId ? null : playerId,
     );
   }
 
@@ -1518,7 +1536,10 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected canCloseSession(session: PokerSession): boolean {
-    return session.status === 'ACTIVE' && session.players.every((player) => player.status === 'COMPLETED');
+    return (
+      session.status === 'ACTIVE' &&
+      session.players.every((player) => player.status === 'COMPLETED')
+    );
   }
 
   protected canRemovePlayer(session: PokerSession, _player: SessionPlayer): boolean {
@@ -1568,24 +1589,25 @@ export class ActiveSessionPage implements OnDestroy {
       return;
     }
 
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+    const dialogRef = this.dialog.open<
       ConfirmationDialogComponent,
-      {
-        autoFocus: false,
-        data: {
-          title: 'Close session?',
-          message: 'This marks the session completed and opens the final summary.',
-          confirmLabel: 'Close session',
-          tone: 'primary',
-          details: [
-            `${totals.totalPlayers} players`,
-            `${this.formatMoney(totals.totalBuyIn)} total buy-in`,
-            `${pendingPlayers.length} pending cash out`
-          ]
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Close session?',
+        message: 'This marks the session completed and opens the final summary.',
+        confirmLabel: 'Close session',
+        tone: 'primary',
+        details: [
+          `${totals.totalPlayers} players`,
+          `${this.formatMoney(totals.totalBuyIn)} total buy-in`,
+          `${pendingPlayers.length} pending cash out`,
+        ],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) {
@@ -1611,26 +1633,27 @@ export class ActiveSessionPage implements OnDestroy {
     }
 
     const totals = this.store.totalsFor(currentSession);
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+    const dialogRef = this.dialog.open<
       ConfirmationDialogComponent,
-      {
-        autoFocus: false,
-        data: {
-          title: 'Delete session?',
-          message:
-            'This permanently removes the session, its members, and all buy-in, rebuy, cash-out, and net results tied to it.',
-          confirmLabel: 'Delete session',
-          tone: 'danger',
-          details: [
-            currentSession.name,
-            `${totals.totalPlayers} players`,
-            `${this.formatMoney(totals.totalBuyIn)} total buy-in`,
-            `${this.formatMoney(totals.totalNet)} net result removed from totals`
-          ]
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Delete session?',
+        message:
+          'This permanently removes the session, its members, and all buy-in, rebuy, cash-out, and net results tied to it.',
+        confirmLabel: 'Delete session',
+        tone: 'danger',
+        details: [
+          currentSession.name,
+          `${totals.totalPlayers} players`,
+          `${this.formatMoney(totals.totalBuyIn)} total buy-in`,
+          `${this.formatMoney(totals.totalNet)} net result removed from totals`,
+        ],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) {
@@ -1659,25 +1682,26 @@ export class ActiveSessionPage implements OnDestroy {
     }
 
     const tableTotals = this.store.totalsForTable(currentSession, table.id);
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+    const dialogRef = this.dialog.open<
       ConfirmationDialogComponent,
-      {
-        autoFocus: false,
-        data: {
-          title: 'Delete table?',
-          message:
-            'This removes the table, its seated players, buy-ins, rebuys, cash-outs, and call-time records from this session.',
-          confirmLabel: 'Delete table',
-          tone: 'danger',
-          details: [
-            table.name,
-            `${tableTotals.totalPlayers} players`,
-            `${this.formatMoney(tableTotals.totalBuyIn)} total buy-in`
-          ]
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Delete table?',
+        message:
+          'This removes the table, its seated players, buy-ins, rebuys, cash-outs, and call-time records from this session.',
+        confirmLabel: 'Delete table',
+        tone: 'danger',
+        details: [
+          table.name,
+          `${tableTotals.totalPlayers} players`,
+          `${this.formatMoney(tableTotals.totalBuyIn)} total buy-in`,
+        ],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) {
@@ -1691,7 +1715,7 @@ export class ActiveSessionPage implements OnDestroy {
       if (deleted) {
         this.selectedTableId.set(null);
         this.expandedTableIds.update((tableIds) =>
-          tableIds.filter((currentTableId) => currentTableId !== table.id)
+          tableIds.filter((currentTableId) => currentTableId !== table.id),
         );
         this.expandedPlayerId.set(null);
       }
@@ -1709,21 +1733,22 @@ export class ActiveSessionPage implements OnDestroy {
       return;
     }
 
-    const dialogRef = this.dialog.open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+    const dialogRef = this.dialog.open<
       ConfirmationDialogComponent,
-      {
-        autoFocus: false,
-        data: {
-          title: 'Remove player?',
-          message:
-            'This removes the player from this session and removes their buy-in, rebuy, cash-out, and call-time records from this session.',
-          confirmLabel: 'Remove player',
-          tone: 'danger',
-          details: [player.name]
-        },
-        panelClass: 'pokertrack-dialog-panel'
-      }
-    );
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Remove player?',
+        message:
+          'This removes the player from this session and removes their buy-in, rebuy, cash-out, and call-time records from this session.',
+        confirmLabel: 'Remove player',
+        tone: 'danger',
+        details: [player.name],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) {
@@ -1731,7 +1756,7 @@ export class ActiveSessionPage implements OnDestroy {
       }
 
       const removed = await this.runAction(this.playerAction('remove-player', player.id), () =>
-        this.store.removeSessionPlayer(this.sessionId, player.id)
+        this.store.removeSessionPlayer(this.sessionId, player.id),
       );
 
       if (removed) {
@@ -1791,10 +1816,13 @@ export class ActiveSessionPage implements OnDestroy {
   private showActionReceipt(message: string, tone: ActionFeedbackToastTone): void {
     this.clearActionReceipt();
     this.actionReceipt.set({ message, tone });
-    this.toastTimer = setTimeout(() => {
-      this.actionReceipt.set(null);
-      this.toastTimer = null;
-    }, tone === 'error' ? 4800 : 3200);
+    this.toastTimer = setTimeout(
+      () => {
+        this.actionReceipt.set(null);
+        this.toastTimer = null;
+      },
+      tone === 'error' ? 4300 : 2700,
+    );
   }
 
   private clearActionReceipt(): void {
@@ -1820,7 +1848,7 @@ export class ActiveSessionPage implements OnDestroy {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(amount);
   }
 
@@ -1879,7 +1907,7 @@ export class ActiveSessionPage implements OnDestroy {
       tables: [] as PokerTable[],
       players: [] as SessionPlayer[],
       transactions: [] as PokerTransaction[],
-      timeCalls: []
+      timeCalls: [],
     };
   }
 
