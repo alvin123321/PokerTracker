@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -35,15 +35,15 @@ interface PlayerLedgerRow {
         </div>
       </div>
 
-      @if (errorMessage()) {
-        <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
-          {{ errorMessage() }}
-        </div>
-      }
-
-      @if (successMessage()) {
-        <div class="rounded-lg border border-emerald-300/30 bg-emerald-300/10 p-4 text-sm text-emerald-100">
-          {{ successMessage() }}
+      @if (errorMessage() || successMessage()) {
+        <div
+          class="member-action-receipt pointer-events-none fixed left-1/2 top-5 z-50 w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 rounded-xl border px-5 py-4 text-center text-sm font-semibold shadow-2xl backdrop-blur"
+          [class.member-action-receipt-error]="errorMessage()"
+          [class.member-action-receipt-success]="successMessage() && !errorMessage()"
+          role="status"
+          aria-live="polite"
+        >
+          {{ errorMessage() || successMessage() }}
         </div>
       }
 
@@ -326,6 +326,24 @@ interface PlayerLedgerRow {
         animation: action-spinner 700ms linear infinite;
       }
 
+      .member-action-receipt {
+        animation: member-receipt-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .member-action-receipt-success {
+        border-color: rgba(110, 231, 183, 0.34);
+        background: rgba(4, 120, 87, 0.84);
+        color: rgb(236, 253, 245);
+        box-shadow: 0 18px 48px rgba(6, 95, 70, 0.34);
+      }
+
+      .member-action-receipt-error {
+        border-color: rgba(248, 113, 113, 0.4);
+        background: rgba(127, 29, 29, 0.88);
+        color: rgb(254, 226, 226);
+        box-shadow: 0 18px 48px rgba(127, 29, 29, 0.34);
+      }
+
       .member-view-enter {
         animation: member-view-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
@@ -483,6 +501,18 @@ interface PlayerLedgerRow {
         }
       }
 
+      @keyframes member-receipt-in {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -0.5rem) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1);
+        }
+      }
+
       @keyframes member-menu-in {
         from {
           opacity: 0;
@@ -503,7 +533,7 @@ interface PlayerLedgerRow {
     `
   ]
 })
-export class PlayersAdminPage implements OnInit {
+export class PlayersAdminPage implements OnInit, OnDestroy {
   protected readonly store = inject(PokerStoreService);
   private readonly dialog = inject(MatDialog);
   protected readonly players = signal<RegisteredPlayerOption[]>([]);
@@ -517,6 +547,7 @@ export class PlayersAdminPage implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly successMessage = signal<string | null>(null);
   protected readonly expandedLedgerRowKey = signal<string | null | undefined>(undefined);
+  private receiptTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly newPlayerLogin = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required, Validators.maxLength(80)]
@@ -554,6 +585,13 @@ export class PlayersAdminPage implements OnInit {
     await this.loadPlayers();
   }
 
+  ngOnDestroy(): void {
+    if (this.receiptTimer) {
+      clearTimeout(this.receiptTimer);
+      this.receiptTimer = null;
+    }
+  }
+
   protected async createPlayer(): Promise<void> {
     if (this.newPlayerLogin.invalid || this.creatingPlayer()) {
       this.newPlayerLogin.markAsTouched();
@@ -561,15 +599,16 @@ export class PlayersAdminPage implements OnInit {
     }
 
     this.creatingPlayer.set(true);
-    this.errorMessage.set(null);
+    this.clearActionReceipt();
 
     try {
       const player = await this.store.createRegisteredPlayer(this.newPlayerLogin.value);
       this.newPlayerLogin.reset();
       await this.loadPlayers(player.id);
       this.selectedPlayerId.set(player.id);
+      this.showActionReceipt('Member added.', 'success');
     } catch (error) {
-      this.errorMessage.set(this.toMessage(error));
+      this.showActionReceipt(this.toMessage(error), 'error');
     } finally {
       this.creatingPlayer.set(false);
     }
@@ -604,14 +643,15 @@ export class PlayersAdminPage implements OnInit {
       }
 
       this.deletingPlayerId.set(player.id);
-      this.errorMessage.set(null);
+      this.clearActionReceipt();
 
       try {
         await this.store.deleteRegisteredPlayer(player.id);
         this.selectedPlayerId.set(null);
         await this.loadPlayers();
+        this.showActionReceipt('Member deleted.', 'success');
       } catch (error) {
-        this.errorMessage.set(this.toMessage(error));
+        this.showActionReceipt(this.toMessage(error), 'error');
       } finally {
         this.deletingPlayerId.set(null);
       }
@@ -646,14 +686,13 @@ export class PlayersAdminPage implements OnInit {
       }
 
       this.passwordResettingPlayerId.set(player.id);
-      this.errorMessage.set(null);
-      this.successMessage.set(null);
+      this.clearActionReceipt();
 
       try {
         const temporaryPassword = await this.store.resetRegisteredPlayerPassword(player.id);
-        this.successMessage.set(`Password reset to ${temporaryPassword}.`);
+        this.showActionReceipt(`Password reset to ${temporaryPassword}.`, 'success');
       } catch (error) {
-        this.errorMessage.set(this.toMessage(error));
+        this.showActionReceipt(this.toMessage(error), 'error');
       } finally {
         this.passwordResettingPlayerId.set(null);
       }
@@ -669,13 +708,14 @@ export class PlayersAdminPage implements OnInit {
 
     const nextRole = player.role === 'MANAGER' ? 'PLAYER' : 'MANAGER';
     this.roleUpdatingPlayerId.set(player.id);
-    this.errorMessage.set(null);
+    this.clearActionReceipt();
 
     try {
       await this.store.setRegisteredPlayerRole(player.id, nextRole);
       await this.loadPlayers(player.id);
+      this.showActionReceipt(nextRole === 'MANAGER' ? 'Manager access saved.' : 'Player access saved.', 'success');
     } catch (error) {
-      this.errorMessage.set(this.toMessage(error));
+      this.showActionReceipt(this.toMessage(error), 'error');
     } finally {
       this.roleUpdatingPlayerId.set(null);
     }
@@ -769,8 +809,7 @@ export class PlayersAdminPage implements OnInit {
 
   private async loadPlayers(preferredPlayerId?: string): Promise<void> {
     this.loadingPlayers.set(true);
-    this.errorMessage.set(null);
-    this.successMessage.set(null);
+    this.clearActionReceipt();
 
     try {
       const players = await this.store.listRegisteredPlayers();
@@ -782,7 +821,7 @@ export class PlayersAdminPage implements OnInit {
         this.selectedPlayerId.set(null);
       }
     } catch (error) {
-      this.errorMessage.set(this.toMessage(error));
+      this.showActionReceipt(this.toMessage(error), 'error');
     } finally {
       this.loadingPlayers.set(false);
     }
@@ -830,6 +869,36 @@ export class PlayersAdminPage implements OnInit {
     }
 
     return 'Unable to update the player directory.';
+  }
+
+  private showActionReceipt(message: string, tone: 'success' | 'error'): void {
+    if (this.receiptTimer) {
+      clearTimeout(this.receiptTimer);
+      this.receiptTimer = null;
+    }
+
+    if (tone === 'success') {
+      this.errorMessage.set(null);
+      this.successMessage.set(message);
+    } else {
+      this.successMessage.set(null);
+      this.errorMessage.set(message);
+    }
+
+    this.receiptTimer = setTimeout(() => {
+      this.clearActionReceipt();
+      this.receiptTimer = null;
+    }, tone === 'error' ? 5000 : 2800);
+  }
+
+  private clearActionReceipt(): void {
+    if (this.receiptTimer) {
+      clearTimeout(this.receiptTimer);
+      this.receiptTimer = null;
+    }
+
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
   }
 
   private hasMessage(error: unknown): error is { message: string } {

@@ -100,10 +100,33 @@ Deno.serve(async (req) => {
     return json({ error: 'Registered player not found.' }, 404);
   }
 
+  const { error: unlinkError } = await serviceClient
+    .from('session_players')
+    .update({ user_id: null })
+    .eq('user_id', payload.userId);
+
+  if (unlinkError) {
+    return json({ error: unlinkError.message }, 400);
+  }
+
   const { error: deleteError } = await serviceClient.auth.admin.deleteUser(payload.userId);
 
   if (deleteError) {
-    return json({ error: deleteError.message }, 400);
+    const message = deleteError.message.toLowerCase();
+
+    if (!message.includes('user not found')) {
+      return json({ error: deleteError.message }, 400);
+    }
+
+    const { error: profileDeleteError } = await serviceClient
+      .from('users')
+      .delete()
+      .eq('id', payload.userId)
+      .in('role', ['PLAYER', 'MANAGER']);
+
+    if (profileDeleteError) {
+      return json({ error: profileDeleteError.message }, 400);
+    }
   }
 
   return json({ ok: true });

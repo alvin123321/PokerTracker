@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -13,6 +13,8 @@ import {
   SessionPlayer
 } from '../data/poker-store.service';
 import {
+  DashboardTablePlayerGroups,
+  groupDashboardTablePlayers,
   sortDashboardTablePlayers,
   shouldShowActiveSessionsEmptyState,
   shouldShowActiveSessionsLoadingState
@@ -34,6 +36,11 @@ import {
 } from '../transactions/rebuy-dialog.component';
 interface TableNameDialogData {
   tableName: string;
+}
+
+interface DashboardActionReceipt {
+  message: string;
+  tone: 'success' | 'error';
 }
 
 @Component({
@@ -95,16 +102,22 @@ class TableNameDialogComponent {
 
 @Component({
   selector: 'app-host-dashboard-page',
-  imports: [CurrencyPipe, DatePipe, MatDialogModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, MatDialogModule, NgTemplateOutlet, RouterLink],
   template: `
     <section class="space-y-6 sm:space-y-8">
       <div>
         <h1 class="sr-only">Dashboard</h1>
       </div>
 
-      @if (actionError() || store.error()) {
-        <div class="rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-100">
-          {{ actionError() || store.error() }}
+      @if (actionReceipt() || store.error()) {
+        <div
+          class="dashboard-action-receipt pointer-events-none fixed left-1/2 top-5 z-50 w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 rounded-xl border px-5 py-4 text-center text-sm font-semibold shadow-2xl backdrop-blur"
+          [class.dashboard-action-receipt-error]="actionReceipt()?.tone === 'error' || store.error()"
+          [class.dashboard-action-receipt-success]="actionReceipt()?.tone === 'success' && !store.error()"
+          role="status"
+          aria-live="polite"
+        >
+          {{ actionReceipt()?.message ?? store.error() }}
         </div>
       }
 
@@ -425,137 +438,36 @@ class TableNameDialogComponent {
                                     [class.bg-emerald-300/[0.035]]="tableAccent(table.tableNumber) === 'emerald'"
                                     [class.opacity-100]="isTableExpanded(table.id)"
                                   >
-                                    @for (player of dashboardPlayersForTable(session, table.id); track player.id) {
-                                      <div
-                                        class="dashboard-player-row border-b border-white/10 last:border-b-0"
-                                        [class.dashboard-player-row-open]="isDashboardPlayerExpanded(player.id)"
-                                        [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
-                                      >
-                                        <div
-                                          class="grid cursor-pointer gap-3 px-3 py-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-                                          role="button"
-                                          tabindex="0"
-                                          [attr.aria-expanded]="isDashboardPlayerExpanded(player.id)"
-                                          (click)="toggleDashboardPlayer(player.id)"
-                                          (keydown.enter)="toggleDashboardPlayer(player.id)"
-                                          (keydown.space)="$event.preventDefault(); toggleDashboardPlayer(player.id)"
-                                        >
-                                        <div class="min-w-0">
-                                          <div class="flex flex-wrap items-center gap-2">
-                                            <p class="truncate font-semibold text-white">{{ player.name }}</p>
-                                            <span
-                                              class="dashboard-player-buyin-mobile ml-auto sm:hidden"
-                                              [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
-                                            >
-                                              {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                                            </span>
-                                            @if (player.status === 'COMPLETED') {
-                                              <span class="text-sm font-bold leading-none text-emerald-300">&check;</span>
-                                              <span
-                                                class="dashboard-player-net-inline"
-                                                [class.dashboard-player-net-positive]="player.net >= 0"
-                                                [class.dashboard-player-net-negative]="player.net < 0"
-                                              >
-                                                Net
-                                                <strong>{{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
-                                              </span>
+                                    @let playerGroups = dashboardPlayerGroupsForTable(session, table.id);
+                                    @if (playerGroups.activePlayers.length || playerGroups.cashedOutPlayers.length) {
+                                      <div class="dashboard-player-sections">
+                                        <div class="dashboard-player-section">
+                                          <div class="dashboard-player-section-heading">
+                                            <span>Active</span>
+                                            <span>{{ playerGroups.activePlayers.length }}</span>
+                                          </div>
+                                          <div class="dashboard-player-grid">
+                                            @for (player of playerGroups.activePlayers; track player.id) {
+                                              <ng-container *ngTemplateOutlet="dashboardPlayerCard; context: { session: session, player: player }"></ng-container>
                                             }
                                           </div>
-                                          <p class="mt-1 hidden text-xs text-neutral-500 md:block">
-                                            Tap to view game timeline
-                                          </p>
                                         </div>
 
-                                        <div
-                                          class="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-[8rem_7rem_7rem] md:min-w-[22rem]"
-                                          (keydown.enter)="$event.stopPropagation()"
-                                          (keydown.space)="$event.stopPropagation()"
-                                        >
-                                          <span class="hidden rounded-lg bg-white/[0.04] px-3 py-2 md:col-span-1 md:block">
-                                            <span class="block text-xs text-neutral-500">Buy-in</span>
-                                            <span
-                                              class="mt-1 block font-semibold text-white"
-                                              [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
-                                            >
-                                              {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
-                                            </span>
-                                          </span>
-                                          @if (player.status === 'ACTIVE') {
-                                            <button
-                                              type="button"
-                                              [disabled]="isBusy()"
-                                              class="dashboard-player-action"
-                                              (click)="$event.stopPropagation(); openRebuyDialog(session.id, player)"
-                                            >
-                                              @if (isPending(playerAction('rebuy', player.id))) {
-                                                Saving...
-                                              } @else {
-                                                Rebuy
-                                              }
-                                            </button>
-                                            <button
-                                              type="button"
-                                              [disabled]="isBusy()"
-                                              class="dashboard-player-action dashboard-player-action-cashout"
-                                              (click)="$event.stopPropagation(); openCashOutDialog(session.id, player)"
-                                            >
-                                              @if (isPending(playerAction('cash-out', player.id))) {
-                                                Saving...
-                                              } @else {
-                                                Cashout
-                                              }
-                                            </button>
-                                          } @else {
-                                            <span class="dashboard-player-action dashboard-player-action-disabled" aria-disabled="true">
-                                              Rebuy
-                                            </span>
-                                            <span
-                                              class="dashboard-player-action dashboard-player-action-cashout dashboard-player-action-disabled"
-                                              aria-disabled="true"
-                                            >
-                                              Cashout
-                                            </span>
-                                          }
-                                        </div>
-                                        </div>
-
-                                        <div
-                                          class="dashboard-player-timeline"
-                                          [class.dashboard-player-timeline-open]="isDashboardPlayerExpanded(player.id)"
-                                          [attr.aria-hidden]="!isDashboardPlayerExpanded(player.id)"
-                                        >
-                                          <div class="dashboard-player-timeline-inner">
-                                            <div class="mb-2 flex items-center justify-between gap-3">
-                                              <span class="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">Game timeline</span>
-                                              <span class="text-xs text-neutral-500">{{ dashboardPlayerTimelineTransactions(session, player.id).length }} records</span>
+                                        @if (playerGroups.cashedOutPlayers.length) {
+                                          <div class="dashboard-player-section dashboard-player-section-cashed">
+                                            <div class="dashboard-player-section-heading">
+                                              <span>Cashed out</span>
+                                              <span>{{ playerGroups.cashedOutPlayers.length }}</span>
                                             </div>
-
-                                            @if (dashboardPlayerTimelineTransactions(session, player.id).length === 0) {
-                                              <div class="rounded-lg border border-dashed border-white/10 bg-black/15 p-3 text-sm text-neutral-500">
-                                                No timeline recorded.
-                                              </div>
-                                            } @else {
-                                              <div class="grid gap-2 sm:grid-cols-2">
-                                                @for (transaction of dashboardPlayerTimelineTransactions(session, player.id); track transaction.id) {
-                                                  <div
-                                                    class="dashboard-timeline-item"
-                                                    [class.dashboard-timeline-item-buyin]="transaction.type === 'BUYIN'"
-                                                    [class.dashboard-timeline-item-rebuy]="transaction.type === 'REBUY'"
-                                                    [class.dashboard-timeline-item-cashout]="transaction.type === 'CASHOUT'"
-                                                  >
-                                                    <span class="text-xs font-semibold uppercase">{{ transactionLabel(transaction.type) }}</span>
-                                                    <span class="text-sm text-neutral-400">{{ transaction.createdAt | date: 'shortTime' }}</span>
-                                                    <span class="text-right text-base font-semibold text-white">
-                                                      {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
-                                                    </span>
-                                                  </div>
-                                                }
-                                              </div>
-                                            }
+                                            <div class="dashboard-player-grid">
+                                              @for (player of playerGroups.cashedOutPlayers; track player.id) {
+                                                <ng-container *ngTemplateOutlet="dashboardPlayerCard; context: { session: session, player: player }"></ng-container>
+                                              }
+                                            </div>
                                           </div>
-                                        </div>
+                                        }
                                       </div>
-                                    } @empty {
+                                    } @else {
                                       <div class="m-3 rounded-lg border border-dashed border-white/10 p-4 text-center text-sm text-neutral-500 sm:m-4">
                                         No players at this table yet.
                                       </div>
@@ -575,6 +487,138 @@ class TableNameDialogComponent {
           </div>
         </section>
       }
+
+      <ng-template #dashboardPlayerCard let-session="session" let-player="player">
+        <div
+          class="dashboard-player-row"
+          [class.dashboard-player-row-open]="isDashboardPlayerExpanded(player.id)"
+          [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
+        >
+          <div
+            class="grid cursor-pointer gap-3 px-3 py-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+            role="button"
+            tabindex="0"
+            [attr.aria-expanded]="isDashboardPlayerExpanded(player.id)"
+            (click)="toggleDashboardPlayer(player.id)"
+            (keydown.enter)="toggleDashboardPlayer(player.id)"
+            (keydown.space)="$event.preventDefault(); toggleDashboardPlayer(player.id)"
+          >
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <p class="truncate font-semibold text-white">{{ player.name }}</p>
+                <span
+                  class="dashboard-player-buyin-mobile ml-auto sm:hidden"
+                  [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
+                >
+                  {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                </span>
+                @if (player.status === 'COMPLETED') {
+                  <span class="text-sm font-bold leading-none text-emerald-300">&check;</span>
+                  <span
+                    class="dashboard-player-net-inline"
+                    [class.dashboard-player-net-positive]="player.net >= 0"
+                    [class.dashboard-player-net-negative]="player.net < 0"
+                  >
+                    Net
+                    <strong>{{ player.net | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                  </span>
+                }
+              </div>
+              <p class="mt-1 hidden text-xs text-neutral-500 md:block">
+                Tap to view game timeline
+              </p>
+            </div>
+
+            <div
+              class="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-[8rem_7rem_7rem] md:min-w-[22rem]"
+              (keydown.enter)="$event.stopPropagation()"
+              (keydown.space)="$event.stopPropagation()"
+            >
+              <span class="hidden rounded-lg bg-white/[0.04] px-3 py-2 md:col-span-1 md:block">
+                <span class="block text-xs text-neutral-500">Buy-in</span>
+                <span
+                  class="mt-1 block font-semibold text-white"
+                  [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
+                >
+                  {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                </span>
+              </span>
+              @if (player.status === 'ACTIVE') {
+                <button
+                  type="button"
+                  [disabled]="isBusy()"
+                  class="dashboard-player-action"
+                  (click)="$event.stopPropagation(); openRebuyDialog(session.id, player)"
+                >
+                  @if (isPending(playerAction('rebuy', player.id))) {
+                    Saving...
+                  } @else {
+                    Rebuy
+                  }
+                </button>
+                <button
+                  type="button"
+                  [disabled]="isBusy()"
+                  class="dashboard-player-action dashboard-player-action-cashout"
+                  (click)="$event.stopPropagation(); openCashOutDialog(session.id, player)"
+                >
+                  @if (isPending(playerAction('cash-out', player.id))) {
+                    Saving...
+                  } @else {
+                    Cashout
+                  }
+                </button>
+              } @else {
+                <span class="dashboard-player-action dashboard-player-action-disabled" aria-disabled="true">
+                  Rebuy
+                </span>
+                <span
+                  class="dashboard-player-action dashboard-player-action-cashout dashboard-player-action-disabled"
+                  aria-disabled="true"
+                >
+                  Cashout
+                </span>
+              }
+            </div>
+          </div>
+
+          <div
+            class="dashboard-player-timeline"
+            [class.dashboard-player-timeline-open]="isDashboardPlayerExpanded(player.id)"
+            [attr.aria-hidden]="!isDashboardPlayerExpanded(player.id)"
+          >
+            <div class="dashboard-player-timeline-inner">
+              <div class="mb-2 flex items-center justify-between gap-3">
+                <span class="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">Game timeline</span>
+                <span class="text-xs text-neutral-500">{{ dashboardPlayerTimelineTransactions(session, player.id).length }} records</span>
+              </div>
+
+              @if (dashboardPlayerTimelineTransactions(session, player.id).length === 0) {
+                <div class="rounded-lg border border-dashed border-white/10 bg-black/15 p-3 text-sm text-neutral-500">
+                  No timeline recorded.
+                </div>
+              } @else {
+                <div class="grid gap-2 sm:grid-cols-2">
+                  @for (transaction of dashboardPlayerTimelineTransactions(session, player.id); track transaction.id) {
+                    <div
+                      class="dashboard-timeline-item"
+                      [class.dashboard-timeline-item-buyin]="transaction.type === 'BUYIN'"
+                      [class.dashboard-timeline-item-rebuy]="transaction.type === 'REBUY'"
+                      [class.dashboard-timeline-item-cashout]="transaction.type === 'CASHOUT'"
+                    >
+                      <span class="text-xs font-semibold uppercase">{{ transactionLabel(transaction.type) }}</span>
+                      <span class="text-sm text-neutral-400">{{ transaction.createdAt | date: 'shortTime' }}</span>
+                      <span class="text-right text-base font-semibold text-white">
+                        {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </ng-template>
 
     </section>
   `,
@@ -1264,6 +1308,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   private readonly dialog = inject(MatDialog);
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly actionReceipt = signal<DashboardActionReceipt | null>(null);
   protected readonly initialLoadingWindowExpired = signal(false);
   protected readonly dashboardLoaderVisible = signal(true);
   protected readonly dashboardLoaderLeaving = signal(false);
@@ -1273,6 +1318,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   protected readonly recentRebuyPlayerId = signal<string | null>(null);
   protected readonly recentRebuySessionId = signal<string | null>(null);
   private rebuyAnimationTimer: ReturnType<typeof setTimeout> | null = null;
+  private actionReceiptTimer: ReturnType<typeof setTimeout> | null = null;
   private initialLoadingTimer: ReturnType<typeof setTimeout> | null = null;
   private dashboardLoaderExitTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -1304,6 +1350,11 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     if (this.dashboardLoaderExitTimer) {
       clearTimeout(this.dashboardLoaderExitTimer);
       this.dashboardLoaderExitTimer = null;
+    }
+
+    if (this.actionReceiptTimer) {
+      clearTimeout(this.actionReceiptTimer);
+      this.actionReceiptTimer = null;
     }
 
     this.clearRebuyAnimation();
@@ -1393,6 +1444,13 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     return sortDashboardTablePlayers(this.store.playersForTable(session, tableId));
   }
 
+  protected dashboardPlayerGroupsForTable(
+    session: PokerSession | undefined,
+    tableId: string | null
+  ): DashboardTablePlayerGroups<SessionPlayer> {
+    return groupDashboardTablePlayers(this.store.playersForTable(session, tableId));
+  }
+
   protected activePlayerCount(session: PokerSession): number {
     return session.players.filter((player) => player.status === 'ACTIVE').length;
   }
@@ -1460,9 +1518,10 @@ export class HostDashboardPage implements OnInit, OnDestroy {
 
     try {
       this.actionError.set(null);
+      this.actionReceipt.set(null);
       registeredPlayers = await this.store.listRegisteredPlayers();
     } catch (error) {
-      this.actionError.set(this.toMessage(error));
+      this.showActionReceipt(this.toMessage(error), 'error');
       return;
     }
 
@@ -1598,6 +1657,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
 
     this.pendingAction.set(action);
     this.actionError.set(null);
+    this.actionReceipt.set(null);
     const startedAt = Date.now();
     let succeeded = false;
 
@@ -1605,10 +1665,14 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       await task();
       succeeded = true;
     } catch (error) {
-      this.actionError.set(this.toMessage(error));
+      this.showActionReceipt(this.toMessage(error), 'error');
     } finally {
       await this.waitForMinimumActionDelay(startedAt);
       this.pendingAction.set(null);
+    }
+
+    if (succeeded) {
+      this.showActionReceipt(this.successMessageForAction(action), 'success');
     }
 
     return succeeded;
@@ -1650,6 +1714,40 @@ export class HostDashboardPage implements OnInit, OnDestroy {
     }
 
     return new Promise((resolve) => window.setTimeout(resolve, remainingMs));
+  }
+
+  private showActionReceipt(message: string, tone: DashboardActionReceipt['tone']): void {
+    if (this.actionReceiptTimer) {
+      clearTimeout(this.actionReceiptTimer);
+      this.actionReceiptTimer = null;
+    }
+
+    this.actionError.set(tone === 'error' ? message : null);
+    this.actionReceipt.set({ message, tone });
+    this.actionReceiptTimer = setTimeout(() => {
+      this.actionReceipt.set(null);
+      this.actionReceiptTimer = null;
+    }, tone === 'error' ? 5000 : 2800);
+  }
+
+  private successMessageForAction(action: string): string {
+    if (action.startsWith('add-player:')) {
+      return 'Player added.';
+    }
+
+    if (action.startsWith('add-table:')) {
+      return 'Table added.';
+    }
+
+    if (action.startsWith('rebuy:')) {
+      return 'Rebuy saved.';
+    }
+
+    if (action.startsWith('cash-out:')) {
+      return 'Cash out saved.';
+    }
+
+    return 'Changes saved.';
   }
 
   private toMessage(error: unknown): string {

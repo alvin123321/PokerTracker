@@ -1,4 +1,5 @@
 import {
+  groupDashboardTablePlayers,
   sortDashboardTablePlayers,
   shouldShowActiveSessionsEmptyState,
   shouldShowActiveSessionsLoadingState
@@ -73,5 +74,18 @@ describe('host dashboard table player sorting', () => {
     ]);
 
     expect(sorted.map((player) => player.name)).toEqual(['1010', 'alvin', 'kevin', 'Gene', 'Maxi']);
+  });
+
+  it('groups active and cashed-out players after sorting each group alphabetically', () => {
+    const groups = groupDashboardTablePlayers([
+      { id: '4', name: 'Maxi', status: 'COMPLETED' },
+      { id: '2', name: 'alvin', status: 'ACTIVE' },
+      { id: '5', name: 'Gene', status: 'COMPLETED' },
+      { id: '1', name: '1010', status: 'ACTIVE' },
+      { id: '3', name: 'kevin', status: 'ACTIVE' }
+    ]);
+
+    expect(groups.activePlayers.map((player) => player.name)).toEqual(['1010', 'alvin', 'kevin']);
+    expect(groups.cashedOutPlayers.map((player) => player.name)).toEqual(['Gene', 'Maxi']);
   });
 });
