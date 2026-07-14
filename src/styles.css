@@ -1092,28 +1092,32 @@ app-host-shell main {
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (max-width: 639px) {
-  html[data-player-route-transition='forward']::view-transition-old(root) {
-    animation: player-route-out-left 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+html[data-route-transition='forward']::view-transition-old(root) {
+  transform-origin: left center;
+  animation: player-route-out-left 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
-  html[data-player-route-transition='forward']::view-transition-new(root) {
-    animation: player-route-in-right 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+html[data-route-transition='forward']::view-transition-new(root) {
+  z-index: 1;
+  transform-origin: right center;
+  animation: player-route-in-right 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
-  html[data-player-route-transition='back']::view-transition-old(root) {
-    animation: player-route-out-right 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+html[data-route-transition='back']::view-transition-old(root) {
+  z-index: 1;
+  transform-origin: right center;
+  animation: player-route-out-right 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
-  html[data-player-route-transition='back']::view-transition-new(root) {
-    animation: player-route-in-left 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+html[data-route-transition='back']::view-transition-new(root) {
+  transform-origin: left center;
+  animation: player-route-in-left 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes player-route-in-right {
   from {
-    opacity: 0.96;
-    transform: translateX(100%);
+    opacity: 0.8;
+    transform: perspective(1100px) translateX(20%) rotateY(-18deg);
   }
 
   to {
@@ -1129,15 +1133,15 @@ app-host-shell main {
   }
 
   to {
-    opacity: 0.82;
-    transform: translateX(-18%);
+    opacity: 0;
+    transform: perspective(1100px) translateX(-16%) rotateY(18deg);
   }
 }
 
 @keyframes player-route-in-left {
   from {
-    opacity: 0.96;
-    transform: translateX(-24%);
+    opacity: 0.8;
+    transform: perspective(1100px) translateX(-20%) rotateY(18deg);
   }
 
   to {
@@ -1153,14 +1157,14 @@ app-host-shell main {
   }
 
   to {
-    opacity: 0.82;
-    transform: translateX(100%);
+    opacity: 0;
+    transform: perspective(1100px) translateX(16%) rotateY(-18deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-player-route-transition]::view-transition-old(root),
-  html[data-player-route-transition]::view-transition-new(root) {
+html[data-route-transition]::view-transition-old(root),
+html[data-route-transition]::view-transition-new(root) {
     animation-duration: 1ms;
     transform: none;
   }
