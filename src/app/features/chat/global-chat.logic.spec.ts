@@ -1,9 +1,11 @@
 import {
+  globalChatClockTimeLabel,
+  globalChatDateSeparatorLabel,
   globalChatInitials,
   globalChatRoleLabel,
+  isGlobalChatSenderRunStart,
   isOwnGlobalChatMessage,
   normalizeChatMessageText,
-  relativeChatTimeLabel,
   sortGlobalChatMessages,
   validateChatMessageText,
   type GlobalChatMessage
@@ -61,19 +63,42 @@ describe('global chat logic', () => {
     expect(globalChatRoleLabel('PLAYER')).toBe('Member');
   });
 
-  it('uses compact relative time labels', () => {
-    const now = new Date('2026-07-10T12:10:00.000Z');
+  it('formats message times with a 24-hour clock', () => {
+    expect(globalChatClockTimeLabel('2026-07-10T16:23:00', 'en-GB')).toBe('16:23');
+  });
 
-    expect(relativeChatTimeLabel('2026-07-10T12:10:00.000Z', now)).toBe('now');
-    expect(relativeChatTimeLabel('2026-07-10T12:07:00.000Z', now)).toBe('3m');
-    expect(relativeChatTimeLabel('2026-07-10T10:10:00.000Z', now)).toBe('2h');
+  it('starts a new sender run only when the sender or local date changes', () => {
+    const messages = [
+      message('1', '2026-07-10T16:20:00', 'user-1'),
+      message('2', '2026-07-10T16:21:00', 'user-1'),
+      message('3', '2026-07-10T16:22:00', 'user-2'),
+      message('4', '2026-07-11T00:01:00', 'user-2')
+    ];
+
+    expect(messages.map((_, index) => isGlobalChatSenderRunStart(messages, index))).toEqual([
+      true,
+      false,
+      true,
+      true
+    ]);
+  });
+
+  it('shows date separators at local day boundaries', () => {
+    const messages = [
+      message('1', '2026-07-13T23:58:00'),
+      message('2', '2026-07-14T00:02:00')
+    ];
+    const now = new Date('2026-07-14T12:00:00');
+
+    expect(globalChatDateSeparatorLabel(messages, 0, now, 'en-US')).toBe('Yesterday');
+    expect(globalChatDateSeparatorLabel(messages, 1, now, 'en-US')).toBe('Today');
   });
 });
 
-function message(id: string, createdAt: string): GlobalChatMessage {
+function message(id: string, createdAt: string, senderUserId = 'user-1'): GlobalChatMessage {
   return {
     id,
-    senderUserId: 'user-1',
+    senderUserId,
     senderDisplayName: 'Alvin Host',
     senderRole: 'HOST',
     message: 'Good hand',

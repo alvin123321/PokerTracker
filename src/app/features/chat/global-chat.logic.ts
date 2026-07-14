@@ -93,24 +93,99 @@ export function globalChatRoleLabel(role: GlobalChatRole): string {
   }
 }
 
-export function relativeChatTimeLabel(createdAt: string, now = new Date()): string {
-  const deltaMs = Math.max(0, now.getTime() - Date.parse(createdAt));
-  const deltaMinutes = Math.floor(deltaMs / 60000);
+export function globalChatClockTimeLabel(createdAt: string, locale?: string): string {
+  const createdDate = new Date(createdAt);
 
-  if (deltaMinutes < 1) {
-    return 'now';
+  if (Number.isNaN(createdDate.getTime())) {
+    return '';
   }
 
-  if (deltaMinutes < 60) {
-    return `${deltaMinutes}m`;
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).format(createdDate);
+}
+
+export function isGlobalChatSenderRunStart(
+  messages: GlobalChatMessage[],
+  index: number
+): boolean {
+  const currentMessage = messages[index];
+
+  if (!currentMessage) {
+    return false;
   }
 
-  const deltaHours = Math.floor(deltaMinutes / 60);
+  const previousMessage = messages[index - 1];
 
-  if (deltaHours < 24) {
-    return `${deltaHours}h`;
+  if (!previousMessage) {
+    return true;
   }
 
-  const deltaDays = Math.floor(deltaHours / 24);
-  return `${deltaDays}d`;
+  return (
+    globalChatSenderIdentity(currentMessage) !== globalChatSenderIdentity(previousMessage) ||
+    globalChatLocalDateKey(currentMessage.createdAt) !==
+      globalChatLocalDateKey(previousMessage.createdAt)
+  );
+}
+
+export function globalChatDateSeparatorLabel(
+  messages: GlobalChatMessage[],
+  index: number,
+  now = new Date(),
+  locale?: string
+): string | null {
+  const currentMessage = messages[index];
+
+  if (!currentMessage) {
+    return null;
+  }
+
+  const currentDateKey = globalChatLocalDateKey(currentMessage.createdAt);
+  const previousDateKey = globalChatLocalDateKey(messages[index - 1]?.createdAt ?? '');
+
+  if (!currentDateKey || currentDateKey === previousDateKey) {
+    return null;
+  }
+
+  const createdDate = new Date(currentMessage.createdAt);
+  const todayKey = globalChatLocalDateKey(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = globalChatLocalDateKey(yesterday);
+
+  if (currentDateKey === todayKey) {
+    return 'Today';
+  }
+
+  if (currentDateKey === yesterdayKey) {
+    return 'Yesterday';
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: 'numeric',
+    ...(createdDate.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' })
+  }).format(createdDate);
+}
+
+function globalChatSenderIdentity(message: GlobalChatMessage): string {
+  return (
+    message.senderUserId.trim() ||
+    normalizeChatMessageText(message.senderDisplayName).toLowerCase()
+  );
+}
+
+function globalChatLocalDateKey(createdAt: string | Date): string {
+  const parsedDate = createdAt instanceof Date ? createdAt : new Date(createdAt);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
+  const year = parsedDate.getFullYear();
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(parsedDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }

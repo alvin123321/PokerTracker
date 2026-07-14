@@ -1,4 +1,13 @@
-import { Component, computed, ElementRef, input, inject, signal, ViewChild } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  computed,
+  ElementRef,
+  input,
+  inject,
+  signal,
+  ViewChild
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   LucideLoaderCircle,
@@ -6,16 +15,17 @@ import {
   LucideRadio,
   LucideSendHorizontal,
   LucideShieldCheck,
-  LucideSparkles,
   LucideUsersRound
 } from '@lucide/angular';
 
 import { AuthStateService } from '../../core/auth/auth-state.service';
+import { PokerStoreService } from '../host/data/poker-store.service';
 import { GlobalChatService } from './global-chat.service';
 import {
-  globalChatInitials,
+  globalChatClockTimeLabel,
+  globalChatDateSeparatorLabel,
+  isGlobalChatSenderRunStart,
   isOwnGlobalChatMessage,
-  relativeChatTimeLabel,
   validateChatMessageText,
   type GlobalChatMessage
 } from './global-chat.logic';
@@ -42,8 +52,39 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
   return hash % chatSenderPalette.length;
 }
 
+interface GlobalChatDayGroup {
+  key: string;
+  label: string | null;
+  createdAt: string;
+  entries: Array<{ message: GlobalChatMessage; index: number }>;
+}
+
+function groupGlobalChatMessagesByDay(messages: GlobalChatMessage[]): GlobalChatDayGroup[] {
+  const groups: GlobalChatDayGroup[] = [];
+
+  messages.forEach((message, index) => {
+    const label = globalChatDateSeparatorLabel(messages, index);
+
+    if (label !== null || groups.length === 0) {
+      groups.push({
+        key: message.id,
+        label,
+        createdAt: message.createdAt,
+        entries: []
+      });
+    }
+
+    groups[groups.length - 1].entries.push({ message, index });
+  });
+
+  return groups;
+}
+
 @Component({
   selector: 'app-global-chat-page',
+  host: {
+    '[class.global-chat-route]': '!compact()'
+  },
   imports: [
     FormsModule,
     LucideLoaderCircle,
@@ -51,7 +92,6 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
     LucideRadio,
     LucideSendHorizontal,
     LucideShieldCheck,
-    LucideSparkles,
     LucideUsersRound
   ],
   template: `
@@ -100,22 +140,45 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
           </aside>
         }
 
-        <main class="chat-panel" aria-label="Global group chat">
-          <div class="chat-panel-head">
-            <div>
-              <span class="chat-panel-icon">
-                <svg lucideSparkles [strokeWidth]="2.2" aria-hidden="true"></svg>
-              </span>
-              <div>
-                <h2>Table Talk</h2>
-                <p>{{ subtitle() }}</p>
-              </div>
+        <main
+          class="chat-panel"
+          [class.chat-panel-no-game]="!activeGame()"
+          aria-label="Global group chat"
+        >
+          @if (!compact()) {
+            <div class="chat-table-decor" aria-hidden="true">
+              <span class="chat-table-suit chat-table-spade">&spades;</span>
+              <span class="chat-table-suit chat-table-heart">&hearts;</span>
+              <span class="chat-table-suit chat-table-diamond">&diams;</span>
+              <span class="chat-table-suit chat-table-club">&clubs;</span>
+              <span class="chat-table-chip chat-table-chip-one"><span></span></span>
+              <span class="chat-table-chip chat-table-chip-two"><span></span></span>
             </div>
-            <span class="chat-live-pill">
-              <span></span>
-              Live
-            </span>
-          </div>
+          }
+
+          @if (activeGame(); as game) {
+            <header class="chat-game-banner">
+              <span class="chat-live-pulse" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+              <div class="chat-game-copy">
+                <span class="chat-game-live">
+                  <span class="chat-game-live-dot" aria-hidden="true"></span>
+                  Live game
+                </span>
+                <h2>{{ game.name }}</h2>
+              </div>
+              <div
+                class="chat-active-count"
+                [attr.aria-label]="game.activePlayers + ' of ' + game.totalPlayers + ' players active'"
+              >
+                <strong>{{ game.activePlayers }}/{{ game.totalPlayers }}</strong>
+                <span class="chat-active-count-label">Active</span>
+              </div>
+            </header>
+          }
 
           <div #messageStream class="chat-stream" aria-live="polite">
             @if (chat.loading() && chat.messages().length === 0) {
@@ -134,55 +197,73 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
                 <p>Send the first table note.</p>
               </div>
             } @else {
-              @for (message of chat.messages(); track message.id; let index = $index) {
-                <article
-                  class="chat-message"
-                  [class.chat-message-own]="isOwn(message)"
-                  [style.--message-index]="index"
-                  [style.--sender-accent]="senderAccent(message)"
-                  [style.--sender-surface]="senderSurface(message)"
-                >
-                  <span class="chat-avatar">{{ initials(message.senderDisplayName) }}</span>
-                  <div class="chat-message-content">
-                    <div class="chat-message-meta">
-                      <strong>{{ message.senderDisplayName }}</strong>
-                      <span>{{ message.senderRole === 'PLAYER' ? 'Member' : message.senderRole }}</span>
-                      <time [attr.datetime]="message.createdAt">{{ timeLabel(message.createdAt) }}</time>
+              @for (dayGroup of messageDayGroups(); track dayGroup.key) {
+                <section class="chat-day-group">
+                  @if (dayGroup.label; as dateLabel) {
+                    <div class="chat-date-separator">
+                      <time [attr.datetime]="dayGroup.createdAt">{{ dateLabel }}</time>
                     </div>
-                    <div class="chat-bubble">
-                      <p>{{ message.message }}</p>
-                    </div>
-                  </div>
-                </article>
+                  }
+                  @for (entry of dayGroup.entries; track entry.message.id) {
+                    <article
+                      class="chat-message"
+                      [class.chat-message-own]="isOwn(entry.message)"
+                      [class.chat-message-group-start]="isSenderRunStart(chat.messages(), entry.index)"
+                      [style.--message-index]="entry.index"
+                      [style.--sender-accent]="senderAccent(entry.message)"
+                      [style.--sender-surface]="senderSurface(entry.message)"
+                    >
+                      <div class="chat-message-content">
+                        <div class="chat-bubble">
+                          @if (isSenderRunStart(chat.messages(), entry.index)) {
+                            <strong class="chat-sender-name">
+                              {{ entry.message.senderDisplayName }}
+                            </strong>
+                          }
+                          <p>{{ entry.message.message }}</p>
+                          <time class="chat-message-time" [attr.datetime]="entry.message.createdAt">
+                            {{ timeLabel(entry.message.createdAt) }}
+                          </time>
+                        </div>
+                      </div>
+                    </article>
+                  }
+                </section>
               }
             }
           </div>
 
           <form class="chat-composer" (submit)="sendMessage($event)">
             <label class="sr-only" for="global-chat-message">Message</label>
-            <textarea
-              id="global-chat-message"
-              name="global-chat-message"
-              rows="2"
-              maxlength="500"
-              autocomplete="off"
-              placeholder="Message the group..."
-              [(ngModel)]="draftText"
-              (ngModelChange)="draftChanged($event)"
-            ></textarea>
-            <div class="composer-footer">
-              <span [class.chat-error-text]="chat.error() || validationMessage()">
-                {{ chat.error() || validationMessage() || characterCountLabel() }}
-              </span>
-              <button type="submit" [disabled]="chat.sending() || !canSend()">
+            <div class="chat-composer-field">
+              <textarea
+                id="global-chat-message"
+                name="global-chat-message"
+                rows="2"
+                maxlength="500"
+                autocomplete="off"
+                placeholder="Message the group..."
+                [(ngModel)]="draftText"
+                (ngModelChange)="draftChanged($event)"
+              ></textarea>
+              <button
+                type="submit"
+                aria-label="Send message"
+                title="Send message"
+                [disabled]="chat.sending() || !canSend()"
+              >
                 @if (chat.sending()) {
                   <svg lucideLoaderCircle class="chat-send-loading" [strokeWidth]="2.4" aria-hidden="true"></svg>
                 } @else {
                   <svg lucideSendHorizontal [strokeWidth]="2.4" aria-hidden="true"></svg>
                 }
-                <span>Send</span>
               </button>
             </div>
+            @if (chat.error() || validationMessage()) {
+              <p class="chat-error-text" role="alert">
+                {{ chat.error() || validationMessage() }}
+              </p>
+            }
           </form>
         </main>
 
@@ -224,6 +305,12 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         display: grid;
         gap: 1.1rem;
         color: var(--chat-ink);
+        font-family:
+          'Saira', Aptos, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', sans-serif;
+        font-kerning: normal;
+        font-optical-sizing: auto;
+        letter-spacing: 0;
       }
 
       .chat-hero {
@@ -234,15 +321,14 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         padding: 0.2rem 0.1rem;
       }
 
-      .chat-kicker,
-      .chat-live-pill {
+      .chat-kicker {
         display: inline-flex;
         align-items: center;
         gap: 0.42rem;
         color: var(--chat-green-bright);
         font-size: 0.82rem;
         font-weight: 800;
-        letter-spacing: 0.01em;
+        letter-spacing: 0;
       }
 
       .chat-kicker svg {
@@ -255,14 +341,13 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         font-size: 2.35rem;
         line-height: 1;
         font-weight: 860;
-        letter-spacing: -0.025em;
+        letter-spacing: 0;
         text-shadow: 0 0 1.5rem rgb(34 197 94 / 0.2);
       }
 
       .chat-hero p,
       .chat-room-panel small,
-      .chat-safety-panel p,
-      .chat-panel-head p {
+      .chat-safety-panel p {
         margin: 0;
         color: var(--chat-muted);
       }
@@ -282,8 +367,7 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         box-shadow: 0 1rem 3rem rgb(0 0 0 / 0.28);
       }
 
-      .chat-hero-status span,
-      .chat-live-pill span {
+      .chat-hero-status span {
         width: 0.62rem;
         height: 0.62rem;
         border-radius: 999px;
@@ -370,12 +454,11 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
       }
 
       .chat-room-panel h2,
-      .chat-safety-panel h2,
-      .chat-panel-head h2 {
+      .chat-safety-panel h2 {
         margin: 0;
         font-size: 1.05rem;
         font-weight: 860;
-        letter-spacing: -0.01em;
+        letter-spacing: 0;
       }
 
       .room-stat-grid {
@@ -410,6 +493,10 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         grid-template-rows: auto minmax(17rem, 1fr) auto;
       }
 
+      .chat-panel-no-game {
+        grid-template-rows: minmax(17rem, 1fr) auto;
+      }
+
       .chat-panel::before {
         content: '';
         position: absolute;
@@ -421,67 +508,29 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         pointer-events: none;
       }
 
-      .chat-panel-head {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        border-bottom: 1px solid rgb(255 255 255 / 0.09);
-        padding: 0.95rem 1rem;
-      }
-
-      .chat-panel-head > div {
-        display: flex;
-        min-width: 0;
-        align-items: center;
-        gap: 0.72rem;
-      }
-
-      .chat-panel-icon {
-        display: grid;
-        width: 2.55rem;
-        height: 2.55rem;
-        flex: 0 0 auto;
-        place-items: center;
-        border: 1px solid rgb(34 197 94 / 0.35);
-        border-radius: 0.85rem;
-        background: rgb(34 197 94 / 0.12);
-        color: var(--chat-green-bright);
-      }
-
-      .chat-panel-icon svg {
-        width: 1.25rem;
-        height: 1.25rem;
-      }
-
-      .chat-live-pill {
-        flex: 0 0 auto;
-        border: 1px solid rgb(34 197 94 / 0.25);
-        border-radius: 999px;
-        padding: 0.38rem 0.58rem;
-        background: rgb(34 197 94 / 0.09);
-        color: var(--chat-green-bright);
-      }
-
       .chat-stream {
         position: relative;
         z-index: 1;
         display: flex;
         flex-direction: column;
-        gap: 0.82rem;
+        gap: 0.2rem;
         overflow-y: auto;
         padding: 1rem;
         scrollbar-color: rgb(34 197 94 / 0.45) transparent;
+      }
+
+      .chat-day-group {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 0.2rem;
       }
 
       .chat-message {
         --sender-accent: rgb(168 85 247);
         --sender-surface: rgb(168 85 247 / 0.12);
         display: flex;
-        align-items: end;
-        gap: 0.6rem;
+        width: fit-content;
         max-width: min(88%, 36rem);
         animation: chat-message-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
         animation-delay: min(calc(var(--message-index, 0) * 25ms), 180ms);
@@ -489,76 +538,102 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
 
       .chat-message-own {
         align-self: end;
-        flex-direction: row-reverse;
+      }
+
+      .chat-message-group-start {
+        margin-top: 0.62rem;
       }
 
       .chat-message-content {
         display: grid;
         min-width: 0;
-        gap: 0.28rem;
+        max-width: 100%;
       }
 
       .chat-message-own .chat-message-content {
         justify-items: end;
       }
 
-      .chat-avatar {
-        display: grid;
-        width: 2.25rem;
-        height: 2.25rem;
-        flex: 0 0 auto;
-        place-items: center;
-        border: 1px solid var(--sender-accent);
+      .chat-date-separator {
+        position: sticky;
+        top: 0.35rem;
+        z-index: 3;
+        align-self: center;
+        margin: 0.5rem 0 0.32rem;
+        pointer-events: none;
+      }
+
+      .chat-date-separator time {
+        display: block;
+        border: 1px solid rgb(148 163 184 / 0.16);
         border-radius: 999px;
-        background:
-          radial-gradient(circle at 30% 20%, rgb(255 255 255 / 0.24), transparent 44%),
-          var(--sender-surface),
-          rgb(15 23 42);
-        color: var(--sender-accent);
-        font-size: 0.76rem;
-        font-weight: 850;
+        padding: 0.28rem 0.58rem;
+        background: rgb(8 18 29 / 0.92);
+        box-shadow: 0 0.32rem 1rem rgb(0 0 0 / 0.2);
+        color: rgb(203 213 225 / 0.78);
+        font-size: 0.68rem;
+        font-weight: 650;
+        line-height: 1;
+        backdrop-filter: blur(0.7rem);
+      }
+
+      .chat-date-separator + .chat-message {
+        margin-top: 0;
       }
 
       .chat-bubble {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 0.2rem 0.72rem;
         min-width: 0;
         border: 1px solid var(--sender-surface);
-        border-radius: 1rem 1rem 1rem 0.28rem;
-        padding: 0.72rem 0.78rem;
+        border-radius: 0.42rem 1rem 1rem;
+        margin-bottom: 8px;
+        padding: 0.32rem 0.68rem;
         background: linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.02)), var(--sender-surface);
       }
 
+      .chat-message:not(.chat-message-group-start) .chat-bubble {
+        border-radius: 0.58rem 1rem 1rem 0.58rem;
+      }
+
       .chat-message-own .chat-bubble {
-        border-color: var(--sender-accent);
-        border-radius: 1rem 1rem 0.28rem;
-        background: var(--sender-surface);
+        border-color: rgb(34 197 94 / 0.28);
+        border-radius: 1rem 0.42rem 1rem 1rem;
+        background:
+          linear-gradient(180deg, rgb(255 255 255 / 0.045), transparent),
+          rgb(20 83 45 / 0.66);
       }
 
-      .chat-message-meta {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.32rem 0.5rem;
-        margin-bottom: 0.25rem;
-        color: var(--chat-muted);
-        font-size: 0.72rem;
+      .chat-message-own:not(.chat-message-group-start) .chat-bubble {
+        border-radius: 1rem 0.58rem 0.58rem 1rem;
       }
 
-      .chat-message-meta strong {
+      .chat-sender-name {
+        grid-column: 1 / -1;
         color: var(--sender-accent);
         font-size: 0.78rem;
+        font-weight: 750;
+        line-height: 1.2;
       }
 
-      .chat-message-meta span {
-        color: var(--chat-green-bright);
+      .chat-message-own .chat-sender-name {
+        color: rgb(134 239 172);
       }
 
-      .chat-message-meta time {
-        margin-left: auto;
+      .chat-message-time {
+        grid-column: 2;
+        align-self: end;
         color: rgb(203 213 225 / 0.78);
+        font-size: 0.64rem;
         font-variant-numeric: tabular-nums;
+        line-height: 1;
+        white-space: nowrap;
       }
 
       .chat-bubble p {
+        grid-column: 1;
         margin: 0;
         color: rgb(248 250 252 / 0.94);
         line-height: 1.42;
@@ -604,16 +679,21 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         background: linear-gradient(180deg, rgb(2 6 23 / 0.74), rgb(2 6 23 / 0.96));
       }
 
+      .chat-composer-field {
+        position: relative;
+      }
+
       .chat-composer textarea {
         width: 100%;
         min-height: 4.2rem;
-        resize: vertical;
+        resize: none;
         border: 1px solid rgb(255 255 255 / 0.12);
         border-radius: 1rem;
         outline: none;
-        padding: 0.82rem 0.92rem;
+        padding: 0.82rem 3.8rem 0.82rem 0.92rem;
         background: rgb(2 6 23 / 0.82);
         color: white;
+        font-family: inherit;
         font-size: 1rem;
         line-height: 1.35;
       }
@@ -629,52 +709,44 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
           0 0 1.4rem rgb(34 197 94 / 0.12);
       }
 
-      .composer-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-      }
-
-      .composer-footer > span {
-        min-width: 0;
-        color: var(--chat-muted);
+      .chat-error-text {
+        margin: 0;
+        padding-inline: 0.2rem;
+        color: #fca5a5;
         font-size: 0.78rem;
       }
 
-      .chat-error-text {
-        color: #fca5a5 !important;
-      }
-
-      .composer-footer button {
-        display: inline-flex;
-        min-height: 2.75rem;
-        align-items: center;
-        justify-content: center;
-        gap: 0.48rem;
+      .chat-composer-field button {
+        position: absolute;
+        top: 50%;
+        right: 0.62rem;
+        display: grid;
+        width: 2.75rem;
+        height: 2.75rem;
+        place-items: center;
         border: 1px solid rgb(34 197 94 / 0.45);
-        border-radius: 0.9rem;
-        padding: 0 1.05rem;
+        border-radius: 50%;
+        padding: 0;
         background: linear-gradient(135deg, #16a34a, #22c55e);
         color: white;
-        font-weight: 850;
         box-shadow: 0 0.85rem 1.8rem rgb(34 197 94 / 0.22);
+        transform: translateY(-50%);
       }
 
-      .composer-footer button:hover:not(:disabled) {
-        transform: translateY(-1px);
+      .chat-composer-field button:hover:not(:disabled) {
+        transform: translateY(-50%) scale(1.04);
         box-shadow: 0 1rem 2.2rem rgb(34 197 94 / 0.3);
       }
 
-      .composer-footer button:active:not(:disabled) {
-        transform: scale(0.985);
+      .chat-composer-field button:active:not(:disabled) {
+        transform: translateY(-50%) scale(0.96);
       }
 
-      .composer-footer button:disabled {
+      .chat-composer-field button:disabled {
         opacity: 0.48;
       }
 
-      .composer-footer svg {
+      .chat-composer-field svg {
         width: 1.15rem;
         height: 1.15rem;
       }
@@ -811,7 +883,7 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
 
         .global-chat-compact .chat-panel {
           min-height: calc(100dvh - 9.4rem);
-          grid-template-rows: minmax(0, 1fr) auto;
+          grid-template-rows: auto minmax(0, 1fr) auto;
           overflow: visible;
           border: 0;
           border-radius: 0;
@@ -819,26 +891,13 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
           box-shadow: none;
         }
 
-        .global-chat-compact .chat-panel::before,
-        .global-chat-compact .chat-panel-head {
+        .global-chat-compact .chat-panel::before {
           display: none;
         }
 
-        .chat-panel-head {
-          padding: 0.78rem;
-        }
-
-        .chat-panel-head h2 {
-          font-size: 1rem;
-        }
-
-        .chat-panel-head p {
-          font-size: 0.78rem;
-        }
-
-        .chat-panel-icon {
-          width: 2.25rem;
-          height: 2.25rem;
+        .chat-game-banner {
+          min-height: 4.35rem;
+          padding: 0.7rem 0.85rem;
         }
 
         .chat-stream {
@@ -880,27 +939,6 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
           justify-items: stretch;
         }
 
-        .chat-avatar {
-          width: 2rem;
-          height: 2rem;
-          font-size: 0.7rem;
-        }
-
-        .global-chat-compact .chat-avatar,
-        .global-chat-compact .chat-message-own .chat-avatar {
-          width: 2.75rem;
-          height: 2.75rem;
-          border: 1.35px solid var(--sender-accent);
-          background: rgb(12 7 18 / 0.54);
-          color: var(--sender-accent);
-          font-size: 0.98rem;
-          font-weight: 680;
-        }
-
-        .chat-bubble {
-          padding: 0.64rem 0.68rem;
-        }
-
         .global-chat-compact .chat-bubble,
         .global-chat-compact .chat-message-own .chat-bubble {
           width: 100%;
@@ -910,7 +948,7 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
             linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.025)),
             var(--sender-surface),
             rgb(17 24 39 / 0.72);
-          padding: 0.72rem 0.88rem;
+          padding: 0.32rem 0.68rem;
         }
 
         .global-chat-compact .chat-bubble p {
@@ -918,31 +956,6 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
           font-size: 1rem;
           line-height: 1.52;
           font-weight: 520;
-        }
-
-        .global-chat-compact .chat-message-meta {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          gap: 0.5rem;
-          margin: 0 0 0 0.1rem;
-          color: rgb(203 213 225 / 0.78);
-          font-size: 0.8rem;
-        }
-
-        .global-chat-compact .chat-message-meta strong {
-          color: var(--sender-accent);
-          font-size: 0.88rem;
-          font-weight: 720;
-        }
-
-        .global-chat-compact .chat-message-meta span {
-          display: none;
-        }
-
-        .global-chat-compact .chat-message-meta time {
-          margin-left: 0;
-          color: rgb(203 213 225 / 0.72);
-          font-size: 0.8rem;
         }
 
         .chat-composer {
@@ -969,18 +982,8 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         }
 
         .global-chat-compact .chat-composer textarea {
-          min-height: 2.85rem;
-          padding: 0.66rem 0.75rem;
-        }
-
-        .global-chat-compact .composer-footer button {
-          min-height: 2.28rem;
-        }
-
-        .composer-footer button {
-          min-width: 5.6rem;
-          min-height: 2.55rem;
-          padding-inline: 0.82rem;
+          min-height: 3.6rem;
+          padding: 0.66rem 3.55rem 0.66rem 0.75rem;
         }
       }
 
@@ -988,6 +991,8 @@ function chatSenderPaletteIndex(message: GlobalChatMessage): number {
         .chat-message,
         .room-orbit span,
         .pulse-rings span,
+        .chat-live-pulse,
+        .chat-live-pulse > span,
         .chat-send-loading {
           animation-duration: 0.01ms !important;
           animation-iteration-count: 1 !important;
@@ -1000,6 +1005,8 @@ export class GlobalChatPage {
   readonly compact = input(false);
   protected readonly chat = inject(GlobalChatService);
   private readonly authState = inject(AuthStateService);
+  private readonly store = inject(PokerStoreService);
+  private hasScrolledToInitialMessages = false;
   protected readonly draft = signal('');
   protected draftText = '';
   protected readonly validationMessage = computed(() => {
@@ -1009,16 +1016,47 @@ export class GlobalChatPage {
 
     return validateChatMessageText(this.draft()).message;
   });
-  protected readonly subtitle = computed(() => {
-    const profileName = this.authState.profile()?.displayName?.trim() || 'Member';
-    return `Signed in as ${profileName}`;
+  protected readonly activeGame = computed(() => {
+    const session = this.store.activeSessions()[0];
+
+    if (!session) {
+      return null;
+    }
+
+    const publicRoster = this.store
+      .playerPublicTableRoster()
+      .filter((player) => player.sessionId === session.id);
+    const players = publicRoster.length > 0 ? publicRoster : session.players;
+
+    return {
+      name: session.name,
+      activePlayers: players.filter((player) => player.status === 'ACTIVE').length,
+      totalPlayers: players.length
+    };
   });
   protected readonly onlineLabel = computed(() => {
     const role = this.authState.profile()?.role;
     return role === 'HOST' ? 'Host' : role === 'MANAGER' ? 'Manager' : 'Member';
   });
+  protected readonly messageDayGroups = computed(() =>
+    groupGlobalChatMessagesByDay(this.chat.messages())
+  );
 
   @ViewChild('messageStream') private readonly messageStream?: ElementRef<HTMLElement>;
+  private readonly initialMessageScroll = afterRenderEffect(() => {
+    if (this.hasScrolledToInitialMessages || this.chat.messages().length === 0) {
+      return;
+    }
+
+    const stream = this.messageStream?.nativeElement;
+
+    if (!stream) {
+      return;
+    }
+
+    stream.scrollTo({ top: stream.scrollHeight, behavior: 'auto' });
+    this.hasScrolledToInitialMessages = true;
+  });
 
   protected draftChanged(value: string): void {
     this.draft.set(value);
@@ -1026,14 +1064,6 @@ export class GlobalChatPage {
 
   protected canSend(): boolean {
     return validateChatMessageText(this.draftText).valid;
-  }
-
-  protected characterCountLabel(): string {
-    return `${this.draftText.length}/500`;
-  }
-
-  protected initials(name: string): string {
-    return globalChatInitials(name);
   }
 
   protected isOwn(message: GlobalChatMessage): boolean {
@@ -1049,7 +1079,11 @@ export class GlobalChatPage {
   }
 
   protected timeLabel(createdAt: string): string {
-    return relativeChatTimeLabel(createdAt);
+    return globalChatClockTimeLabel(createdAt);
+  }
+
+  protected isSenderRunStart(messages: GlobalChatMessage[], index: number): boolean {
+    return isGlobalChatSenderRunStart(messages, index);
   }
 
   protected async sendMessage(event: SubmitEvent): Promise<void> {

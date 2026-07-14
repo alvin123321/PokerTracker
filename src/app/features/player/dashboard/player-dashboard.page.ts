@@ -18,7 +18,7 @@ import {
   LucideZap
 } from '@lucide/angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PotCalculatorPage } from '../../host/tools/pot-calculator.page';
@@ -98,7 +98,10 @@ const playerCallTimeSyncIntervalMs = 1000;
     GlobalChatPage
   ],
   template: `
-    <section class="player-dashboard">
+    <section
+      class="player-dashboard"
+      [class.player-dashboard-chat-active]="activeTab() === 'chat'"
+    >
       <nav class="player-tabs" aria-label="Player dashboard">
         @for (tab of tabs; track tab.id) {
           <button
@@ -551,7 +554,7 @@ const playerCallTimeSyncIntervalMs = 1000;
 
           @case ('chat') {
             <section class="player-view player-chat-panel">
-              <app-global-chat-page [compact]="true" />
+              <app-global-chat-page />
             </section>
           }
         }
@@ -636,6 +639,13 @@ const playerCallTimeSyncIntervalMs = 1000;
 
       .player-tab-label {
         display: none;
+      }
+
+      @media (max-width: 639px) {
+        .player-dashboard-chat-active {
+          gap: 0;
+          padding-bottom: 0;
+        }
       }
 
       @media (min-width: 640px) {
@@ -1308,7 +1318,7 @@ const playerCallTimeSyncIntervalMs = 1000;
 
       @media (max-width: 560px) {
         .player-chat-panel {
-          margin-inline: -0.75rem;
+          margin-inline: 0;
           border: 0;
           border-radius: 0;
           background: transparent;
@@ -1430,6 +1440,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   protected readonly pendingTimeCallPlayerId = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
   private callTimeSyncTimer: ReturnType<typeof setInterval> | null = null;
+  private routeTabSubscription: Subscription | null = null;
 
   protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string }> = [
     { id: 'calculator', label: 'Calculator' },
@@ -1491,7 +1502,9 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   );
 
   async ngOnInit(): Promise<void> {
-    this.applyInitialTab();
+    this.routeTabSubscription = this.route.queryParamMap.subscribe((queryParams) => {
+      this.applyRouteTab(queryParams.get('tab'));
+    });
     this.startCallTimeSync();
 
     try {
@@ -1502,6 +1515,9 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.routeTabSubscription?.unsubscribe();
+    this.routeTabSubscription = null;
+
     if (this.callTimeSyncTimer) {
       clearInterval(this.callTimeSyncTimer);
       this.callTimeSyncTimer = null;
@@ -1542,9 +1558,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     return player.name.trim().toLowerCase() === targetName;
   }
 
-  private applyInitialTab(): void {
-    const tab = this.route.snapshot.queryParamMap.get('tab');
-
+  private applyRouteTab(tab: string | null): void {
     if (tab === 'history' || tab === 'sessions') {
       this.activeTab.set('sessions');
       return;
@@ -1557,7 +1571,10 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
 
     if (tab === 'chat') {
       this.activeTab.set('chat');
+      return;
     }
+
+    this.activeTab.set('overview');
   }
 
   protected isRequesting(sessionPlayerId: string): boolean {
