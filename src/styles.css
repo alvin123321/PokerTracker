@@ -1099,6 +1099,10 @@ app-host-shell .host-mobile-tabs {
   view-transition-name: pokertrack-route-content;
 }
 
+::view-transition-group(pokertrack-route-content) {
+  overflow: clip;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -1152,13 +1156,13 @@ html[data-route-transition='back']::view-transition-new(pokertrack-route-content
   }
 
   to {
-    transform: translateX(-20%);
+    transform: translateX(-100%);
   }
 }
 
 @keyframes player-route-in-left {
   from {
-    transform: translateX(-20%);
+    transform: translateX(-100%);
   }
 
   to {
