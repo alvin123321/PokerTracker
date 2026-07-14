@@ -49,7 +49,7 @@ export interface AddPlayerDialogResult {
         <div class="player-search-results mt-2">
           <div
             id="registeredPlayer"
-            class="registered-player-list space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2"
+            class="registered-player-list h-32 space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2 sm:h-auto"
             [class.registered-player-list-hidden]="searchState.kind === 'new'"
           >
             @for (player of filteredRegisteredPlayers(); track player.id) {

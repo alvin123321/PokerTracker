@@ -37,4 +37,16 @@ describe('AddPlayerDialogComponent', () => {
     expect(input?.classList).toContain('text-2xl');
     expect(input?.classList).toContain('font-semibold');
   });
+
+  it('keeps the player list compact on mobile and scrolls additional players', () => {
+    const fixture = TestBed.createComponent(AddPlayerDialogComponent);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const playerList = element.querySelector<HTMLElement>('#registeredPlayer');
+
+    expect(playerList?.classList).toContain('h-32');
+    expect(playerList?.classList).toContain('sm:h-auto');
+    expect(playerList?.classList).toContain('overflow-y-auto');
+  });
 });
