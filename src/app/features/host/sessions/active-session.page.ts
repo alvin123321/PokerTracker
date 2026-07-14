@@ -1365,6 +1365,7 @@ export class ActiveSessionPage implements OnDestroy {
         sessionMemberUserIds: (this.session()?.players ?? [])
           .map((player) => player.userId)
           .filter((userId): userId is string => Boolean(userId)),
+        sessionMemberNames: (this.session()?.players ?? []).map((player) => player.name),
       },
       panelClass: 'pokertrack-dialog-panel',
     });

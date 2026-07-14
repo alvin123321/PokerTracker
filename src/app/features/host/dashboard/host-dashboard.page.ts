@@ -1611,6 +1611,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
         sessionMemberUserIds: (this.store.getSession(sessionId)?.players ?? [])
           .map((player) => player.userId)
           .filter((userId): userId is string => Boolean(userId)),
+        sessionMemberNames: (this.store.getSession(sessionId)?.players ?? []).map((player) => player.name),
       },
       panelClass: 'pokertrack-dialog-panel',
     });

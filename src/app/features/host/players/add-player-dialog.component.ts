@@ -4,13 +4,17 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { RegisteredPlayerOption } from '../data/poker-store.service';
-import { sortRegisteredPlayerOptions } from './add-player-dialog.logic';
+import {
+  isRegisteredPlayerInSession,
+  sortRegisteredPlayerOptions
+} from './add-player-dialog.logic';
 
 type AddPlayerMode = 'existing' | 'new';
 
 export interface AddPlayerDialogData {
   registeredPlayers: RegisteredPlayerOption[];
   sessionMemberUserIds: readonly string[];
+  sessionMemberNames: readonly string[];
 }
 
 export interface AddPlayerDialogResult {
@@ -78,7 +82,7 @@ export interface AddPlayerDialogResult {
                 type="button"
                 class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/[0.015] disabled:text-neutral-600"
                 [class.member-option-selected]="form.controls.playerUserId.value === player.id"
-                [disabled]="isSessionMember(player.id)"
+                [disabled]="isSessionMember(player)"
                 (click)="selectRegisteredPlayer(player.id)"
               >
                 <span>
@@ -86,7 +90,7 @@ export interface AddPlayerDialogResult {
                 </span>
                 @if (form.controls.playerUserId.value === player.id) {
                   <span class="selected-dot" aria-hidden="true"></span>
-                } @else if (isSessionMember(player.id)) {
+                } @else if (isSessionMember(player)) {
                   <span class="text-xs font-semibold uppercase text-neutral-600">Already in game</span>
                 }
               </button>
@@ -270,7 +274,6 @@ export class AddPlayerDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<AddPlayerDialogComponent>);
   private readonly data = inject<AddPlayerDialogData>(MAT_DIALOG_DATA);
   protected readonly registeredPlayers = this.data.registeredPlayers;
-  private readonly sessionMemberUserIds = new Set(this.data.sessionMemberUserIds);
   protected readonly buyInPresets = [300, 400, 500, 600];
   protected readonly searchControl = new FormControl('', {
     nonNullable: true
@@ -351,7 +354,9 @@ export class AddPlayerDialogComponent {
   }
 
   protected selectRegisteredPlayer(playerId: string): void {
-    if (this.isSessionMember(playerId)) {
+    const player = this.registeredPlayers.find((option) => option.id === playerId);
+
+    if (!player || this.isSessionMember(player)) {
       return;
     }
 
@@ -370,7 +375,7 @@ export class AddPlayerDialogComponent {
     if (this.mode.value === 'existing') {
       return (
         Boolean(this.form.controls.playerUserId.value) &&
-        !this.isSessionMember(this.form.controls.playerUserId.value)
+        !this.isSessionMemberById(this.form.controls.playerUserId.value)
       );
     }
 
@@ -381,19 +386,28 @@ export class AddPlayerDialogComponent {
     const search = this.searchControl.value.trim().toLocaleLowerCase();
 
     if (!search) {
-      return sortRegisteredPlayerOptions(this.registeredPlayers, this.data.sessionMemberUserIds);
+      return sortRegisteredPlayerOptions(
+        this.registeredPlayers,
+        this.data.sessionMemberUserIds,
+        this.data.sessionMemberNames
+      );
     }
 
     return sortRegisteredPlayerOptions(
       this.registeredPlayers.filter((player) =>
         this.playerLabel(player).toLocaleLowerCase().includes(search)
       ),
-      this.data.sessionMemberUserIds
+      this.data.sessionMemberUserIds,
+      this.data.sessionMemberNames
     );
   }
 
-  protected isSessionMember(playerId: string): boolean {
-    return this.sessionMemberUserIds.has(playerId);
+  protected isSessionMember(player: RegisteredPlayerOption): boolean {
+    return isRegisteredPlayerInSession(
+      player,
+      this.data.sessionMemberUserIds,
+      this.data.sessionMemberNames
+    );
   }
 
   protected duplicateName(): boolean {
@@ -414,7 +428,12 @@ export class AddPlayerDialogComponent {
   }
 
   private firstSelectableRegisteredPlayerId(): string {
-    return this.filteredRegisteredPlayers().find((player) => !this.isSessionMember(player.id))?.id ?? '';
+    return this.filteredRegisteredPlayers().find((player) => !this.isSessionMember(player))?.id ?? '';
+  }
+
+  private isSessionMemberById(playerId: string): boolean {
+    const player = this.registeredPlayers.find((option) => option.id === playerId);
+    return !player || this.isSessionMember(player);
   }
 
   private titleCaseName(name: string): string {
