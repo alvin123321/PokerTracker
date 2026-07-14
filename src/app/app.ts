@@ -44,7 +44,11 @@ export class App {
       return;
     }
 
-    this.document.documentElement.dataset['routeTransition'] = routeTransitionDirection(navigationTrigger);
+    this.document.documentElement.dataset['routeTransition'] = routeTransitionDirection(
+      navigationTrigger,
+      this.router.url,
+      targetUrl
+    );
 
     if (this.routeTransitionTimer) {
       window.clearTimeout(this.routeTransitionTimer);

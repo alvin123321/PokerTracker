@@ -1,7 +1,17 @@
 export type RouteTransitionDirection = 'forward' | 'back';
 
-export function routeTransitionDirection(navigationTrigger: string | undefined): RouteTransitionDirection {
-  return navigationTrigger === 'popstate' ? 'back' : 'forward';
+export function routeTransitionDirection(
+  navigationTrigger: string | undefined,
+  currentUrl?: string,
+  targetUrl?: string
+): RouteTransitionDirection {
+  if (navigationTrigger === 'popstate') {
+    return 'back';
+  }
+
+  return currentUrl && targetUrl && isDetailRoute(currentUrl) && !isDetailRoute(targetUrl)
+    ? 'back'
+    : 'forward';
 }
 
 export function shouldAnimateRouteTransition(currentUrl: string, targetUrl: string): boolean {
