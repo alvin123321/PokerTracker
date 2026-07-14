@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Saira:wght@300..900&family=Share+Tech+Mono&display=swap');
 @import '@angular/material/prebuilt-themes/cyan-orange.css';
 @import 'tailwindcss';
 
@@ -56,6 +57,190 @@ a[href],
 
 button:disabled {
   cursor: not-allowed;
+}
+
+app-global-chat-page .chat-game-banner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 4.7rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  overflow: hidden;
+  border-bottom: 1px solid rgb(110 231 183 / 0.28);
+  padding: 0.78rem 1rem;
+  background:
+    radial-gradient(circle at 100% 50%, rgb(52 211 153 / 0.42), transparent 56%),
+    linear-gradient(
+      105deg,
+      rgb(5 18 13 / 0.98) 0%,
+      rgb(8 47 31 / 0.98) 66%,
+      rgb(10 65 42 / 0.98) 100%
+    );
+  box-shadow:
+    inset 0 -1px 0 rgb(167 243 208 / 0.08),
+    inset -2.5rem 0 3.8rem rgb(52 211 153 / 0.12),
+    0 0.7rem 2rem rgb(6 95 70 / 0.18);
+}
+
+app-global-chat-page .chat-game-copy {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  flex: 1 1 auto;
+  transform: translateY(-0.14rem);
+}
+
+.chat-shell-back {
+  display: none;
+}
+
+app-global-chat-page .chat-game-copy h2 {
+  overflow: hidden;
+  margin: 0.12rem 0 0;
+  color: rgb(248 250 252);
+  font-size: 1rem;
+  font-weight: 620;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 1rem rgb(167 243 208 / 0.16);
+}
+
+app-global-chat-page .chat-game-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  color: rgb(167 243 208);
+  font-size: 0.67rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
+  text-shadow: 0 0 0.7rem rgb(52 211 153 / 0.6);
+  text-transform: uppercase;
+}
+
+app-global-chat-page .chat-game-live-dot {
+  width: 0.48rem;
+  height: 0.48rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgb(74 222 128);
+  box-shadow:
+    0 0 0 0.22rem rgb(52 211 153 / 0.12),
+    0 0 1rem rgb(52 211 153 / 0.95);
+}
+
+app-global-chat-page .chat-active-count {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  min-width: 3.8rem;
+  flex: 0 0 auto;
+  justify-items: end;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+app-global-chat-page .chat-active-count strong {
+  color: rgb(167 243 208);
+  font-size: 1.14rem;
+  font-weight: 520;
+  text-shadow:
+    0 0 0.45rem rgb(52 211 153 / 0.9),
+    0 0 1.2rem rgb(16 185 129 / 0.72);
+}
+
+app-global-chat-page .chat-active-count-label {
+  margin-top: 0.28rem;
+  color: rgb(110 231 183);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 400;
+  text-shadow:
+    0 0 0.4rem rgb(52 211 153 / 0.9),
+    0 0 0.9rem rgb(16 185 129 / 0.68);
+  text-transform: uppercase;
+}
+
+app-global-chat-page .chat-live-pulse {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: -7rem;
+  width: 14rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgb(110 231 183 / 0.22),
+    rgb(52 211 153 / 0.08) 38%,
+    transparent 68%
+  );
+  box-shadow: 0 0 4.5rem rgb(52 211 153 / 0.42);
+  pointer-events: none;
+  transform: translateY(-50%);
+  will-change: left, opacity;
+  animation: chat-live-pulse-travel 6.8s linear infinite;
+}
+
+app-global-chat-page .chat-live-pulse > span {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgb(110 231 183 / 0.46);
+  border-radius: inherit;
+  box-shadow:
+    0 0 1rem rgb(52 211 153 / 0.34),
+    inset 0 0 1rem rgb(52 211 153 / 0.16);
+  animation: chat-live-pulse-expand 3.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+app-global-chat-page .chat-live-pulse > span:nth-child(2) {
+  animation-delay: 1.1s;
+}
+
+app-global-chat-page .chat-live-pulse > span:nth-child(3) {
+  animation-delay: 2.2s;
+}
+
+app-player-dashboard-page .feature-detail-heading > span:first-child {
+  color: rgb(203 213 225);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.88rem;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+@keyframes chat-live-pulse-expand {
+  0% {
+    opacity: 0.72;
+    transform: scale(0.22);
+  }
+
+  78%,
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes chat-live-pulse-travel {
+  0% {
+    left: -7rem;
+    opacity: 0;
+  }
+
+  8%,
+  88% {
+    opacity: 1;
+  }
+
+  100% {
+    left: calc(100% - 7rem);
+    opacity: 0;
+  }
 }
 
 .pokertrack-sync-overlay {
@@ -764,8 +949,222 @@ a {
 }
 
 @media (max-width: 639px) {
-  app-host-shell main {
+  app-host-shell > main {
     padding-bottom: calc(5.85rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  app-host-shell > main:has(app-global-chat-page.global-chat-route) {
+    padding-bottom: 0;
+  }
+
+  app-host-shell > main:has(app-global-chat-page.global-chat-route) .host-mobile-tabs,
+  app-player-dashboard-page .player-dashboard-chat-active .player-tabs {
+    display: none;
+  }
+
+  app-host-shell .pokertrack-route-content:has(> app-global-chat-page.global-chat-route) {
+    max-width: none;
+    padding: 0;
+  }
+
+  app-player-shell .pokertrack-route-content:has(.player-dashboard-chat-active) {
+    max-width: none;
+    padding: 0;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route {
+    position: relative;
+    z-index: auto;
+    display: block;
+    height: calc(100dvh - 4.25rem - 1px);
+  }
+
+  :is(app-host-shell, app-player-shell)
+    > main:has(app-global-chat-page.global-chat-route)
+    .chat-shell-back {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 0.75rem;
+    display: inline-grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgb(167 243 208 / 0.28);
+    border-radius: 50%;
+    background: rgb(2 18 13 / 0.56);
+    color: rgb(236 253 245);
+    box-shadow: 0 0 1.25rem rgb(16 185 129 / 0.14);
+    transform: translateY(-50%);
+  }
+
+  :is(app-host-shell, app-player-shell)
+    > main:has(app-global-chat-page.global-chat-route)
+    .chat-shell-back:active {
+    transform: translateY(-50%) scale(0.96);
+  }
+
+  :is(app-host-shell, app-player-shell)
+    > main:has(app-global-chat-page.global-chat-route)
+    .chat-shell-back:focus-visible {
+    outline: 2px solid rgb(110 231 183);
+    outline-offset: 2px;
+  }
+
+  :is(app-host-shell, app-player-shell)
+    > main:has(app-global-chat-page.global-chat-route)
+    .chat-shell-back svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .global-chat,
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-layout,
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-panel {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-layout {
+    display: block;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-panel {
+    grid-template-rows: auto minmax(0, 1fr) max-content;
+    isolation: isolate;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, rgb(10 24 20 / 0.98), rgb(3 10 14 / 0.99)),
+      #06100d;
+    box-shadow: none;
+  }
+
+  :is(app-host-shell, app-player-shell)
+    app-global-chat-page.global-chat-route
+    .chat-panel.chat-panel-no-game {
+    grid-template-rows: minmax(0, 1fr) max-content;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-decor {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(12deg, rgb(221 203 164 / 0.012) 0 1px, transparent 1px 8px),
+      repeating-linear-gradient(102deg, rgb(104 139 123 / 0.014) 0 1px, transparent 1px 10px);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-decor::before {
+    content: '';
+    position: absolute;
+    top: 18%;
+    right: -20%;
+    bottom: 18%;
+    left: -20%;
+    border: 1px solid rgb(202 174 116 / 0.075);
+    border-radius: 50%;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-suit,
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-chip {
+    position: absolute;
+    user-select: none;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-suit {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 4.7rem;
+    line-height: 1;
+    color: rgb(202 174 116 / 0.1);
+    font-weight: 400;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-spade {
+    top: 18%;
+    left: 0.4rem;
+    transform: rotate(-5deg);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-heart {
+    top: 38%;
+    right: 8%;
+    transform: rotate(3deg) scale(0.72);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-diamond {
+    bottom: 30%;
+    left: 20%;
+    transform: rotate(-2deg) scale(0.65);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-club {
+    right: 0.3rem;
+    bottom: 12%;
+    transform: rotate(5deg) scale(0.78);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-chip {
+    display: grid;
+    width: 7rem;
+    aspect-ratio: 1;
+    place-items: center;
+    border: 1px solid rgb(202 174 116 / 0.38);
+    border-radius: 50%;
+    background: repeating-conic-gradient(
+      from 0deg,
+      rgb(216 199 164 / 0.72) 0deg 6deg,
+      rgb(19 30 27 / 0.92) 6deg 30deg
+    );
+    opacity: 0.1;
+    box-shadow:
+      inset 0 0 0 0.58rem rgb(3 10 14 / 0.96),
+      inset 0 0 0 0.72rem rgb(202 174 116 / 0.38);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-chip::before {
+    content: '';
+    position: absolute;
+    inset: 1.2rem;
+    border: 1px solid rgb(202 174 116 / 0.62);
+    border-radius: 50%;
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-chip > span {
+    width: 2.75rem;
+    aspect-ratio: 1;
+    border: 1px solid rgb(216 199 164 / 0.7);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 0.25rem rgb(3 10 14 / 0.88);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-chip-one {
+    top: 22%;
+    right: -3rem;
+    transform: rotate(7deg);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-table-chip-two {
+    bottom: 16%;
+    left: -3.1rem;
+    transform: rotate(-8deg) scale(0.84);
+  }
+
+  :is(app-host-shell, app-player-shell) app-global-chat-page.global-chat-route .chat-composer {
+    position: relative;
+    bottom: auto;
+    margin-inline: 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 0;
+    padding-bottom: 0;
+    box-shadow: none;
   }
 
   .host-mobile-tabs {
@@ -823,8 +1222,7 @@ a {
   }
 }
 
-.host-shell-nav,
-app-host-shell main {
+app-host-shell > main {
   overflow-x: clip;
 }
 
@@ -982,6 +1380,131 @@ app-host-shell main {
   font-weight: 690;
 }
 
+.host-account-menu-shell {
+  position: absolute;
+  z-index: 60;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
+}
+
+.host-account-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(134 239 172 / 0.26);
+  border-radius: 999px;
+  background: rgb(2 12 10 / 0.82);
+  color: rgb(229 229 229);
+  padding: 0.24rem 0.3rem;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.host-account-menu-toggle:hover,
+.host-account-menu-toggle[aria-expanded='true'] {
+  border-color: rgb(134 239 172 / 0.52);
+  background: rgb(3 24 18 / 0.94);
+  box-shadow: 0 0 20px rgb(16 185 129 / 0.14);
+  color: rgb(236 253 245);
+}
+
+.host-account-menu-toggle:active {
+  transform: scale(0.97);
+}
+
+.host-account-menu-toggle:focus-visible {
+  outline: 2px solid rgb(52 211 153);
+  outline-offset: 3px;
+}
+
+.host-account-menu {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  display: grid;
+  width: min(13rem, calc(100vw - 1.5rem));
+  gap: 0.2rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.5rem;
+  background: rgb(5 12 10);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.48);
+  padding: 0.4rem;
+  animation: host-account-menu-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.host-account-menu-item {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: rgb(229 229 229);
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  font-size: 0.94rem;
+  font-weight: 680;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.host-account-menu-item svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.host-account-menu-item:hover,
+.host-account-menu-item:focus-visible {
+  background: rgb(255 255 255 / 0.07);
+  color: white;
+  outline: none;
+}
+
+.host-account-signout {
+  margin-top: 0.2rem;
+  border-top: 1px solid rgb(248 113 113 / 0.18);
+  border-radius: 0 0 0.4rem 0.4rem;
+  color: rgb(252 165 165);
+}
+
+.host-account-signout:hover,
+.host-account-signout:focus-visible {
+  background: rgb(127 29 29 / 0.22);
+  color: rgb(254 202 202);
+}
+
+.host-account-signout:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+@keyframes host-account-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.35rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .host-account-menu {
+    animation: none;
+  }
+}
+
 .pokertrack-nav-link {
   position: relative;
   isolation: isolate;
@@ -1089,6 +1612,12 @@ app-host-shell main {
 app-host-shell > main > header,
 app-player-shell > main > header {
   view-transition-name: pokertrack-top-nav;
+}
+
+app-host-shell > main > header {
+  position: relative;
+  z-index: 50;
+  overflow: visible;
 }
 
 app-host-shell .host-mobile-tabs {

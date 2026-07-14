@@ -1,7 +1,7 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthStateService } from '../../core/auth/auth-state.service';
@@ -105,21 +105,6 @@ import {
           </form>
         </div>
 
-        <section class="profile-signout-panel">
-          <div>
-            <h2>Sign out</h2>
-            <p>Leave this account and return to the login screen.</p>
-          </div>
-          <button
-            type="button"
-            class="profile-signout-button"
-            [disabled]="authState.loading() || signingOut()"
-            (click)="signOut()"
-          >
-            Sign out
-          </button>
-        </section>
-
         @if (profileToastMessage()) {
           <div class="profile-toast" role="status" aria-live="polite">
             {{ profileToastMessage() }}
@@ -176,8 +161,7 @@ import {
       }
 
       .profile-hero,
-      .profile-panel,
-      .profile-signout-panel {
+      .profile-panel {
         border: 1px solid rgb(255 255 255 / 0.1);
         border-radius: 1rem;
         background:
@@ -264,8 +248,7 @@ import {
       }
 
       .profile-hero p,
-      .profile-panel p,
-      .profile-signout-panel p {
+      .profile-panel p {
         margin: 0.35rem 0 0;
         color: rgb(161 161 170);
       }
@@ -281,14 +264,7 @@ import {
         padding: 1rem;
       }
 
-      .profile-signout-panel {
-        display: grid;
-        gap: 1rem;
-        padding: 1rem;
-      }
-
-      .profile-panel h2,
-      .profile-signout-panel h2 {
+      .profile-panel h2 {
         font-size: 1.16rem;
         font-weight: 720;
       }
@@ -357,29 +333,6 @@ import {
         opacity: 0.74;
       }
 
-      .profile-signout-button {
-        display: inline-flex;
-        min-height: 3rem;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid rgb(248 113 113 / 0.34);
-        border-radius: 0.9rem;
-        background: rgb(127 29 29 / 0.18);
-        color: rgb(254 202 202);
-        font-weight: 760;
-      }
-
-      .profile-signout-button:hover {
-        border-color: rgb(248 113 113 / 0.52);
-        background: rgb(127 29 29 / 0.28);
-        box-shadow: 0 0 24px rgb(248 113 113 / 0.12);
-      }
-
-      .profile-signout-button:disabled {
-        cursor: not-allowed;
-        opacity: 0.72;
-      }
-
       .profile-alert {
         border-radius: 0.9rem;
         padding: 0.85rem 1rem;
@@ -440,7 +393,6 @@ import {
         .profile-page,
         .profile-field input,
         .profile-primary-button,
-        .profile-signout-button,
         .profile-loading-overlay,
         .profile-toast {
           animation: none;
@@ -486,20 +438,18 @@ import {
 })
 export class ProfilePage implements OnDestroy {
   private readonly dialog = inject(MatDialog);
-  private readonly router = inject(Router);
   protected readonly authState = inject(AuthStateService);
   protected readonly profile = this.authState.profile;
   protected readonly statusMessage = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly savingName = signal(false);
   protected readonly savingPassword = signal(false);
-  protected readonly signingOut = signal(false);
   protected readonly profileToastMessage = signal<string | null>(null);
   protected readonly profileActionLoading = computed(
-    () => this.savingName() || this.savingPassword() || this.signingOut()
+    () => this.savingName() || this.savingPassword()
   );
   protected readonly profileLoadingMessage = computed(() =>
-    this.signingOut() ? 'Signing out...' : this.savingName() ? 'Saving name...' : 'Updating password...'
+    this.savingName() ? 'Saving name...' : 'Updating password...'
   );
   protected readonly initials = computed(() => displayNameInitials(this.profile()?.displayName));
   private profileToastTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -609,29 +559,6 @@ export class ProfilePage implements OnDestroy {
       this.errorMessage.set(error instanceof Error ? error.message : 'Unable to change password.');
     } finally {
       this.savingPassword.set(false);
-    }
-  }
-
-  protected async signOut(): Promise<void> {
-    this.statusMessage.set(null);
-    this.errorMessage.set(null);
-
-    const confirmed = await this.confirmProfileAction({
-      title: 'Sign out?',
-      message: 'You will need to sign in again before using PokerTracker.',
-      confirmLabel: 'Sign out'
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      this.signingOut.set(true);
-      await this.authState.signOut();
-      await this.router.navigateByUrl('/login');
-    } finally {
-      this.signingOut.set(false);
     }
   }
 

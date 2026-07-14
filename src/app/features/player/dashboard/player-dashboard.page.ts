@@ -10,6 +10,7 @@ import {
   LucideCoins,
   LucideHistory,
   LucideHouse,
+  LucideMessageCircle,
   LucideAlarmClock,
   LucideReceiptText,
   LucideRefreshCcw,
@@ -17,10 +18,11 @@ import {
   LucideZap
 } from '@lucide/angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PotCalculatorPage } from '../../host/tools/pot-calculator.page';
+import { GlobalChatPage } from '../../chat/global-chat.page';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
@@ -50,7 +52,7 @@ import {
   PlayerGameStatusKind
 } from './player-dashboard.logic';
 
-type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator';
+type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator' | 'chat';
 
 interface PlayerSessionEntry {
   session: PokerSession;
@@ -85,16 +87,21 @@ const playerCallTimeSyncIntervalMs = 1000;
     LucideCoins,
     LucideHistory,
     LucideHouse,
+    LucideMessageCircle,
     LucideAlarmClock,
     LucideReceiptText,
     LucideRefreshCcw,
     LucideUsersRound,
     LucideZap,
     RouterLink,
-    PotCalculatorPage
+    PotCalculatorPage,
+    GlobalChatPage
   ],
   template: `
-    <section class="player-dashboard">
+    <section
+      class="player-dashboard"
+      [class.player-dashboard-chat-active]="activeTab() === 'chat'"
+    >
       <nav class="player-tabs" aria-label="Player dashboard">
         @for (tab of tabs; track tab.id) {
           <button
@@ -128,6 +135,15 @@ const playerCallTimeSyncIntervalMs = 1000;
               @case ('calculator') {
                 <svg
                   lucideCalculator
+                  class="pokertrack-nav-icon"
+                  [strokeWidth]="3"
+                  [absoluteStrokeWidth]="true"
+                  aria-hidden="true"
+                ></svg>
+              }
+              @case ('chat') {
+                <svg
+                  lucideMessageCircle
                   class="pokertrack-nav-icon"
                   [strokeWidth]="3"
                   [absoluteStrokeWidth]="true"
@@ -535,6 +551,12 @@ const playerCallTimeSyncIntervalMs = 1000;
               <app-pot-calculator-page [compact]="true" />
             </section>
           }
+
+          @case ('chat') {
+            <section class="player-view player-chat-panel">
+              <app-global-chat-page />
+            </section>
+          }
         }
       </div>
     </section>
@@ -568,7 +590,7 @@ const playerCallTimeSyncIntervalMs = 1000;
 
       .player-tabs {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 0.6rem;
         position: fixed;
         z-index: 30;
@@ -619,6 +641,13 @@ const playerCallTimeSyncIntervalMs = 1000;
         display: none;
       }
 
+      @media (max-width: 639px) {
+        .player-dashboard-chat-active {
+          gap: 0;
+          padding-bottom: 0;
+        }
+      }
+
       @media (min-width: 640px) {
         .player-dashboard {
           padding-bottom: 0;
@@ -627,7 +656,7 @@ const playerCallTimeSyncIntervalMs = 1000;
         .player-tabs {
           position: static;
           justify-self: center;
-          max-width: 18rem;
+          max-width: 25rem;
           border: 1px solid rgb(255 255 255 / 0.09);
           border-radius: 1rem;
           background: rgb(0 0 0 / 0.24);
@@ -686,7 +715,8 @@ const playerCallTimeSyncIntervalMs = 1000;
       .player-ledger-panel,
       .session-tile,
       .player-empty-card,
-      .calculator-player-panel {
+      .calculator-player-panel,
+      .player-chat-panel {
         border: 1px solid rgb(255 255 255 / 0.1);
         border-radius: 1rem;
         background:
@@ -1049,6 +1079,7 @@ const playerCallTimeSyncIntervalMs = 1000;
 
       .player-ledger-panel,
       .calculator-player-panel,
+      .player-chat-panel,
       .player-empty-card {
         padding: 1rem;
       }
@@ -1286,6 +1317,14 @@ const playerCallTimeSyncIntervalMs = 1000;
       }
 
       @media (max-width: 560px) {
+        .player-chat-panel {
+          margin-inline: 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          padding: 0;
+        }
+
         .player-tab {
           min-height: 2.65rem;
         }
@@ -1401,13 +1440,15 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   protected readonly pendingTimeCallPlayerId = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
   private callTimeSyncTimer: ReturnType<typeof setInterval> | null = null;
+  private routeTabSubscription: Subscription | null = null;
 
   protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string }> = [
     { id: 'calculator', label: 'Calculator' },
     { id: 'overview', label: 'Home' },
+    { id: 'chat', label: 'Chat' },
     { id: 'sessions', label: 'History' }
   ];
-  protected readonly activeTab = signal<'overview' | 'sessions' | 'calculator'>('overview');
+  protected readonly activeTab = signal<PlayerDashboardTab>('overview');
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {
     const userId = this.authState.user()?.id ?? null;
@@ -1461,7 +1502,9 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   );
 
   async ngOnInit(): Promise<void> {
-    this.applyInitialTab();
+    this.routeTabSubscription = this.route.queryParamMap.subscribe((queryParams) => {
+      this.applyRouteTab(queryParams.get('tab'));
+    });
     this.startCallTimeSync();
 
     try {
@@ -1472,13 +1515,16 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.routeTabSubscription?.unsubscribe();
+    this.routeTabSubscription = null;
+
     if (this.callTimeSyncTimer) {
       clearInterval(this.callTimeSyncTimer);
       this.callTimeSyncTimer = null;
     }
   }
 
-  protected selectTab(tab: 'overview' | 'sessions' | 'calculator'): void {
+  protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
   }
 
@@ -1512,9 +1558,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     return player.name.trim().toLowerCase() === targetName;
   }
 
-  private applyInitialTab(): void {
-    const tab = this.route.snapshot.queryParamMap.get('tab');
-
+  private applyRouteTab(tab: string | null): void {
     if (tab === 'history' || tab === 'sessions') {
       this.activeTab.set('sessions');
       return;
@@ -1522,7 +1566,15 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
 
     if (tab === 'calculator') {
       this.activeTab.set('calculator');
+      return;
     }
+
+    if (tab === 'chat') {
+      this.activeTab.set('chat');
+      return;
+    }
+
+    this.activeTab.set('overview');
   }
 
   protected isRequesting(sessionPlayerId: string): boolean {

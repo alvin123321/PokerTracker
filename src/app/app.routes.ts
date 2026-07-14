@@ -37,6 +37,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/profile/profile.page').then((m) => m.ProfilePage)
       },
       {
+        path: 'chat',
+        loadComponent: () => import('./features/chat/global-chat.page').then((m) => m.GlobalChatPage)
+      },
+      {
         path: 'session-overview',
         loadComponent: () =>
           import('./features/host/overview/session-overview.page').then(
