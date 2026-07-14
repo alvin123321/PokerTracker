@@ -1087,9 +1087,12 @@ app-host-shell main {
 }
 
 app-host-shell > main > header,
-app-host-shell .host-mobile-tabs,
 app-player-shell > main > header {
-  view-transition-name: none;
+  view-transition-name: pokertrack-top-nav;
+}
+
+app-host-shell .host-mobile-tabs {
+  view-transition-name: pokertrack-bottom-nav;
 }
 
 .pokertrack-route-content {
@@ -1103,8 +1106,16 @@ app-player-shell > main > header {
 
 ::view-transition-old(pokertrack-route-content),
 ::view-transition-new(pokertrack-route-content) {
-  animation-duration: 260ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation: none;
+}
+
+::view-transition-group(pokertrack-top-nav),
+::view-transition-old(pokertrack-top-nav),
+::view-transition-new(pokertrack-top-nav),
+::view-transition-group(pokertrack-bottom-nav),
+::view-transition-old(pokertrack-bottom-nav),
+::view-transition-new(pokertrack-bottom-nav) {
+  animation: none;
 }
 
 html[data-route-transition='forward']::view-transition-old(pokertrack-route-content) {
@@ -1127,49 +1138,41 @@ html[data-route-transition='back']::view-transition-new(pokertrack-route-content
 
 @keyframes player-route-in-right {
   from {
-    opacity: 0.92;
     transform: translateX(100%);
   }
 
   to {
-    opacity: 1;
     transform: translateX(0);
   }
 }
 
 @keyframes player-route-out-left {
   from {
-    opacity: 1;
     transform: translateX(0);
   }
 
   to {
-    opacity: 0.82;
-    transform: translateX(-18%);
+    transform: translateX(-20%);
   }
 }
 
 @keyframes player-route-in-left {
   from {
-    opacity: 0.92;
-    transform: translateX(-100%);
+    transform: translateX(-20%);
   }
 
   to {
-    opacity: 1;
     transform: translateX(0);
   }
 }
 
 @keyframes player-route-out-right {
   from {
-    opacity: 1;
     transform: translateX(0);
   }
 
   to {
-    opacity: 0.82;
-    transform: translateX(18%);
+    transform: translateX(100%);
   }
 }
 

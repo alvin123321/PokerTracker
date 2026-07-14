@@ -18,6 +18,12 @@ export function shouldAnimateRouteTransition(currentUrl: string, targetUrl: stri
   return isDetailRoute(currentUrl) || isDetailRoute(targetUrl);
 }
 
+export function shouldRunRouteViewTransition(
+  direction: string | undefined
+): boolean {
+  return direction === 'forward' || direction === 'back';
+}
+
 function isDetailRoute(url: string): boolean {
   const path = url.split(/[?#]/, 1)[0];
 

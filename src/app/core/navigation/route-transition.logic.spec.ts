@@ -1,4 +1,8 @@
-import { routeTransitionDirection, shouldAnimateRouteTransition } from './route-transition.logic';
+import {
+  routeTransitionDirection,
+  shouldAnimateRouteTransition,
+  shouldRunRouteViewTransition
+} from './route-transition.logic';
 
 describe('routeTransitionDirection', () => {
   it('uses a backward page turn for browser history navigation', () => {
@@ -33,5 +37,15 @@ describe('shouldAnimateRouteTransition', () => {
 
   it('animates returning from a detail page', () => {
     expect(shouldAnimateRouteTransition('/host/sessions/session-123', '/host/sessions/history')).toBeTrue();
+  });
+});
+
+describe('shouldRunRouteViewTransition', () => {
+  it('skips the browser transition when a shell tab navigation has no direction', () => {
+    expect(shouldRunRouteViewTransition(undefined)).toBeFalse();
+  });
+
+  it('runs the browser transition for a directed detail navigation', () => {
+    expect(shouldRunRouteViewTransition('forward')).toBeTrue();
   });
 });
