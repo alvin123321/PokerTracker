@@ -46,39 +46,43 @@ export interface AddPlayerDialogResult {
           class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
           placeholder="Search or enter a new player"
         />
-        <div
-          id="registeredPlayer"
-          class="registered-player-list mt-2 space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2"
-        >
-          @for (player of filteredRegisteredPlayers(); track player.id) {
-            <button
-              type="button"
-              class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/[0.015] disabled:text-neutral-600"
-              [class.member-option-selected]="searchState.kind === 'existing' && searchState.player.id === player.id"
-              [disabled]="isSessionMember(player)"
-              (click)="selectRegisteredPlayer(player)"
-            >
-              <span>
-                <span class="block text-base font-semibold">{{ playerLabel(player) }}</span>
-              </span>
-              @if (searchState.kind === 'existing' && searchState.player.id === player.id) {
-                <span class="selected-dot" aria-hidden="true"></span>
-              } @else if (isSessionMember(player)) {
-                <span class="text-xs font-semibold uppercase text-neutral-600">Already in game</span>
-              }
-            </button>
-          } @empty {
-            @if (searchState.kind === 'new') {
-              <p class="new-signup-notice">
-                <strong>New signup: {{ searchState.name }}</strong>
-                <span>Click Add Player to add this player.</span>
-              </p>
-            } @else {
+        <div class="player-search-results mt-2">
+          <div
+            id="registeredPlayer"
+            class="registered-player-list space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2"
+            [class.registered-player-list-hidden]="searchState.kind === 'new'"
+          >
+            @for (player of filteredRegisteredPlayers(); track player.id) {
+              <button
+                type="button"
+                class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/[0.015] disabled:text-neutral-600"
+                [class.member-option-selected]="searchState.kind === 'existing' && searchState.player.id === player.id"
+                [disabled]="isSessionMember(player)"
+                (click)="selectRegisteredPlayer(player)"
+              >
+                <span>
+                  <span class="block text-base font-semibold">{{ playerLabel(player) }}</span>
+                </span>
+                @if (searchState.kind === 'existing' && searchState.player.id === player.id) {
+                  <span class="selected-dot" aria-hidden="true"></span>
+                } @else if (isSessionMember(player)) {
+                  <span class="text-xs font-semibold uppercase text-neutral-600">Already in game</span>
+                }
+              </button>
+            } @empty {
               <p class="rounded-lg border border-dashed border-white/10 p-4 text-sm text-neutral-500">
                 Start typing a player name to add a new signup.
               </p>
             }
-          }
+          </div>
+          <p
+            class="new-signup-notice"
+            [class.new-signup-notice-visible]="searchState.kind === 'new'"
+            [attr.aria-hidden]="searchState.kind !== 'new'"
+          >
+            <strong>New signup: {{ newSignupName() }}</strong>
+            <span>Click Add Player to add this player.</span>
+          </p>
         </div>
 
         <label class="block text-sm font-medium text-neutral-200" for="buyIn">Buy-in</label>
@@ -178,6 +182,15 @@ export interface AddPlayerDialogResult {
         max-height: min(18rem, 38dvh);
       }
 
+      .player-search-results {
+        position: relative;
+        min-height: 10rem;
+      }
+
+      .registered-player-list-hidden {
+        display: none;
+      }
+
       .member-option {
         min-height: 3.25rem;
         min-width: 0;
@@ -199,17 +212,38 @@ export interface AddPlayerDialogResult {
 
       .new-signup-notice {
         display: grid;
+        position: absolute;
+        inset: 0;
+        align-content: center;
         gap: 0.2rem;
         border: 1px solid rgb(110 231 183 / 0.35);
         border-radius: 0.5rem;
         background: rgb(110 231 183 / 0.1);
+        opacity: 0;
         padding: 0.85rem;
+        pointer-events: none;
         color: rgb(209 250 229);
         font-size: 0.875rem;
+        transform: translateY(-0.3rem);
+        transition:
+          opacity 420ms ease,
+          transform 420ms ease;
+      }
+
+      .new-signup-notice-visible {
+        opacity: 1;
+        transform: translateY(0);
       }
 
       .new-signup-notice span {
         color: rgb(167 243 208);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .new-signup-notice {
+          transform: none;
+          transition: none;
+        }
       }
 
       .selected-dot {
@@ -242,6 +276,10 @@ export interface AddPlayerDialogResult {
         .registered-player-list {
           min-height: 8rem;
           max-height: 30dvh;
+        }
+
+        .player-search-results {
+          min-height: 8rem;
         }
       }
     `
@@ -362,6 +400,11 @@ export class AddPlayerDialogComponent {
 
   protected playerLabel(player: RegisteredPlayerOption): string {
     return this.titleCaseName(player.displayName ?? player.username);
+  }
+
+  protected newSignupName(): string {
+    const result = this.searchResult();
+    return result.kind === 'new' ? result.name : '';
   }
 
   private titleCaseName(name: string): string {
