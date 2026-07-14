@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "strict": true
+  },
+  "imports": {
+    "@poker-apprentice/hand-evaluator": "npm:@poker-apprentice/hand-evaluator@4.2.0",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.108.2"
+  },
+  "nodeModulesDir": "none"
+}
