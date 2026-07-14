@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationStart, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
-import { routeTransitionDirection } from './core/navigation/route-transition.logic';
+import { routeTransitionDirection, shouldAnimateRouteTransition } from './core/navigation/route-transition.logic';
 
 @Component({
   selector: 'app-root',
@@ -24,13 +24,23 @@ export class App {
         filter((event): event is NavigationStart => event instanceof NavigationStart),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe((event) => this.prepareRouteTransition(event.navigationTrigger));
+      .subscribe((event) => this.prepareRouteTransition(event.navigationTrigger, event.url));
   }
 
-  private prepareRouteTransition(navigationTrigger: string | undefined): void {
+  private prepareRouteTransition(navigationTrigger: string | undefined, targetUrl: string): void {
     const window = this.document.defaultView;
 
     if (!window) {
+      return;
+    }
+
+    if (!shouldAnimateRouteTransition(this.router.url, targetUrl)) {
+      if (this.routeTransitionTimer) {
+        window.clearTimeout(this.routeTransitionTimer);
+        this.routeTransitionTimer = null;
+      }
+
+      delete this.document.documentElement.dataset['routeTransition'];
       return;
     }
 
