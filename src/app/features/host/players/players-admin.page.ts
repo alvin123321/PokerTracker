@@ -3,6 +3,7 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { LucideEllipsis } from '@lucide/angular';
 
 import {
   PokerSession,
@@ -30,6 +31,7 @@ interface PlayerLedgerRow {
     ActionFeedbackToastComponent,
     CurrencyPipe,
     DatePipe,
+    LucideEllipsis,
     MatDialogModule,
     ReactiveFormsModule,
   ],
@@ -84,7 +86,7 @@ interface PlayerLedgerRow {
                   @if (isAnyPlayerActionPending(player)) {
                     <span class="action-spinner" aria-hidden="true"></span>
                   } @else {
-                    <span aria-hidden="true">...</span>
+                    <svg lucideEllipsis [strokeWidth]="2.4" aria-hidden="true"></svg>
                   }
                 </button>
 
@@ -337,11 +339,10 @@ interface PlayerLedgerRow {
       }
 
       .member-action-trigger {
-        display: inline-flex;
+        display: inline-grid;
         width: 2.75rem;
         height: 2.75rem;
-        align-items: center;
-        justify-content: center;
+        place-items: center;
         border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 0.7rem;
         background: rgba(10, 10, 10, 0.38);
@@ -351,6 +352,12 @@ interface PlayerLedgerRow {
         letter-spacing: 0.08em;
         transition: border-color 160ms ease, background 160ms ease, color 160ms ease,
           transform 160ms ease;
+      }
+
+      .member-action-trigger svg {
+        display: block;
+        width: 1.2rem;
+        height: 1.2rem;
       }
 
       .member-action-trigger:hover {

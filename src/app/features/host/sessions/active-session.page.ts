@@ -88,10 +88,10 @@ interface SessionActionReceipt {
 
       <section class="space-y-4 sm:space-y-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
+          <div class="session-title-block min-w-0 flex-1">
             <a [routerLink]="backLink" class="text-sm font-semibold text-emerald-300">&larr; {{ backLabel }}</a>
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
+            <div class="session-title-row mt-3 flex w-full flex-wrap items-center gap-3">
+              <h1 class="min-w-0 text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
               <span class="rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-neutral-950">
                 {{ currentSession.status }}
               </span>
@@ -721,6 +721,9 @@ interface SessionActionReceipt {
       .session-action-menu-wrap {
         position: relative;
         display: inline-flex;
+        flex: 0 0 auto;
+        align-self: center;
+        margin-left: auto;
       }
 
       .session-action-menu-trigger {
@@ -732,6 +735,12 @@ interface SessionActionReceipt {
         border-radius: 0.55rem;
         background: rgb(255 255 255 / 0.035);
         color: rgb(209 250 229);
+      }
+
+      .session-action-menu-trigger svg {
+        display: block;
+        width: 1.2rem;
+        height: 1.2rem;
       }
 
       .session-action-menu-trigger:hover {

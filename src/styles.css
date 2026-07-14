@@ -1166,46 +1166,6 @@ html[data-route-transition]::view-transition-new(root) {
   }
 }
 
-.player-tab-transition-forward .player-view {
-  animation: player-tab-slide-in-right 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.player-tab-transition-back .player-view {
-  animation: player-tab-slide-in-left 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes player-tab-slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(1.25rem);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes player-tab-slide-in-left {
-  from {
-    opacity: 0;
-    transform: translateX(-1.25rem);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .player-tab-transition-forward .player-view,
-  .player-tab-transition-back .player-view {
-    animation: none;
-    transform: none;
-  }
-}
-
 @media (min-width: 640px) {
   .host-shell-brand {
     grid-column: 1;

@@ -12,18 +12,6 @@ import type {
 export type PlayerCallTimeDisplayState = 'CLOCK' | 'BUTTON' | 'NONE';
 export type PlayerGameStatusKind = 'ACTIVE' | 'COMPLETED';
 export type PlayerGameStatMode = 'ACTIVE_GAME' | 'COMPLETED_GAME';
-export type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator';
-
-const playerDashboardTabOrder: PlayerDashboardTab[] = ['calculator', 'overview', 'sessions'];
-
-export function playerTabTransitionDirection(
-  currentTab: PlayerDashboardTab,
-  nextTab: PlayerDashboardTab
-): 'forward' | 'back' {
-  return playerDashboardTabOrder.indexOf(nextTab) > playerDashboardTabOrder.indexOf(currentTab)
-    ? 'forward'
-    : 'back';
-}
 
 export interface PlayerCallTimePollingInput {
   activeEntryCount: number;

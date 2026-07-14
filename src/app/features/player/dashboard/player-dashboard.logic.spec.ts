@@ -4,7 +4,6 @@ import {
   playerGameTimeline,
   playerGameStatusKind,
   playerGameStatMode,
-  playerTabTransitionDirection,
   playerPublicTableRoster,
   playerPublicTableStats,
   shouldPollPlayerCallTime,
@@ -19,12 +18,6 @@ import type {
   SessionPlayer,
   TimeCall
 } from '../../host/data/poker-store.service';
-
-describe('player dashboard tab transition', () => {
-  it('slides forward when selecting a tab to the right', () => {
-    expect(playerTabTransitionDirection('overview', 'sessions')).toBe('forward');
-  });
-});
 
 describe('player dashboard call-time display', () => {
   it('shows the shared countdown clock when another active player has called time', () => {
