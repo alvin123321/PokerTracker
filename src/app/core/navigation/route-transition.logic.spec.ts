@@ -4,12 +4,6 @@ describe('routeTransitionDirection', () => {
   it('uses a backward page turn for browser history navigation', () => {
     expect(routeTransitionDirection('popstate')).toBe('back');
   });
-
-  it('uses a backward direction when leaving a session summary for history', () => {
-    expect(
-      routeTransitionDirection('imperative', '/host/sessions/session-123/summary', '/host/sessions/history')
-    ).toBe('back');
-  });
 });
 
 describe('shouldAnimateRouteTransition', () => {

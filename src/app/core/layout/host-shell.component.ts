@@ -85,7 +85,7 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
         </nav>
       </header>
 
-      <div class="pokertrack-route-content mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-8">
+      <div class="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-8">
         <router-outlet />
       </div>
 
