@@ -46,7 +46,7 @@ import {
   NetResultTone,
 } from '../shared/session-player-display.logic';
 import { gameTimelineTransactions } from '../data/session-timeline.logic';
-import { initialExpandedTableIds } from './active-session-display.logic';
+import { allPlayersCashedOut, initialExpandedTableIds } from './active-session-display.logic';
 
 interface SessionActionReceipt {
   message: string;
@@ -100,11 +100,11 @@ interface SessionActionReceipt {
           </div>
 
           <div class="session-action-bar">
-            @if (canDelete() && currentSession.status === 'ACTIVE') {
+            @if (canDelete() && canCloseSession(currentSession)) {
               <button
                 type="button"
-                [disabled]="isBusy() || !canCloseSession(currentSession)"
-                [title]="canCloseSession(currentSession) ? 'Close session' : 'Cash out all players before closing'"
+                [disabled]="isBusy()"
+                title="Close session"
                 class="session-action-button session-close-button inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
                 (click)="closeSession()"
               >
@@ -1564,10 +1564,7 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected canCloseSession(session: PokerSession): boolean {
-    return (
-      session.status === 'ACTIVE' &&
-      session.players.every((player) => player.status === 'COMPLETED')
-    );
+    return session.status === 'ACTIVE' && allPlayersCashedOut(session.players);
   }
 
   protected canRemovePlayer(session: PokerSession, _player: SessionPlayer): boolean {

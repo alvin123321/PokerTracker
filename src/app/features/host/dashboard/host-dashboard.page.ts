@@ -508,7 +508,7 @@ class TableNameDialogComponent {
           [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
         >
           <div
-            class="dashboard-player-summary grid gap-3 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+            class="dashboard-player-summary grid gap-x-3 gap-y-1.5 px-3 py-2.5 md:gap-y-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
           >
             <button
               type="button"
