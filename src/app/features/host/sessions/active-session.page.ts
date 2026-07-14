@@ -593,7 +593,7 @@ interface SessionActionReceipt {
                             class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-[0.75fr_0.9fr_0.7fr_1.2fr_auto] sm:gap-3"
                             [class.transaction-row-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                             [class.transaction-row-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
-                            [class.border-sky-300/25]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
+                            [class.border-yellow-300/35]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                             [class.border-neutral-800]="transaction.deletedAt"
                             [class.opacity-60]="transaction.deletedAt"
                           >
@@ -601,7 +601,7 @@ interface SessionActionReceipt {
                               class="text-xs font-semibold uppercase text-emerald-300"
                               [class.transaction-label-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                               [class.transaction-label-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
-                              [class.text-sky-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
+                              [class.text-yellow-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
@@ -623,7 +623,7 @@ interface SessionActionReceipt {
                               class="col-start-2 row-start-1 self-center text-right text-lg font-semibold text-white sm:col-auto sm:row-auto sm:self-auto sm:text-left sm:text-base"
                               [class.transaction-amount-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                               [class.transaction-amount-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
-                              [class.text-sky-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
+                              [class.text-yellow-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
