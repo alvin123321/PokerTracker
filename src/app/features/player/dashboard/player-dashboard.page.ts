@@ -1437,7 +1437,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     { id: 'chat', label: 'Chat' },
     { id: 'sessions', label: 'History' }
   ];
-  protected readonly activeTab = signal<'overview' | 'sessions' | 'calculator'>('overview');
+  protected readonly activeTab = signal<PlayerDashboardTab>('overview');
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {
     const userId = this.authState.user()?.id ?? null;
@@ -1508,7 +1508,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     }
   }
 
-  protected selectTab(tab: 'overview' | 'sessions' | 'calculator'): void {
+  protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
   }
 
