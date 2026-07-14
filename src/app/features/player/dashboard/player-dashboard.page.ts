@@ -42,15 +42,15 @@ import {
   playerGameTimeline,
   playerGameStatMode,
   playerGameStatusKind,
+  playerTabTransitionDirection,
   playerPublicTableRoster,
   playerPublicTableStats,
   shouldPollPlayerCallTime,
   PlayerCallTimeDisplayState,
+  PlayerDashboardTab,
   PlayerGameStatMode,
   PlayerGameStatusKind
 } from './player-dashboard.logic';
-
-type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator';
 
 interface PlayerSessionEntry {
   session: PokerSession;
@@ -146,7 +146,11 @@ const playerCallTimeSyncIntervalMs = 1000;
         </div>
       }
 
-      <div class="player-view-shell">
+      <div
+        class="player-view-shell"
+        [class.player-tab-transition-forward]="tabTransitionDirection() === 'forward'"
+        [class.player-tab-transition-back]="tabTransitionDirection() === 'back'"
+      >
         @switch (activeTab()) {
           @case ('overview') {
             <section class="player-view player-view-overview">
@@ -1408,6 +1412,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     { id: 'sessions', label: 'History' }
   ];
   protected readonly activeTab = signal<PlayerDashboardTab>('overview');
+  protected readonly tabTransitionDirection = signal<'forward' | 'back'>('forward');
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {
     const userId = this.authState.user()?.id ?? null;
@@ -1479,6 +1484,11 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   }
 
   protected selectTab(tab: PlayerDashboardTab): void {
+    if (tab === this.activeTab()) {
+      return;
+    }
+
+    this.tabTransitionDirection.set(playerTabTransitionDirection(this.activeTab(), tab));
     this.activeTab.set(tab);
   }
 

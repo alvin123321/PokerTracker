@@ -1,6 +1,7 @@
 import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { LucideEllipsis } from '@lucide/angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -59,6 +60,7 @@ interface SessionActionReceipt {
     ActionFeedbackToastComponent,
     CurrencyPipe,
     DatePipe,
+    LucideEllipsis,
     MatDialogModule,
     NgTemplateOutlet,
     RouterLink,
@@ -93,74 +95,69 @@ interface SessionActionReceipt {
               <span class="rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-neutral-950">
                 {{ currentSession.status }}
               </span>
+              @if (canDelete()) {
+                <div class="session-action-menu-wrap">
+                  <button
+                    type="button"
+                    [disabled]="isBusy()"
+                    aria-label="Session actions"
+                    title="Session actions"
+                    class="session-action-menu-trigger"
+                    (click)="toggleSessionActionMenu()"
+                  >
+                    @if (isPending('delete-session')) {
+                      <span class="action-spinner" aria-hidden="true"></span>
+                    } @else {
+                      <svg lucideEllipsis [strokeWidth]="2.4" aria-hidden="true"></svg>
+                    }
+                  </button>
+                  @if (sessionActionMenuOpen()) {
+                    <div class="session-action-menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        [disabled]="isBusy()"
+                        class="session-action-menu-item session-action-menu-item-danger"
+                        (click)="deleteSessionFromMenu()"
+                      >
+                        Delete session
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
             </div>
             <p class="mt-2 text-sm text-neutral-400">
               {{ currentSession.sessionDate | date: 'fullDate' }}
             </p>
           </div>
 
-          <div class="session-action-bar">
-            @if (canDelete() && canCloseSession(currentSession)) {
+          <div class="session-primary-actions">
+            @if (!isHistoryView && currentSession.status === 'ACTIVE') {
               <button
                 type="button"
                 [disabled]="isBusy()"
-                title="Close session"
-                class="session-action-button session-close-button inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                (click)="closeSession()"
+                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                (click)="createTable()"
               >
-                @if (isPending('close-session')) {
+                @if (isPending('add-table')) {
                   <span class="action-spinner" aria-hidden="true"></span>
-                  Closing...
+                  Creating...
                 } @else {
-                  Close Session
+                  + Table
                 }
               </button>
-            }
-            <div class="session-primary-actions">
-              @if (!isHistoryView && currentSession.status === 'ACTIVE') {
-                <button
-                  type="button"
-                  [disabled]="isBusy()"
-                  class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  (click)="createTable()"
-                >
-                  @if (isPending('add-table')) {
-                    <span class="action-spinner" aria-hidden="true"></span>
-                    Creating...
-                  } @else {
-                    + Table
-                  }
-                </button>
-                <button
-                  type="button"
-                  [disabled]="isBusy() || !selectedTable()"
-                  class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-                  (click)="openAddPlayerDialog()"
-                >
-                  @if (isPending('add-player')) {
-                    <span class="action-spinner" aria-hidden="true"></span>
-                    Adding...
-                  } @else {
-                    Add Player
-                  }
-                </button>
-              }
-            </div>
-            @if (canDelete()) {
               <button
                 type="button"
-                [disabled]="isBusy()"
-                aria-label="Delete session"
-                title="Delete session"
-                class="pokertrack-icon-button session-delete-button"
-                (click)="deleteSession()"
+                [disabled]="isBusy() || !selectedTable()"
+                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                (click)="openAddPlayerDialog()"
               >
-                @if (isPending('delete-session')) {
+                @if (isPending('add-player')) {
                   <span class="action-spinner" aria-hidden="true"></span>
-                  <span class="sr-only">Deleting session</span>
+                  Adding...
                 } @else {
-                  <span class="trash-icon" aria-hidden="true"></span>
-                  <span class="sr-only">Delete Session</span>
+                  Add Player
                 }
               </button>
             }
@@ -187,6 +184,22 @@ interface SessionActionReceipt {
             <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ currentSession.tables.length }}</p>
           </div>
         </div>
+
+        @if (canDelete() && canCloseSession(currentSession)) {
+          <button
+            type="button"
+            [disabled]="isBusy()"
+            class="session-close-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+            (click)="closeSession()"
+          >
+            @if (isPending('close-session')) {
+              <span class="action-spinner" aria-hidden="true"></span>
+              Closing...
+            } @else {
+              Close Session
+            }
+          </button>
+        }
 
         <section class="space-y-3">
           @if (!isHistoryView && currentSession.status === 'ACTIVE') {
@@ -690,14 +703,6 @@ interface SessionActionReceipt {
         animation: action-spinner 700ms linear infinite;
       }
 
-      .session-action-bar {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 0.6rem;
-        width: 100%;
-      }
-
       .session-primary-actions {
         display: flex;
         flex-wrap: wrap;
@@ -713,12 +718,63 @@ interface SessionActionReceipt {
         white-space: nowrap;
       }
 
-      .session-close-button {
-        justify-self: start;
+      .session-action-menu-wrap {
+        position: relative;
+        display: inline-flex;
       }
 
-      .session-delete-button {
-        justify-self: end;
+      .session-action-menu-trigger {
+        display: inline-grid;
+        width: 2.5rem;
+        height: 2.5rem;
+        place-items: center;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.55rem;
+        background: rgb(255 255 255 / 0.035);
+        color: rgb(209 250 229);
+      }
+
+      .session-action-menu-trigger:hover {
+        border-color: rgb(110 231 183 / 0.48);
+        background: rgb(16 185 129 / 0.12);
+      }
+
+      .session-action-menu-trigger:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .session-action-menu {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        z-index: 30;
+        display: grid;
+        min-width: 11.5rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.65rem;
+        background: rgb(10 10 10);
+        padding: 0.4rem;
+        box-shadow: 0 1.25rem 2.5rem rgb(0 0 0 / 0.38);
+        animation: session-action-menu-in 160ms ease-out both;
+      }
+
+      .session-action-menu-item {
+        min-height: 2.5rem;
+        border-radius: 0.45rem;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.86rem;
+        font-weight: 700;
+        text-align: left;
+      }
+
+      .session-action-menu-item-danger {
+        color: rgb(254 202 202);
+      }
+
+      .session-action-menu-item-danger:hover {
+        background: rgb(248 113 113 / 0.12);
+        color: rgb(254 226 226);
       }
 
       .table-delete-button {
@@ -752,12 +808,6 @@ interface SessionActionReceipt {
         cursor: not-allowed;
         opacity: 0.45;
         transform: none;
-      }
-
-      .session-action-bar .pokertrack-icon-button {
-        width: 2.85rem;
-        min-width: 2.85rem;
-        height: 2.85rem;
       }
 
       .table-detail-panel {
@@ -805,16 +855,22 @@ interface SessionActionReceipt {
       }
 
       @media (max-width: 639px) {
-        .session-action-bar {
-          grid-template-columns: minmax(0, 1fr) auto;
-        }
-
         .session-primary-actions {
-          grid-column: 1 / -1;
-          grid-row: 2;
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           width: 100%;
+        }
+      }
+
+      @keyframes session-action-menu-in {
+        from {
+          opacity: 0;
+          transform: translateY(-0.25rem) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
         }
       }
 
@@ -1212,6 +1268,7 @@ export class ActiveSessionPage implements OnDestroy {
   private rebuyGlowTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionReceipt = signal<SessionActionReceipt | null>(null);
+  protected readonly sessionActionMenuOpen = signal(false);
   protected readonly selectedTableId = signal<string | null>(null);
   protected readonly expandedTableIds = signal<string[]>([]);
   private readonly collapsedTableIds = signal<string[]>([]);
@@ -1645,6 +1702,15 @@ export class ActiveSessionPage implements OnDestroy {
         await this.router.navigate(['/host/sessions', this.sessionId, 'summary']);
       });
     });
+  }
+
+  protected toggleSessionActionMenu(): void {
+    this.sessionActionMenuOpen.update((isOpen) => !isOpen);
+  }
+
+  protected deleteSessionFromMenu(): void {
+    this.sessionActionMenuOpen.set(false);
+    this.deleteSession();
   }
 
   protected deleteSession(): void {
