@@ -508,7 +508,7 @@ class TableNameDialogComponent {
           [class.dashboard-rebuy-glow]="isRecentRebuyPlayer(player.id)"
         >
           <div
-            class="dashboard-player-summary grid gap-3 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+            class="dashboard-player-summary grid gap-x-3 gap-y-0 px-3 py-2.5 md:gap-y-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
           >
             <button
               type="button"
@@ -523,10 +523,14 @@ class TableNameDialogComponent {
                   <span class="truncate font-semibold text-white">{{ player.name }}</span>
                   @if (player.status === 'ACTIVE') {
                     <span
-                      class="dashboard-player-buyin-mobile ml-auto sm:hidden"
-                      [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)"
+                      class="dashboard-player-buyin-mobile ml-auto flex shrink-0 flex-col items-end text-right sm:hidden"
                     >
-                      {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      <strong [class.dashboard-number-shuffle]="isRecentRebuyPlayer(player.id)">
+                        {{ player.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </strong>
+                      <span class="mt-0.5 text-[0.6875rem] font-medium leading-none text-neutral-500">
+                        Total buy in
+                      </span>
                     </span>
                   } @else {
                     <span class="sr-only">Cashed out.</span>
@@ -534,12 +538,6 @@ class TableNameDialogComponent {
                       &check;
                     </span>
                   }
-                  <span
-                    class="dashboard-player-disclosure-icon shrink-0 text-xs text-neutral-500"
-                    aria-hidden="true"
-                  >
-                    {{ isDashboardPlayerExpanded(player.id) ? 'v' : '>' }}
-                  </span>
                 </span>
                 <span class="mt-1 hidden text-xs text-neutral-500 md:block">View game timeline</span>
               </span>
@@ -1606,7 +1604,13 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       AddPlayerDialogResult
     >(AddPlayerDialogComponent, {
       autoFocus: 'first-tabbable',
-      data: { registeredPlayers },
+      data: {
+        registeredPlayers,
+        sessionMemberUserIds: (this.store.getSession(sessionId)?.players ?? [])
+          .map((player) => player.userId)
+          .filter((userId): userId is string => Boolean(userId)),
+        sessionMemberNames: (this.store.getSession(sessionId)?.players ?? []).map((player) => player.name),
+      },
       panelClass: 'pokertrack-dialog-panel',
     });
 

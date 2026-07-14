@@ -3,6 +3,7 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { LucideEllipsis } from '@lucide/angular';
 
 import {
   PokerSession,
@@ -30,6 +31,7 @@ interface PlayerLedgerRow {
     ActionFeedbackToastComponent,
     CurrencyPipe,
     DatePipe,
+    LucideEllipsis,
     MatDialogModule,
     ReactiveFormsModule,
   ],
@@ -48,7 +50,11 @@ interface PlayerLedgerRow {
       }
 
       @if (selectedPlayer(); as player) {
-        <section class="member-view-enter space-y-4">
+        <section
+          class="space-y-4"
+          [class.member-view-transition-forward]="memberViewTransitionDirection() === 'forward'"
+          [class.member-view-transition-back]="memberViewTransitionDirection() === 'back'"
+        >
           <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
             <div class="flex flex-wrap items-center gap-3">
               <button
@@ -84,7 +90,7 @@ interface PlayerLedgerRow {
                   @if (isAnyPlayerActionPending(player)) {
                     <span class="action-spinner" aria-hidden="true"></span>
                   } @else {
-                    <span aria-hidden="true">...</span>
+                    <svg lucideEllipsis [strokeWidth]="2.4" aria-hidden="true"></svg>
                   }
                 </button>
 
@@ -235,7 +241,11 @@ interface PlayerLedgerRow {
           </section>
         </section>
       } @else {
-        <section class="member-view-enter space-y-4">
+        <section
+          class="space-y-4"
+          [class.member-view-transition-forward]="memberViewTransitionDirection() === 'forward'"
+          [class.member-view-transition-back]="memberViewTransitionDirection() === 'back'"
+        >
           <form class="grid gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4 md:grid-cols-[1fr_auto] md:items-end">
             <div>
               <label class="text-sm font-medium text-neutral-200" for="newPlayerLogin">Add Member</label>
@@ -326,8 +336,12 @@ interface PlayerLedgerRow {
         animation: action-spinner 700ms linear infinite;
       }
 
-      .member-view-enter {
-        animation: member-view-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      .member-view-transition-forward {
+        animation: member-view-slide-in-right 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .member-view-transition-back {
+        animation: member-view-slide-in-left 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .member-action-menu-wrap {
@@ -337,11 +351,10 @@ interface PlayerLedgerRow {
       }
 
       .member-action-trigger {
-        display: inline-flex;
+        display: inline-grid;
         width: 2.75rem;
         height: 2.75rem;
-        align-items: center;
-        justify-content: center;
+        place-items: center;
         border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 0.7rem;
         background: rgba(10, 10, 10, 0.38);
@@ -351,6 +364,12 @@ interface PlayerLedgerRow {
         letter-spacing: 0.08em;
         transition: border-color 160ms ease, background 160ms ease, color 160ms ease,
           transform 160ms ease;
+      }
+
+      .member-action-trigger svg {
+        display: block;
+        width: 1.2rem;
+        height: 1.2rem;
       }
 
       .member-action-trigger:hover {
@@ -460,15 +479,27 @@ interface PlayerLedgerRow {
         padding-bottom: 0;
       }
 
-      @keyframes member-view-enter {
+      @keyframes member-view-slide-in-right {
         from {
           opacity: 0;
-          transform: translateY(0.5rem);
+          transform: translateX(1.25rem);
         }
 
         to {
           opacity: 1;
-          transform: translateY(0);
+          transform: translateX(0);
+        }
+      }
+
+      @keyframes member-view-slide-in-left {
+        from {
+          opacity: 0;
+          transform: translateX(-1.25rem);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateX(0);
         }
       }
 
@@ -509,6 +540,7 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
   private readonly dialog = inject(MatDialog);
   protected readonly players = signal<RegisteredPlayerOption[]>([]);
   protected readonly selectedPlayerId = signal<string | null>(null);
+  protected readonly memberViewTransitionDirection = signal<'forward' | 'back'>('forward');
   protected readonly loadingPlayers = signal(false);
   protected readonly creatingPlayer = signal(false);
   protected readonly deletingPlayerId = signal<string | null>(null);
@@ -713,6 +745,7 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
   protected selectPlayer(playerId: string): void {
     this.expandedLedgerRowKey.set(undefined);
     this.openMemberActionMenuId.set(null);
+    this.memberViewTransitionDirection.set('forward');
     this.selectedPlayerId.set(playerId);
     this.scrollToPageTop();
   }
@@ -720,6 +753,7 @@ export class PlayersAdminPage implements OnInit, OnDestroy {
   protected showPlayerList(): void {
     this.expandedLedgerRowKey.set(undefined);
     this.openMemberActionMenuId.set(null);
+    this.memberViewTransitionDirection.set('back');
     this.selectedPlayerId.set(null);
     this.scrollToPageTop();
   }

@@ -1111,7 +1111,11 @@ export class PokerStoreService implements OnDestroy {
       }
 
       if (a.status === 'COMPLETED') {
-        return b.cashOut - a.cashOut;
+        const netSort = b.net - a.net;
+
+        if (netSort !== 0) {
+          return netSort;
+        }
       }
 
       return a.joinedAt.localeCompare(b.joinedAt);

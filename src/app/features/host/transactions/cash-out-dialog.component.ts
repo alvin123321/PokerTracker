@@ -33,7 +33,7 @@ export interface CashOutDialogData {
         [formControl]="cashOut"
         class="mt-2 w-full rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
         placeholder="0"
-        (focus)="clearDefaultCashOut()"
+        (focus)="selectDefaultCashOut($event)"
       />
 
       <div class="rounded-lg border border-white/10 bg-white/[0.04] p-3 sm:p-4">
@@ -43,7 +43,14 @@ export interface CashOutDialogData {
         </p>
       </div>
 
-      <div>
+      <div class="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          class="w-full rounded-lg border border-white/10 px-4 py-3 font-semibold text-white transition hover:bg-white/10"
+          (click)="closeDialog()"
+        >
+          Close
+        </button>
         <button
           type="button"
           [disabled]="cashOut.invalid"
@@ -70,10 +77,17 @@ export class CashOutDialogComponent {
     return (this.cashOut.value ?? 0) - this.data.player.totalBuyIn;
   }
 
-  protected clearDefaultCashOut(): void {
-    if (this.cashOut.value === 0) {
-      this.cashOut.setValue(null);
+  protected selectDefaultCashOut(event: FocusEvent): void {
+    if (this.data.mode === 'edit' || this.cashOut.value !== 0) {
+      return;
     }
+
+    const input = event.target as HTMLInputElement;
+    queueMicrotask(() => input.select());
+  }
+
+  protected closeDialog(): void {
+    this.dialogRef.close();
   }
 
   protected submit(): void {

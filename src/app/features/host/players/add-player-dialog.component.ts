@@ -4,11 +4,16 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { RegisteredPlayerOption } from '../data/poker-store.service';
-
-type AddPlayerMode = 'existing' | 'new';
+import {
+  isRegisteredPlayerInSession,
+  resolveAddPlayerSearch,
+  sortRegisteredPlayerOptions
+} from './add-player-dialog.logic';
 
 export interface AddPlayerDialogData {
   registeredPlayers: RegisteredPlayerOption[];
+  sessionMemberUserIds: readonly string[];
+  sessionMemberNames: readonly string[];
 }
 
 export interface AddPlayerDialogResult {
@@ -33,89 +38,61 @@ export interface AddPlayerDialogResult {
       </div>
 
       <div class="add-player-body">
-        <div class="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-neutral-900 p-1">
-          <button
-            type="button"
-            class="rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-            [class.bg-emerald-400]="mode.value === 'existing'"
-            [class.text-neutral-950]="mode.value === 'existing'"
-            [class.text-neutral-300]="mode.value !== 'existing'"
-            [disabled]="registeredPlayers.length === 0"
-            (click)="setMode('existing')"
-          >
-            Existing
-          </button>
-          <button
-            type="button"
-            class="rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-white/10"
-            [class.bg-emerald-400]="mode.value === 'new'"
-            [class.text-neutral-950]="mode.value === 'new'"
-            [class.text-neutral-300]="mode.value !== 'new'"
-            (click)="setMode('new')"
-          >
-            New Sign Up
-          </button>
-        </div>
-
-        @if (mode.value === 'existing') {
-          <label class="block text-sm font-medium text-neutral-200" for="playerSearch">
-            Player
-          </label>
-          <input
-            id="playerSearch"
-            [formControl]="searchControl"
-            class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
-            placeholder="Search player"
-          />
+        @let searchState = searchResult();
+        <label class="block text-sm font-medium text-neutral-200" for="playerSearch">Player</label>
+        <input
+          id="playerSearch"
+          [formControl]="searchControl"
+          class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+          placeholder="Search or enter a new player"
+        />
+        <div class="player-search-results mt-2">
           <div
             id="registeredPlayer"
-            class="registered-player-list mt-2 space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2"
+            class="registered-player-list h-32 space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2 sm:h-auto"
+            [class.registered-player-list-hidden]="searchState.kind === 'new'"
           >
             @for (player of filteredRegisteredPlayers(); track player.id) {
               <button
                 type="button"
-                class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10"
-                [class.member-option-selected]="form.controls.playerUserId.value === player.id"
-                (click)="selectRegisteredPlayer(player.id)"
+                class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/[0.015] disabled:text-neutral-600"
+                [class.member-option-selected]="searchState.kind === 'existing' && searchState.player.id === player.id"
+                [disabled]="isSessionMember(player)"
+                (click)="selectRegisteredPlayer(player)"
               >
                 <span>
                   <span class="block text-base font-semibold">{{ playerLabel(player) }}</span>
                 </span>
-                @if (form.controls.playerUserId.value === player.id) {
+                @if (searchState.kind === 'existing' && searchState.player.id === player.id) {
                   <span class="selected-dot" aria-hidden="true"></span>
+                } @else if (isSessionMember(player)) {
+                  <span class="text-xs font-semibold uppercase text-neutral-600">Already in game</span>
                 }
               </button>
             } @empty {
               <p class="rounded-lg border border-dashed border-white/10 p-4 text-sm text-neutral-500">
-                No players match that search.
+                Start typing a player name to add a new signup.
               </p>
             }
           </div>
-        } @else {
-          <label class="block text-sm font-medium text-neutral-200" for="playerName">
-            Name
-          </label>
-          <input
-            id="playerName"
-            formControlName="name"
-            class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
-            placeholder="Player A"
-          />
-          @if (duplicateName()) {
-            <p class="mt-2 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-100">
-              This player already exists. Select it from Existing instead.
-            </p>
-          }
-        }
+          <p
+            class="new-signup-notice"
+            [class.new-signup-notice-visible]="searchState.kind === 'new'"
+            [attr.aria-hidden]="searchState.kind !== 'new'"
+          >
+            <strong>New signup: {{ newSignupName() }}</strong>
+            <span>Click Add Player to add this player.</span>
+          </p>
+        </div>
 
-        <label class="block text-sm font-medium text-neutral-200" for="buyIn">Buy-in</label>
+        <label class="block text-sm font-medium text-neutral-200" for="buyIn">Buy-in Amount</label>
         <input
           id="buyIn"
           type="number"
           min="1"
           step="1"
           formControlName="buyIn"
-          class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+          class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-4 text-center text-2xl font-semibold tabular-nums outline-none focus:border-emerald-300"
         />
 
         <div class="buy-in-presets grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -130,16 +107,14 @@ export interface AddPlayerDialogResult {
           }
         </div>
 
-        @if (mode.value === 'existing') {
-          <label class="block text-sm font-medium text-neutral-200" for="buyInComment">Note</label>
-          <textarea
-            id="buyInComment"
-            rows="4"
-            formControlName="comment"
-            class="note-textarea mt-2 w-full min-w-0 resize-none rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
-            placeholder="Optional note"
-          ></textarea>
-        }
+        <label class="block text-sm font-medium text-neutral-200" for="buyInComment">Note</label>
+        <textarea
+          id="buyInComment"
+          rows="4"
+          formControlName="comment"
+          class="note-textarea mt-2 w-full min-w-0 resize-none rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+          placeholder="Optional note"
+        ></textarea>
       </div>
 
       <div class="add-player-footer grid grid-cols-2 gap-3">
@@ -207,6 +182,15 @@ export interface AddPlayerDialogResult {
         max-height: min(18rem, 38dvh);
       }
 
+      .player-search-results {
+        position: relative;
+        min-height: 10rem;
+      }
+
+      .registered-player-list-hidden {
+        display: none;
+      }
+
       .member-option {
         min-height: 3.25rem;
         min-width: 0;
@@ -224,6 +208,42 @@ export interface AddPlayerDialogResult {
 
       .member-option-selected .member-option-meta {
         color: rgb(38 38 38);
+      }
+
+      .new-signup-notice {
+        display: grid;
+        position: absolute;
+        inset: 0;
+        align-content: center;
+        gap: 0.2rem;
+        border: 1px solid rgb(110 231 183 / 0.35);
+        border-radius: 0.5rem;
+        background: rgb(110 231 183 / 0.1);
+        opacity: 0;
+        padding: 0.85rem;
+        pointer-events: none;
+        color: rgb(209 250 229);
+        font-size: 0.875rem;
+        transform: translateY(-0.3rem);
+        transition:
+          opacity 420ms ease,
+          transform 420ms ease;
+      }
+
+      .new-signup-notice-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .new-signup-notice span {
+        color: rgb(167 243 208);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .new-signup-notice {
+          transform: none;
+          transition: none;
+        }
       }
 
       .selected-dot {
@@ -257,6 +277,10 @@ export interface AddPlayerDialogResult {
           min-height: 8rem;
           max-height: 30dvh;
         }
+
+        .player-search-results {
+          min-height: 8rem;
+        }
       }
     `
   ]
@@ -271,16 +295,6 @@ export class AddPlayerDialogComponent {
   });
 
   protected readonly form = new FormGroup({
-    mode: new FormControl<AddPlayerMode>(this.registeredPlayers.length > 0 ? 'existing' : 'new', {
-      nonNullable: true
-    }),
-    playerUserId: new FormControl(this.registeredPlayers[0]?.id ?? '', {
-      nonNullable: true
-    }),
-    name: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(80)]
-    }),
     buyIn: new FormControl(200, {
       nonNullable: true,
       validators: [Validators.required, Validators.min(1)]
@@ -290,10 +304,6 @@ export class AddPlayerDialogComponent {
     })
   });
 
-  protected get mode(): FormControl<AddPlayerMode> {
-    return this.form.controls.mode;
-  }
-
   protected submit(): void {
     if (!this.canSubmit()) {
       this.form.markAllAsTouched();
@@ -302,50 +312,40 @@ export class AddPlayerDialogComponent {
 
     const value = this.form.getRawValue();
 
-    if (value.mode === 'existing') {
-      const selectedPlayer = this.registeredPlayers.find((player) => player.id === value.playerUserId);
+    const result = this.searchResult();
 
-      if (!selectedPlayer) {
-        return;
-      }
-
+    if (result.kind === 'existing') {
       this.dialogRef.close({
-        name: selectedPlayer.displayName ?? selectedPlayer.username,
+        name: result.player.displayName ?? result.player.username,
         buyIn: value.buyIn,
         comment: value.comment.trim(),
-        playerUserId: selectedPlayer.id,
+        playerUserId: result.player.id,
         createRegisteredPlayer: false
       } satisfies AddPlayerDialogResult);
       return;
     }
 
-    this.dialogRef.close({
-      name: value.name.trim(),
-      buyIn: value.buyIn,
-      comment: '',
-      playerUserId: null,
-      createRegisteredPlayer: true
-    } satisfies AddPlayerDialogResult);
+    if (result.kind === 'new') {
+      this.dialogRef.close({
+        name: result.name,
+        buyIn: value.buyIn,
+        comment: value.comment.trim(),
+        playerUserId: null,
+        createRegisteredPlayer: true
+      } satisfies AddPlayerDialogResult);
+    }
   }
 
   protected closeDialog(): void {
     this.dialogRef.close();
   }
 
-  protected setMode(mode: AddPlayerMode): void {
-    if (mode === 'existing' && this.registeredPlayers.length === 0) {
+  protected selectRegisteredPlayer(player: RegisteredPlayerOption): void {
+    if (this.isSessionMember(player)) {
       return;
     }
 
-    this.mode.setValue(mode);
-
-    if (mode === 'new') {
-      this.form.controls.comment.setValue('');
-    }
-  }
-
-  protected selectRegisteredPlayer(playerId: string): void {
-    this.form.controls.playerUserId.setValue(playerId);
+    this.searchControl.setValue(this.playerLabel(player));
   }
 
   protected setBuyIn(amount: number): void {
@@ -357,40 +357,54 @@ export class AddPlayerDialogComponent {
       return false;
     }
 
-    if (this.mode.value === 'existing') {
-      return Boolean(this.form.controls.playerUserId.value);
-    }
-
-    return this.form.controls.name.valid && this.form.controls.name.value.trim().length > 0 && !this.duplicateName();
+    const result = this.searchResult();
+    return result.kind === 'existing' || result.kind === 'new';
   }
 
   protected filteredRegisteredPlayers(): RegisteredPlayerOption[] {
     const search = this.searchControl.value.trim().toLocaleLowerCase();
 
     if (!search) {
-      return this.registeredPlayers;
+      return sortRegisteredPlayerOptions(
+        this.registeredPlayers,
+        this.data.sessionMemberUserIds,
+        this.data.sessionMemberNames
+      );
     }
 
-    return this.registeredPlayers.filter((player) =>
-      this.playerLabel(player).toLocaleLowerCase().includes(search)
+    return sortRegisteredPlayerOptions(
+      this.registeredPlayers.filter((player) =>
+        this.playerLabel(player).toLocaleLowerCase().includes(search)
+      ),
+      this.data.sessionMemberUserIds,
+      this.data.sessionMemberNames
     );
   }
 
-  protected duplicateName(): boolean {
-    if (this.mode.value !== 'new') {
-      return false;
-    }
+  protected isSessionMember(player: RegisteredPlayerOption): boolean {
+    return isRegisteredPlayerInSession(
+      player,
+      this.data.sessionMemberUserIds,
+      this.data.sessionMemberNames
+    );
+  }
 
-    const name = this.form.controls.name.value.trim().toLowerCase();
-
-    return this.registeredPlayers.some((player) => {
-      const displayName = player.displayName?.trim().toLowerCase();
-      return displayName === name || player.username.toLowerCase() === name;
-    });
+  protected searchResult() {
+    return resolveAddPlayerSearch(
+      this.registeredPlayers,
+      this.searchControl.value,
+      this.data.sessionMemberUserIds,
+      this.data.sessionMemberNames
+    );
   }
 
   protected playerLabel(player: RegisteredPlayerOption): string {
     return this.titleCaseName(player.displayName ?? player.username);
+  }
+
+  protected newSignupName(): string {
+    const result = this.searchResult();
+    return result.kind === 'new' ? result.name : '';
   }
 
   private titleCaseName(name: string): string {

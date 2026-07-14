@@ -1,6 +1,7 @@
 import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { LucideEllipsis } from '@lucide/angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -45,6 +46,8 @@ import {
   netResultTone,
   NetResultTone,
 } from '../shared/session-player-display.logic';
+import { gameTimelineTransactions } from '../data/session-timeline.logic';
+import { allPlayersCashedOut, initialExpandedTableIds } from './active-session-display.logic';
 
 interface SessionActionReceipt {
   message: string;
@@ -57,6 +60,7 @@ interface SessionActionReceipt {
     ActionFeedbackToastComponent,
     CurrencyPipe,
     DatePipe,
+    LucideEllipsis,
     MatDialogModule,
     NgTemplateOutlet,
     RouterLink,
@@ -84,81 +88,76 @@ interface SessionActionReceipt {
 
       <section class="space-y-4 sm:space-y-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
+          <div class="session-title-block min-w-0 flex-1">
             <a [routerLink]="backLink" class="text-sm font-semibold text-emerald-300">&larr; {{ backLabel }}</a>
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
+            <div class="session-title-row mt-3 flex w-full flex-wrap items-center gap-3">
+              <h1 class="min-w-0 text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
               <span class="rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-neutral-950">
                 {{ currentSession.status }}
               </span>
+              @if (canDelete()) {
+                <div class="session-action-menu-wrap">
+                  <button
+                    type="button"
+                    [disabled]="isBusy()"
+                    aria-label="Session actions"
+                    title="Session actions"
+                    class="session-action-menu-trigger"
+                    (click)="toggleSessionActionMenu()"
+                  >
+                    @if (isPending('delete-session')) {
+                      <span class="action-spinner" aria-hidden="true"></span>
+                    } @else {
+                      <svg lucideEllipsis [strokeWidth]="2.4" aria-hidden="true"></svg>
+                    }
+                  </button>
+                  @if (sessionActionMenuOpen()) {
+                    <div class="session-action-menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        [disabled]="isBusy()"
+                        class="session-action-menu-item session-action-menu-item-danger"
+                        (click)="deleteSessionFromMenu()"
+                      >
+                        Delete session
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
             </div>
             <p class="mt-2 text-sm text-neutral-400">
               {{ currentSession.sessionDate | date: 'fullDate' }}
             </p>
           </div>
 
-          <div class="session-action-bar">
-            @if (canDelete() && currentSession.status === 'ACTIVE') {
-              <button
-                type="button"
-                [disabled]="isBusy() || !canCloseSession(currentSession)"
-                [title]="canCloseSession(currentSession) ? 'Close session' : 'Cash out all players before closing'"
-                class="session-action-button session-close-button inline-flex items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                (click)="closeSession()"
-              >
-                @if (isPending('close-session')) {
-                  <span class="action-spinner" aria-hidden="true"></span>
-                  Closing...
-                } @else {
-                  Close Session
-                }
-              </button>
-            }
-            <div class="session-primary-actions">
-              @if (!isHistoryView && currentSession.status === 'ACTIVE') {
-                <button
-                  type="button"
-                  [disabled]="isBusy()"
-                  class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  (click)="createTable()"
-                >
-                  @if (isPending('add-table')) {
-                    <span class="action-spinner" aria-hidden="true"></span>
-                    Creating...
-                  } @else {
-                    + Table
-                  }
-                </button>
-                <button
-                  type="button"
-                  [disabled]="isBusy() || !selectedTable()"
-                  class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-                  (click)="openAddPlayerDialog()"
-                >
-                  @if (isPending('add-player')) {
-                    <span class="action-spinner" aria-hidden="true"></span>
-                    Adding...
-                  } @else {
-                    Add Player
-                  }
-                </button>
-              }
-            </div>
-            @if (canDelete()) {
+          <div class="session-primary-actions">
+            @if (!isHistoryView && currentSession.status === 'ACTIVE') {
               <button
                 type="button"
                 [disabled]="isBusy()"
-                aria-label="Delete session"
-                title="Delete session"
-                class="pokertrack-icon-button session-delete-button"
-                (click)="deleteSession()"
+                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                (click)="createTable()"
               >
-                @if (isPending('delete-session')) {
+                @if (isPending('add-table')) {
                   <span class="action-spinner" aria-hidden="true"></span>
-                  <span class="sr-only">Deleting session</span>
+                  Creating...
                 } @else {
-                  <span class="trash-icon" aria-hidden="true"></span>
-                  <span class="sr-only">Delete Session</span>
+                  + Table
+                }
+              </button>
+              <button
+                type="button"
+                [disabled]="isBusy() || !selectedTable()"
+                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                (click)="openAddPlayerDialog()"
+              >
+                @if (isPending('add-player')) {
+                  <span class="action-spinner" aria-hidden="true"></span>
+                  Adding...
+                } @else {
+                  Add Player
                 }
               </button>
             }
@@ -185,6 +184,22 @@ interface SessionActionReceipt {
             <p class="mt-1 text-2xl font-semibold text-white md:mt-2">{{ currentSession.tables.length }}</p>
           </div>
         </div>
+
+        @if (canDelete() && canCloseSession(currentSession)) {
+          <button
+            type="button"
+            [disabled]="isBusy()"
+            class="session-close-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-red-300/30 px-5 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+            (click)="closeSession()"
+          >
+            @if (isPending('close-session')) {
+              <span class="action-spinner" aria-hidden="true"></span>
+              Closing...
+            } @else {
+              Close Session
+            }
+          </button>
+        }
 
         <section class="space-y-3">
           @if (!isHistoryView && currentSession.status === 'ACTIVE') {
@@ -568,9 +583,9 @@ interface SessionActionReceipt {
                   <div class="player-detail-panel-inner border-t border-emerald-300/10 bg-neutral-950/80 px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
                     <div class="player-detail-toolbar mb-3">
                       <div class="min-w-0">
-                        <p class="text-sm font-semibold text-white">Buy-in timeline</p>
+                        <p class="text-sm font-semibold text-white">Game timeline</p>
                         <p class="hidden text-xs text-neutral-500 lg:block">
-                          {{ canDelete() ? 'Host can edit or delete buy-ins' : 'Managers can edit buy-ins' }}
+                          {{ canDelete() ? 'Host can edit cash-outs and delete buy-ins' : 'Managers can edit cash-outs and buy-ins' }}
                         </p>
                       </div>
                       <div class="player-detail-toolbar-actions">
@@ -581,16 +596,17 @@ interface SessionActionReceipt {
                     </div>
 
                     <div class="space-y-2">
-                      @if (buyInTransactions(player.id).length === 0) {
+                      @if (timelineTransactions(player.id).length === 0) {
                         <div class="rounded-lg border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-500">
-                          No buy-ins recorded for this player.
+                          No transactions recorded for this player.
                         </div>
                       } @else {
-                        @for (transaction of buyInTransactions(player.id); track transaction.id) {
+                        @for (transaction of timelineTransactions(player.id); track transaction.id) {
                           <div
                             class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-[0.75fr_0.9fr_0.7fr_1.2fr_auto] sm:gap-3"
                             [class.transaction-row-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                             [class.transaction-row-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
+                            [class.border-yellow-300/35]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                             [class.border-neutral-800]="transaction.deletedAt"
                             [class.opacity-60]="transaction.deletedAt"
                           >
@@ -598,6 +614,7 @@ interface SessionActionReceipt {
                               class="text-xs font-semibold uppercase text-emerald-300"
                               [class.transaction-label-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                               [class.transaction-label-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
+                              [class.text-yellow-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
@@ -619,6 +636,7 @@ interface SessionActionReceipt {
                               class="col-start-2 row-start-1 self-center text-right text-lg font-semibold text-white sm:col-auto sm:row-auto sm:self-auto sm:text-left sm:text-base"
                               [class.transaction-amount-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
                               [class.transaction-amount-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
+                              [class.text-yellow-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
                               [class.line-through]="transaction.deletedAt"
                               [class.text-neutral-500]="transaction.deletedAt"
                             >
@@ -639,10 +657,10 @@ interface SessionActionReceipt {
                               type="button"
                               [disabled]="isBusy()"
                               class="col-start-3 row-start-1 inline-flex h-8 items-center justify-center gap-2 self-center rounded-lg border border-white/10 px-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:col-auto sm:row-auto sm:h-auto sm:px-3 sm:py-2"
-                              (click)="openEditBuyInDialog(player, transaction)"
+                              (click)="transaction.type === 'CASHOUT' ? openCashOutDialog(player) : openEditBuyInDialog(player, transaction)"
                             >
                               @if (
-                                isPending(transactionAction('edit-buy-in', transaction.id)) ||
+                                (transaction.type !== 'CASHOUT' && isPending(transactionAction('edit-buy-in', transaction.id))) ||
                                 isPending(transactionAction('delete-buy-in', transaction.id))
                               ) {
                                 <span class="action-spinner" aria-hidden="true"></span>
@@ -685,14 +703,6 @@ interface SessionActionReceipt {
         animation: action-spinner 700ms linear infinite;
       }
 
-      .session-action-bar {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 0.6rem;
-        width: 100%;
-      }
-
       .session-primary-actions {
         display: flex;
         flex-wrap: wrap;
@@ -708,12 +718,72 @@ interface SessionActionReceipt {
         white-space: nowrap;
       }
 
-      .session-close-button {
-        justify-self: start;
+      .session-action-menu-wrap {
+        position: relative;
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-self: center;
+        margin-left: auto;
       }
 
-      .session-delete-button {
-        justify-self: end;
+      .session-action-menu-trigger {
+        display: inline-grid;
+        width: 2.5rem;
+        height: 2.5rem;
+        place-items: center;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.55rem;
+        background: rgb(255 255 255 / 0.035);
+        color: rgb(209 250 229);
+      }
+
+      .session-action-menu-trigger svg {
+        display: block;
+        width: 1.2rem;
+        height: 1.2rem;
+      }
+
+      .session-action-menu-trigger:hover {
+        border-color: rgb(110 231 183 / 0.48);
+        background: rgb(16 185 129 / 0.12);
+      }
+
+      .session-action-menu-trigger:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .session-action-menu {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        z-index: 30;
+        display: grid;
+        min-width: 11.5rem;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.65rem;
+        background: rgb(10 10 10);
+        padding: 0.4rem;
+        box-shadow: 0 1.25rem 2.5rem rgb(0 0 0 / 0.38);
+        animation: session-action-menu-in 160ms ease-out both;
+      }
+
+      .session-action-menu-item {
+        min-height: 2.5rem;
+        border-radius: 0.45rem;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.86rem;
+        font-weight: 700;
+        text-align: left;
+      }
+
+      .session-action-menu-item-danger {
+        color: rgb(254 202 202);
+      }
+
+      .session-action-menu-item-danger:hover {
+        background: rgb(248 113 113 / 0.12);
+        color: rgb(254 226 226);
       }
 
       .table-delete-button {
@@ -747,12 +817,6 @@ interface SessionActionReceipt {
         cursor: not-allowed;
         opacity: 0.45;
         transform: none;
-      }
-
-      .session-action-bar .pokertrack-icon-button {
-        width: 2.85rem;
-        min-width: 2.85rem;
-        height: 2.85rem;
       }
 
       .table-detail-panel {
@@ -800,16 +864,22 @@ interface SessionActionReceipt {
       }
 
       @media (max-width: 639px) {
-        .session-action-bar {
-          grid-template-columns: minmax(0, 1fr) auto;
-        }
-
         .session-primary-actions {
-          grid-column: 1 / -1;
-          grid-row: 2;
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           width: 100%;
+        }
+      }
+
+      @keyframes session-action-menu-in {
+        from {
+          opacity: 0;
+          transform: translateY(-0.25rem) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
         }
       }
 
@@ -1207,8 +1277,10 @@ export class ActiveSessionPage implements OnDestroy {
   private rebuyGlowTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly pendingAction = signal<string | null>(null);
   protected readonly actionReceipt = signal<SessionActionReceipt | null>(null);
+  protected readonly sessionActionMenuOpen = signal(false);
   protected readonly selectedTableId = signal<string | null>(null);
   protected readonly expandedTableIds = signal<string[]>([]);
+  private readonly collapsedTableIds = signal<string[]>([]);
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly selectedTable = computed(() => {
@@ -1276,17 +1348,28 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected selectTable(tableId: string): void {
-    this.expandedTableIds.update((tableIds) =>
-      tableIds.includes(tableId)
-        ? tableIds.filter((currentTableId) => currentTableId !== tableId)
-        : [...tableIds, tableId],
-    );
+    if (this.isTableExpanded(tableId)) {
+      this.expandedTableIds.update((tableIds) =>
+        tableIds.filter((currentTableId) => currentTableId !== tableId)
+      );
+      this.collapsedTableIds.update((tableIds) => [...tableIds, tableId]);
+    } else {
+      this.collapsedTableIds.update((tableIds) =>
+        tableIds.filter((currentTableId) => currentTableId !== tableId)
+      );
+      this.expandedTableIds.update((tableIds) => [...tableIds, tableId]);
+    }
     this.selectedTableId.set(tableId);
     this.expandedPlayerId.set(null);
   }
 
   protected isTableExpanded(tableId: string): boolean {
-    return this.expandedTableIds().includes(tableId);
+    if (this.expandedTableIds().includes(tableId)) {
+      return true;
+    }
+
+    const firstTableId = initialExpandedTableIds(this.session()?.tables ?? [])[0];
+    return firstTableId === tableId && !this.collapsedTableIds().includes(tableId);
   }
 
   protected playersForTable(
@@ -1343,7 +1426,13 @@ export class ActiveSessionPage implements OnDestroy {
       AddPlayerDialogResult
     >(AddPlayerDialogComponent, {
       autoFocus: 'first-tabbable',
-      data: { registeredPlayers },
+      data: {
+        registeredPlayers,
+        sessionMemberUserIds: (this.session()?.players ?? [])
+          .map((player) => player.userId)
+          .filter((userId): userId is string => Boolean(userId)),
+        sessionMemberNames: (this.session()?.players ?? []).map((player) => player.name),
+      },
       panelClass: 'pokertrack-dialog-panel',
     });
 
@@ -1505,6 +1594,12 @@ export class ActiveSessionPage implements OnDestroy {
     return this.store.buyInTransactionsForPlayer(this.session(), playerId);
   }
 
+  protected timelineTransactions(playerId: string): PokerTransaction[] {
+    return gameTimelineTransactions(
+      (this.session()?.transactions ?? []).filter((transaction) => transaction.playerId === playerId)
+    );
+  }
+
   protected activeBuyInCount(playerId: string): number {
     return this.buyInTransactions(playerId).filter((transaction) => !transaction.deletedAt).length;
   }
@@ -1536,10 +1631,7 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected canCloseSession(session: PokerSession): boolean {
-    return (
-      session.status === 'ACTIVE' &&
-      session.players.every((player) => player.status === 'COMPLETED')
-    );
+    return session.status === 'ACTIVE' && allPlayersCashedOut(session.players);
   }
 
   protected canRemovePlayer(session: PokerSession, _player: SessionPlayer): boolean {
@@ -1619,6 +1711,15 @@ export class ActiveSessionPage implements OnDestroy {
         await this.router.navigate(['/host/sessions', this.sessionId, 'summary']);
       });
     });
+  }
+
+  protected toggleSessionActionMenu(): void {
+    this.sessionActionMenuOpen.update((isOpen) => !isOpen);
+  }
+
+  protected deleteSessionFromMenu(): void {
+    this.sessionActionMenuOpen.set(false);
+    this.deleteSession();
   }
 
   protected deleteSession(): void {
