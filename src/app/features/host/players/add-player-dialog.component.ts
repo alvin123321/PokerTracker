@@ -85,14 +85,14 @@ export interface AddPlayerDialogResult {
           </p>
         </div>
 
-        <label class="block text-sm font-medium text-neutral-200" for="buyIn">Buy-in</label>
+        <label class="block text-sm font-medium text-neutral-200" for="buyIn">Buy-in Amount</label>
         <input
           id="buyIn"
           type="number"
           min="1"
           step="1"
           formControlName="buyIn"
-          class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none focus:border-emerald-300"
+          class="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-4 py-4 text-center text-2xl font-semibold tabular-nums outline-none focus:border-emerald-300"
         />
 
         <div class="buy-in-presets grid grid-cols-2 gap-2 sm:grid-cols-4">
