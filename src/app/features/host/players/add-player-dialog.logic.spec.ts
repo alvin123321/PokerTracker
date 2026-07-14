@@ -1,4 +1,4 @@
-import { sortRegisteredPlayerOptions } from './add-player-dialog.logic';
+import { resolveAddPlayerSearch, sortRegisteredPlayerOptions } from './add-player-dialog.logic';
 
 describe('add player dialog registered player ordering', () => {
   it('moves players already in the session below selectable players', () => {
@@ -21,5 +21,16 @@ describe('add player dialog registered player ordering', () => {
     );
 
     expect(sorted.map((player) => player.id)).toEqual(['available', 'cashed-out']);
+  });
+
+  it('creates a signup result for an unmatched typed name', () => {
+    const result = resolveAddPlayerSearch(
+      [{ id: 'existing', username: 'playerone', displayName: 'Player One' }],
+      'New Player',
+      [],
+      []
+    );
+
+    expect(result).toEqual({ kind: 'new', name: 'New Player' });
   });
 });

@@ -4,6 +4,40 @@ interface RegisteredPlayerIdentity {
   displayName?: string | null;
 }
 
+export type AddPlayerSearchResult<T extends RegisteredPlayerIdentity> =
+  | { kind: 'empty' }
+  | { kind: 'existing'; player: T }
+  | { kind: 'already-in-game'; player: T }
+  | { kind: 'new'; name: string };
+
+export function resolveAddPlayerSearch<T extends RegisteredPlayerIdentity>(
+  players: readonly T[],
+  search: string,
+  sessionMemberUserIds: readonly string[],
+  sessionMemberNames: readonly string[] = []
+): AddPlayerSearchResult<T> {
+  const name = search.trim();
+
+  if (!name) {
+    return { kind: 'empty' };
+  }
+
+  const normalizedName = normalizePlayerName(name);
+  const player = players.find((option) =>
+    [option.displayName, option.username]
+      .filter((label): label is string => Boolean(label?.trim()))
+      .some((label) => normalizePlayerName(label) === normalizedName)
+  );
+
+  if (!player) {
+    return { kind: 'new', name };
+  }
+
+  return isRegisteredPlayerInSession(player, sessionMemberUserIds, sessionMemberNames)
+    ? { kind: 'already-in-game', player }
+    : { kind: 'existing', player };
+}
+
 export function isRegisteredPlayerInSession(
   player: RegisteredPlayerIdentity,
   sessionMemberUserIds: readonly string[],
