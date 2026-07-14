@@ -39,17 +39,6 @@ const presetAmounts = [200, 300, 400, 500, 1000];
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-neutral-200" for="rebuyComment">Comment</label>
-        <textarea
-          id="rebuyComment"
-          rows="2"
-          [formControl]="comment"
-          class="mt-2 w-full resize-none rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none transition focus:border-emerald-300"
-          placeholder="Optional note"
-        ></textarea>
-      </div>
-
-      <div>
         <label class="block text-sm font-medium text-neutral-200" for="customRebuy">Custom amount</label>
         <div class="mt-2 flex gap-2">
           <input
@@ -72,6 +61,17 @@ const presetAmounts = [200, 300, 400, 500, 1000];
             Add
           </button>
         </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-neutral-200" for="rebuyComment">Comment</label>
+        <textarea
+          id="rebuyComment"
+          rows="2"
+          [formControl]="comment"
+          class="mt-2 w-full resize-none rounded-lg border border-white/10 bg-neutral-900 px-4 py-3 outline-none transition focus:border-emerald-300"
+          placeholder="Optional note"
+        ></textarea>
       </div>
     </section>
   `
