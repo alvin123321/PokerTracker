@@ -66,6 +66,8 @@ describe('PlayerDashboardPage', () => {
   let queryParamMap: BehaviorSubject<ParamMap>;
   let sessions: WritableSignal<PokerSession[]>;
   let miniGameHistory: WritableSignal<MiniGameSnapshot[]>;
+  let miniGameHistoryLoading: WritableSignal<boolean>;
+  let miniGameError: WritableSignal<string | null>;
   let miniGameLoadHistory: jasmine.Spy;
 
   beforeEach(async () => {
@@ -76,6 +78,8 @@ describe('PlayerDashboardPage', () => {
     };
     sessions = signal<PokerSession[]>([]);
     miniGameHistory = signal<MiniGameSnapshot[]>([]);
+    miniGameHistoryLoading = signal(false);
+    miniGameError = signal<string | null>(null);
     miniGameLoadHistory = jasmine
       .createSpy('loadHistory')
       .and.callFake(async () => miniGameHistory());
@@ -94,8 +98,8 @@ describe('PlayerDashboardPage', () => {
     };
     const miniGame = {
       history: miniGameHistory.asReadonly(),
-      historyLoading: signal(false),
-      error: signal<string | null>(null),
+      historyLoading: miniGameHistoryLoading.asReadonly(),
+      error: miniGameError.asReadonly(),
       loadHistory: miniGameLoadHistory
     };
 
@@ -174,6 +178,55 @@ describe('PlayerDashboardPage', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(miniGameLoadHistory).toHaveBeenCalled();
     expect(compiled.querySelector('[aria-label="Mini-game history"]')).toBeNull();
+    expect(selectHistoryView).toHaveBeenCalledWith('tables');
+  });
+
+  it('keeps mini-game history selected when loading history fails', async () => {
+    miniGameLoadHistory.and.callFake(async () => {
+      miniGameHistoryLoading.set(true);
+      miniGameError.set('Unable to load mini-game history.');
+      miniGameHistoryLoading.set(false);
+      return [];
+    });
+    const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
+
+    queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('[role="alert"]')?.textContent).toContain(
+      'Unable to load mini-game history.'
+    );
+    expect(selectHistoryView).not.toHaveBeenCalled();
+  });
+
+  it('keeps mini-game history available while loading before falling back on empty success', async () => {
+    let resolveHistory!: (history: MiniGameSnapshot[]) => void;
+    miniGameLoadHistory.and.callFake(() => {
+      miniGameHistoryLoading.set(true);
+      miniGameError.set(null);
+
+      return new Promise<MiniGameSnapshot[]>((resolve) => {
+        resolveHistory = (history) => {
+          miniGameHistory.set(history);
+          miniGameHistoryLoading.set(false);
+          resolve(history);
+        };
+      });
+    });
+    const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
+
+    queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('[aria-label="Mini-game history"]')).not.toBeNull();
+    expect(selectHistoryView).not.toHaveBeenCalled();
+
+    resolveHistory([]);
+    await Promise.resolve();
+
     expect(selectHistoryView).toHaveBeenCalledWith('tables');
   });
 

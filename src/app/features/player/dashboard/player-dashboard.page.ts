@@ -1651,7 +1651,11 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   private async loadMiniGameHistory(): Promise<void> {
     await this.miniGame.loadHistory();
 
-    if (this.historyView() === 'mini-games' && this.joinedMiniGames().length === 0) {
+    if (
+      this.historyView() === 'mini-games' &&
+      !this.miniGame.error() &&
+      this.joinedMiniGames().length === 0
+    ) {
       this.selectHistoryView('tables');
     }
   }
