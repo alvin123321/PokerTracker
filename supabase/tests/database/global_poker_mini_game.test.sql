@@ -17,6 +17,7 @@ select has_table('public', 'mini_game_cards', 'mini_game_cards exists');
 select has_table('public', 'mini_game_equities', 'mini_game_equities exists');
 select has_column('public', 'mini_games', 'state_version', 'games have a state version');
 select has_column('public', 'mini_games', 'equity_version', 'games have an equity version');
+select has_column('public', 'mini_games', 'equity_claimed_at', 'games track an equity calculation lease');
 select has_column('public', 'mini_games', 'deleted_at', 'games use soft deletion');
 select has_column(
   'public',
@@ -38,6 +39,8 @@ select has_function('public', 'get_current_mini_game', array[]::text[]);
 select has_function('public', 'list_mini_game_history', array[]::text[]);
 select has_function('public', 'get_mini_game_detail', array['uuid']);
 select has_function('public', 'store_mini_game_equities', array['uuid', 'bigint', 'jsonb']);
+select has_function('public', 'claim_mini_game_equity_calculation', array['uuid', 'bigint']);
+select has_function('public', 'release_mini_game_equity_calculation', array['uuid', 'bigint']);
 
 insert into auth.users (
   id,
@@ -379,6 +382,12 @@ select is(
   11,
   'all public hand and board cards remain unique'
 );
+select throws_ok(
+  $$select public.create_mini_game('Too Soon', 2::smallint, 10::smallint)$$,
+  'P0001',
+  'Wait for final odds before creating another mini-game.',
+  'a completed game cannot be archived before final equity is ready'
+);
 
 select set_config(
   'request.jwt.claims',
@@ -386,16 +395,10 @@ select set_config(
   true
 );
 select ok(
-  public.claim_mini_game_celebration(
-    (select id from public.mini_games where is_current and deleted_at is null)
-  ),
-  'an active participant claims celebration once'
-);
-select ok(
   not public.claim_mini_game_celebration(
     (select id from public.mini_games where is_current and deleted_at is null)
   ),
-  'a second celebration claim is denied'
+  'winner celebration is unavailable while final equity is pending'
 );
 select is(
   jsonb_array_length(public.list_mini_game_history()),
@@ -413,6 +416,27 @@ select ok(
     '[]'::jsonb
   ),
   'stale equity writes are rejected without mutation'
+);
+select ok(
+  public.claim_mini_game_equity_calculation(
+    (select id from public.mini_games where is_current and deleted_at is null),
+    (select state_version from public.mini_games where is_current and deleted_at is null)
+  ),
+  'the service role claims pending exact-equity work'
+);
+select ok(
+  not public.claim_mini_game_equity_calculation(
+    (select id from public.mini_games where is_current and deleted_at is null),
+    (select state_version from public.mini_games where is_current and deleted_at is null)
+  ),
+  'a second exact-equity worker cannot claim the same state'
+);
+select ok(
+  public.release_mini_game_equity_calculation(
+    (select id from public.mini_games where is_current and deleted_at is null),
+    (select state_version from public.mini_games where is_current and deleted_at is null)
+  ),
+  'a failed exact-equity worker can release its lease'
 );
 select ok(
   public.store_mini_game_equities(
@@ -449,6 +473,23 @@ select is(
 
 reset role;
 set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"20000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+select ok(
+  public.claim_mini_game_celebration(
+    (select id from public.mini_games where is_current and deleted_at is null)
+  ),
+  'an active participant claims celebration after final equity is ready'
+);
+select ok(
+  not public.claim_mini_game_celebration(
+    (select id from public.mini_games where is_current and deleted_at is null)
+  ),
+  'a second celebration claim is denied'
+);
 select set_config(
   'request.jwt.claims',
   '{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}',

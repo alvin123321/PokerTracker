@@ -24,6 +24,7 @@ const mutationData = [
 ];
 const pendingSnapshot = {
   id: GAME_ID,
+  isCurrent: true,
   stateVersion: 2,
   equityStatus: "PENDING",
   status: "OPEN",
@@ -49,6 +50,8 @@ const context = (
     mutation?: RpcResult;
     detail?: RpcResult;
     refreshedDetail?: RpcResult;
+    claim?: RpcResult;
+    release?: RpcResult;
     store?: RpcResult;
   } = {},
 ): MiniGameRequestContext => {
@@ -75,6 +78,15 @@ const context = (
     },
     serviceRpc: (name, args) => {
       calls.push({ client: "service", name, args });
+
+      if (name === "claim_mini_game_equity_calculation") {
+        return Promise.resolve(options.claim ?? result(true));
+      }
+
+      if (name === "release_mini_game_equity_calculation") {
+        return Promise.resolve(options.release ?? result(true));
+      }
+
       return Promise.resolve(options.store ?? result(true));
     },
   };
@@ -206,6 +218,14 @@ Deno.test("handler authenticates and stores exact equities after a mutation", as
     },
     {
       client: "service",
+      name: "claim_mini_game_equity_calculation",
+      args: {
+        p_game_id: GAME_ID,
+        p_expected_state_version: 2,
+      },
+    },
+    {
+      client: "service",
       name: "store_mini_game_equities",
       args: {
         p_game_id: GAME_ID,
@@ -276,6 +296,74 @@ Deno.test("handler does not claim READY after a stale equity write", async () =>
   assert.equal(body.ok, true);
   assert.equal(body.equityStatus, "PENDING");
   assert.match(String(body.warning), /newer game state/i);
+});
+
+Deno.test("handler recalculates only a pending current game", async () => {
+  let calculationCount = 0;
+  const readyHandler = createMiniGameHandler({
+    createContext: () => context([], { detail: result(readySnapshot) }),
+    calculateEquities: () => {
+      calculationCount += 1;
+      return noEquities;
+    },
+  });
+  const archivedHandler = createMiniGameHandler({
+    createContext: () =>
+      context([], { detail: result({ ...pendingSnapshot, isCurrent: false }) }),
+    calculateEquities: () => {
+      calculationCount += 1;
+      return noEquities;
+    },
+  });
+
+  const readyResponse = await readyHandler(
+    request({ action: "recalculate", gameId: GAME_ID }),
+  );
+  const archivedResponse = await archivedHandler(
+    request({ action: "recalculate", gameId: GAME_ID }),
+  );
+
+  assert.equal(readyResponse.status, 409);
+  assert.match(
+    String((await responseBody(readyResponse)).error),
+    /already current/i,
+  );
+  assert.equal(archivedResponse.status, 409);
+  assert.match(
+    String((await responseBody(archivedResponse)).error),
+    /current mini-game/i,
+  );
+  assert.equal(calculationCount, 0);
+});
+
+Deno.test("handler uses a service-role lease before exact equity work", async () => {
+  let calculationCount = 0;
+  const calls: RecordedCall[] = [];
+  const handler = createMiniGameHandler({
+    createContext: () => context(calls, { claim: result(false) }),
+    calculateEquities: () => {
+      calculationCount += 1;
+      return noEquities;
+    },
+  });
+
+  const response = await handler(
+    request({ action: "recalculate", gameId: GAME_ID }),
+  );
+  const body = await responseBody(response);
+
+  assert.equal(response.status, 200);
+  assert.equal(body.equityStatus, "PENDING");
+  assert.match(String(body.warning), /already being calculated/i);
+  assert.equal(calculationCount, 0);
+  assert.equal(
+    calls.some((call) => call.name === "claim_mini_game_equity_calculation"),
+    true,
+  );
+  assert.equal(
+    calls.some((call) => call.name === "store_mini_game_equities"),
+    false,
+  );
 });
 
 Deno.test("handler skips equity work for delete", async () => {

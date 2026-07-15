@@ -5,4 +5,6 @@ const handler = createMiniGameHandler({
   createContext: (authorization) => createSupabaseRequestContext(authorization),
 });
 
-Deno.serve(handler);
+export default {
+  fetch: handler,
+};

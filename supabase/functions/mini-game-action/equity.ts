@@ -1,4 +1,5 @@
-import { evaluate, odds } from "@poker-apprentice/hand-evaluator";
+// deno-lint-ignore no-import-prefix
+import { evaluate, odds } from "npm:@poker-apprentice/hand-evaluator@4.2.0";
 
 type Rank =
   | "2"

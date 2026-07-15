@@ -67,6 +67,7 @@ const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const bearerPattern = /^Bearer\s+\S+$/i;
 const statuses = new Set(["OPEN", "FLOP", "TURN", "COMPLETE"]);
+const equityStatuses = new Set(["PENDING", "READY", "ERROR"]);
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -268,6 +269,9 @@ const parseSnapshot = (data: unknown): MiniGameSnapshot | null => {
     !uuidPattern.test(snapshot.id) ||
     !Number.isSafeInteger(snapshot.stateVersion) ||
     (snapshot.stateVersion as number) < 1 ||
+    typeof snapshot.isCurrent !== "boolean" ||
+    typeof snapshot.equityStatus !== "string" ||
+    !equityStatuses.has(snapshot.equityStatus) ||
     typeof snapshot.status !== "string" ||
     !statuses.has(snapshot.status) ||
     !Array.isArray(snapshot.board) ||
@@ -345,6 +349,20 @@ const pendingResponse = (
     warning,
   });
 
+const releaseEquityClaim = async (
+  context: MiniGameRequestContext,
+  state: MutationState,
+): Promise<void> => {
+  try {
+    await context.serviceRpc("release_mini_game_equity_calculation", {
+      p_game_id: state.gameId,
+      p_expected_state_version: state.stateVersion,
+    });
+  } catch {
+    // The lease also expires, so a failed release must not hide mutation success.
+  }
+};
+
 const attemptEquity = async (
   context: MiniGameRequestContext,
   state: MutationState,
@@ -391,11 +409,46 @@ const attemptEquity = async (
     );
   }
 
+  let claimResult: RpcResult;
+
+  try {
+    claimResult = await context.serviceRpc(
+      "claim_mini_game_equity_calculation",
+      {
+        p_game_id: state.gameId,
+        p_expected_state_version: state.stateVersion,
+      },
+    );
+  } catch {
+    return pendingResponse(
+      state,
+      "Equity calculation is pending and can be retried.",
+      snapshot,
+    );
+  }
+
+  if (claimResult.error) {
+    return pendingResponse(
+      state,
+      "Equity calculation is pending and can be retried.",
+      snapshot,
+    );
+  }
+
+  if (claimResult.data !== true) {
+    return pendingResponse(
+      state,
+      "Equity is already being calculated for this game state.",
+      snapshot,
+    );
+  }
+
   let equities: PersistedEquity[];
 
   try {
     equities = calculateEquities(snapshot);
   } catch {
+    await releaseEquityClaim(context, state);
     return pendingResponse(
       state,
       "Equity calculation is pending and can be retried.",
@@ -412,6 +465,7 @@ const attemptEquity = async (
       p_equities: equities,
     });
   } catch {
+    await releaseEquityClaim(context, state);
     return pendingResponse(
       state,
       "Equity calculation is pending and can be retried.",
@@ -420,6 +474,7 @@ const attemptEquity = async (
   }
 
   if (storeResult.error) {
+    await releaseEquityClaim(context, state);
     return pendingResponse(
       state,
       "Equity calculation is pending and can be retried.",
@@ -428,6 +483,7 @@ const attemptEquity = async (
   }
 
   if (storeResult.data !== true) {
+    await releaseEquityClaim(context, state);
     return pendingResponse(
       state,
       storeResult.data === false
@@ -550,6 +606,20 @@ export const createMiniGameHandler = (
 
       if (!snapshot || snapshot.id !== action.gameId) {
         return errorResponse("Unexpected server error.", 500);
+      }
+
+      if (snapshot.isCurrent !== true) {
+        return errorResponse(
+          "Only the current mini-game can recalculate equity.",
+          409,
+        );
+      }
+
+      if (snapshot.equityStatus !== "PENDING") {
+        return errorResponse(
+          "Equity is already current for this game state.",
+          409,
+        );
       }
 
       return attemptEquity(

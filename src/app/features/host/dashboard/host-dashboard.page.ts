@@ -10,6 +10,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
+import { MiniGameDashboardSectionComponent } from '../../mini-game/mini-game-dashboard-section.component';
 import {
   defaultPokerTableName,
   PokerTransaction,
@@ -121,6 +122,7 @@ class TableNameDialogComponent {
     CurrencyPipe,
     DatePipe,
     MatDialogModule,
+    MiniGameDashboardSectionComponent,
     NgTemplateOutlet,
     RouterLink,
   ],
@@ -248,6 +250,8 @@ class TableNameDialogComponent {
               </article>
             </div>
           </section>
+
+          <app-mini-game-dashboard-section [showCreate]="true" />
         </section>
       } @else {
         <section class="dashboard-content-state space-y-4">
@@ -498,6 +502,8 @@ class TableNameDialogComponent {
               </article>
             }
           </div>
+
+          <app-mini-game-dashboard-section [showCreate]="true" />
         </section>
       }
 
@@ -671,11 +677,11 @@ class TableNameDialogComponent {
       }
 
       .dashboard-content-state {
-        animation: dashboard-content-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation: dashboard-content-in 640ms cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .dashboard-empty-state {
-        animation: dashboard-content-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation: dashboard-content-in 640ms cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       @keyframes dashboard-loader-in {

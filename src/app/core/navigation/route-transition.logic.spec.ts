@@ -1,7 +1,7 @@
 import {
   routeTransitionDirection,
   shouldAnimateRouteTransition,
-  shouldRunRouteViewTransition
+  shouldRunRouteViewTransition,
 } from './route-transition.logic';
 
 describe('routeTransitionDirection', () => {
@@ -11,7 +11,11 @@ describe('routeTransitionDirection', () => {
 
   it('uses a backward direction from session summary to host history', () => {
     expect(
-      routeTransitionDirection('imperative', '/host/sessions/session-123/summary', '/host/sessions/history')
+      routeTransitionDirection(
+        'imperative',
+        '/host/sessions/session-123/summary',
+        '/host/sessions/history',
+      ),
     ).toBe('back');
   });
 
@@ -20,8 +24,18 @@ describe('routeTransitionDirection', () => {
       routeTransitionDirection(
         'imperative',
         '/player/sessions/session-123',
-        '/player/dashboard?tab=history'
-      )
+        '/player/dashboard?tab=history',
+      ),
+    ).toBe('back');
+  });
+
+  it('uses a backward direction from mini-game detail to mini-game history', () => {
+    expect(
+      routeTransitionDirection(
+        'imperative',
+        '/player/mini-games/game-123',
+        '/player/dashboard?tab=history&view=mini-games',
+      ),
     ).toBe('back');
   });
 });
@@ -32,11 +46,30 @@ describe('shouldAnimateRouteTransition', () => {
   });
 
   it('animates entering a session detail page', () => {
-    expect(shouldAnimateRouteTransition('/host/sessions/history', '/host/sessions/session-123')).toBeTrue();
+    expect(
+      shouldAnimateRouteTransition('/host/sessions/history', '/host/sessions/session-123'),
+    ).toBeTrue();
   });
 
   it('animates returning from a detail page', () => {
-    expect(shouldAnimateRouteTransition('/host/sessions/session-123', '/host/sessions/history')).toBeTrue();
+    expect(
+      shouldAnimateRouteTransition('/host/sessions/session-123', '/host/sessions/history'),
+    ).toBeTrue();
+  });
+
+  it('animates entering host and player mini-game detail pages', () => {
+    expect(
+      shouldAnimateRouteTransition(
+        '/host/sessions/history?view=mini-games',
+        '/host/mini-games/game-123',
+      ),
+    ).toBeTrue();
+    expect(
+      shouldAnimateRouteTransition(
+        '/player/dashboard?tab=history&view=mini-games',
+        '/player/mini-games/game-123',
+      ),
+    ).toBeTrue();
   });
 });
 
