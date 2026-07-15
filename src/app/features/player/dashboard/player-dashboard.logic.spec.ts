@@ -1,5 +1,7 @@
 import {
+  joinedMiniGameHistory,
   playerCallTimeDisplayState,
+  playerGameDetailSections,
   playerHasSharedCallTimeClock,
   playerGameTimeline,
   playerGameStatusKind,
@@ -10,6 +12,8 @@ import {
   totalActivePlayerChips,
   totalActivePlayers
 } from './player-dashboard.logic';
+
+import type { MiniGameSnapshot } from '../../mini-game/mini-game.models';
 
 import type {
   PokerSession,
@@ -159,6 +163,22 @@ describe('player game status display', () => {
 
     expect(playerGameStatusKind(session, player)).toBe('COMPLETED');
     expect(playerGameStatMode(session, player)).toBe('COMPLETED_GAME');
+  });
+});
+
+describe('player mini-game history', () => {
+  it('keeps only mini-games joined by the current player', () => {
+    const games = [
+      makeMiniGame({ id: 'joined', viewerParticipantId: 'participant-1' }),
+      makeMiniGame({ id: 'watched', viewerParticipantId: null })
+    ];
+
+    expect(joinedMiniGameHistory(games).map((game) => game.id)).toEqual(['joined']);
+  });
+
+  it('puts timeline first only for completed table games', () => {
+    expect(playerGameDetailSections('ACTIVE_GAME')).toEqual(['players', 'timeline']);
+    expect(playerGameDetailSections('COMPLETED_GAME')).toEqual(['timeline', 'players']);
   });
 });
 
@@ -401,6 +421,32 @@ function makeTransaction(overrides: Partial<PokerTransaction> = {}): PokerTransa
     type,
     amount: 100,
     createdAt: '2026-07-08T01:00:00.000Z',
+    ...overrides
+  };
+}
+
+function makeMiniGame(overrides: Partial<MiniGameSnapshot> = {}): MiniGameSnapshot {
+  return {
+    id: 'mini-game-a',
+    creatorHostId: 'host-a',
+    name: 'Holdem',
+    minPlayers: 2,
+    maxPlayers: 6,
+    status: 'COMPLETE',
+    isCurrent: false,
+    stateVersion: 1,
+    equityVersion: 1,
+    equityStatus: 'READY',
+    createdAt: '2026-07-08T01:00:00.000Z',
+    updatedAt: '2026-07-08T01:00:00.000Z',
+    completedAt: '2026-07-08T02:00:00.000Z',
+    archivedAt: null,
+    activePlayerCount: 2,
+    viewerParticipantId: 'participant-a',
+    viewerCelebrationSeen: true,
+    board: [],
+    participants: [],
+    winnerParticipantIds: [],
     ...overrides
   };
 }

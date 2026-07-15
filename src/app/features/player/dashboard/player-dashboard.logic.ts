@@ -1,4 +1,5 @@
 import { gameTimelineTransactions } from '../../host/data/session-timeline.logic';
+import type { MiniGameSnapshot } from '../../mini-game/mini-game.models';
 
 import type {
   PlayerPublicTableRosterEntry,
@@ -12,11 +13,22 @@ import type {
 export type PlayerCallTimeDisplayState = 'CLOCK' | 'BUTTON' | 'NONE';
 export type PlayerGameStatusKind = 'ACTIVE' | 'COMPLETED';
 export type PlayerGameStatMode = 'ACTIVE_GAME' | 'COMPLETED_GAME';
+export type PlayerGameDetailSection = 'players' | 'timeline';
 
 export interface PlayerCallTimePollingInput {
   activeEntryCount: number;
   supportsSharedUpdates: boolean;
   schemaReady: boolean;
+}
+
+export function joinedMiniGameHistory(games: MiniGameSnapshot[]): MiniGameSnapshot[] {
+  return games.filter((game) => game.viewerParticipantId !== null);
+}
+
+export function playerGameDetailSections(
+  mode: PlayerGameStatMode
+): PlayerGameDetailSection[] {
+  return mode === 'COMPLETED_GAME' ? ['timeline', 'players'] : ['players', 'timeline'];
 }
 
 export function playerCallTimeDisplayState(

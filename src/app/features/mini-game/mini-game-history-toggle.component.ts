@@ -7,7 +7,12 @@ import { MiniGameHistoryView } from './mini-game.models';
   selector: 'app-mini-game-history-toggle',
   imports: [LucideSpade, LucideTable2],
   template: `
-    <div class="history-toggle" role="group" aria-label="History type">
+    <div
+      class="history-toggle"
+      [class.history-toggle-single]="!showMiniGames()"
+      role="group"
+      aria-label="History type"
+    >
       <button
         type="button"
         [class.history-toggle-active]="view() === 'tables'"
@@ -18,16 +23,18 @@ import { MiniGameHistoryView } from './mini-game.models';
       >
         <svg lucideTable2 [strokeWidth]="2.1" aria-hidden="true"></svg>
       </button>
-      <button
-        type="button"
-        [class.history-toggle-active]="view() === 'mini-games'"
-        [attr.aria-pressed]="view() === 'mini-games'"
-        aria-label="Mini-game history"
-        title="Mini-games"
-        (click)="viewChange.emit('mini-games')"
-      >
-        <svg lucideSpade [strokeWidth]="2.1" aria-hidden="true"></svg>
-      </button>
+      @if (showMiniGames()) {
+        <button
+          type="button"
+          [class.history-toggle-active]="view() === 'mini-games'"
+          [attr.aria-pressed]="view() === 'mini-games'"
+          aria-label="Mini-game history"
+          title="Mini-games"
+          (click)="viewChange.emit('mini-games')"
+        >
+          <svg lucideSpade [strokeWidth]="2.1" aria-hidden="true"></svg>
+        </button>
+      }
     </div>
   `,
   styles: [
@@ -45,6 +52,11 @@ import { MiniGameHistoryView } from './mini-game.models';
         border-radius: 0.48rem;
         background: rgb(255 255 255 / 0.035);
         padding: 0.25rem;
+      }
+
+      .history-toggle-single {
+        width: 3.2rem;
+        grid-template-columns: 1fr;
       }
 
       button {
@@ -83,5 +95,6 @@ import { MiniGameHistoryView } from './mini-game.models';
 })
 export class MiniGameHistoryToggleComponent {
   readonly view = input.required<MiniGameHistoryView>();
+  readonly showMiniGames = input(true);
   readonly viewChange = output<MiniGameHistoryView>();
 }

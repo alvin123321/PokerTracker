@@ -42,7 +42,9 @@ import {
   PokerTransactionType
 } from '../../host/data/poker-store.service';
 import {
+  joinedMiniGameHistory,
   playerCallTimeDisplayState,
+  playerGameDetailSections,
   playerHasSharedCallTimeClock,
   playerGameTimeline,
   playerGameStatMode,
@@ -319,54 +321,62 @@ const playerCallTimeSyncIntervalMs = 1000;
 
                   <div class="feature-detail-panel" aria-hidden="false">
                     <div class="feature-detail-panel-inner">
-                      <div class="feature-roster">
-                        <div class="feature-detail-heading">
-                          <span>Game players</span>
-                          @if (statMode === 'ACTIVE_GAME') {
-                            <span class="feature-active-count">
-                              <svg lucideUsersRound [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                              <strong>{{ activePlayerCount(entry) }}</strong>
-                            </span>
-                          }
-                        </div>
-
-                        <div class="feature-player-list">
-                          @for (player of gamePlayers(entry); track player.sessionPlayerId) {
-                            <div
-                              class="feature-player-row"
-                              [class.feature-player-row-active]="player.status === 'ACTIVE'"
-                              [class.feature-player-row-cashed]="player.status === 'COMPLETED'"
-                              [class.feature-player-row-current]="player.sessionPlayerId === entry.player.id"
-                            >
-                              <span class="feature-player-dot" aria-hidden="true"></span>
-                              <strong>{{ player.name }}</strong>
-                              <span class="feature-player-status">
-                                {{ player.status === 'ACTIVE' ? 'Active' : 'Cashed' }}
-                              </span>
+                      @for (section of detailSections(statMode); track section) {
+                        @switch (section) {
+                          @case ('players') {
+                            <div class="feature-roster" data-detail-section="players">
+                              <div class="feature-detail-heading">
+                                <span>Game players</span>
+                                @if (statMode === 'ACTIVE_GAME') {
+                                  <span class="feature-active-count">
+                                    <svg lucideUsersRound [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                                    <strong>{{ activePlayerCount(entry) }}</strong>
+                                  </span>
+                                }
+                              </div>
+                              <div class="feature-player-list">
+                                @for (player of gamePlayers(entry); track player.sessionPlayerId) {
+                                  <div
+                                    class="feature-player-row"
+                                    [class.feature-player-row-active]="player.status === 'ACTIVE'"
+                                    [class.feature-player-row-cashed]="player.status === 'COMPLETED'"
+                                    [class.feature-player-row-current]="player.sessionPlayerId === entry.player.id"
+                                  >
+                                    <span class="feature-player-dot" aria-hidden="true"></span>
+                                    <strong>{{ player.name }}</strong>
+                                    <span class="feature-player-status">
+                                      {{ player.status === 'ACTIVE' ? 'Active' : 'Cashed' }}
+                                    </span>
+                                  </div>
+                                }
+                              </div>
                             </div>
                           }
-                        </div>
-                      </div>
-
-                      <div class="feature-detail-heading">
-                        <span>Game timeline</span>
-                      </div>
-                      <div class="feature-buyin-list">
-                        @for (transaction of gameTimelineRows(entry); track transaction.id) {
-                          <div
-                            class="feature-buyin-row"
-                            [class.feature-buyin-row-buyin]="transaction.type === 'BUYIN'"
-                            [class.feature-buyin-row-rebuy]="transaction.type === 'REBUY'"
-                            [class.feature-buyin-row-cashout]="transaction.type === 'CASHOUT'"
-                          >
-                            <span class="feature-buyin-type">{{ activityLabel(transaction.type) }}</span>
-                            <span class="feature-buyin-time">{{ transaction.createdAt | date: 'shortTime' }}</span>
-                            <strong>{{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
-                          </div>
-                        } @empty {
-                          <p class="activity-empty">No game timeline yet.</p>
+                          @case ('timeline') {
+                            <div data-detail-section="timeline">
+                              <div class="feature-detail-heading">
+                                <span>Game timeline</span>
+                              </div>
+                              <div class="feature-buyin-list">
+                                @for (transaction of gameTimelineRows(entry); track transaction.id) {
+                                  <div
+                                    class="feature-buyin-row"
+                                    [class.feature-buyin-row-buyin]="transaction.type === 'BUYIN'"
+                                    [class.feature-buyin-row-rebuy]="transaction.type === 'REBUY'"
+                                    [class.feature-buyin-row-cashout]="transaction.type === 'CASHOUT'"
+                                  >
+                                    <span class="feature-buyin-type">{{ activityLabel(transaction.type) }}</span>
+                                    <span class="feature-buyin-time">{{ transaction.createdAt | date: 'shortTime' }}</span>
+                                    <strong>{{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+                                  </div>
+                                } @empty {
+                                  <p class="activity-empty">No game timeline yet.</p>
+                                }
+                              </div>
+                            </div>
+                          }
                         }
-                      </div>
+                      }
                     </div>
                   </div>
                 </article>
@@ -386,6 +396,7 @@ const playerCallTimeSyncIntervalMs = 1000;
               <div class="player-history-switcher">
                 <app-mini-game-history-toggle
                   [view]="historyView()"
+                  [showMiniGames]="showMiniGameHistory()"
                   (viewChange)="selectHistoryView($event)"
                 />
               </div>
@@ -396,7 +407,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                 }
 
                 <app-mini-game-history-list
-                  [games]="miniGame.history()"
+                  [games]="joinedMiniGames()"
                   [loading]="miniGame.historyLoading()"
                   detailBasePath="/player/mini-games"
                 />
@@ -1407,6 +1418,12 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   ];
   protected readonly activeTab = signal<PlayerDashboardTab>('overview');
   protected readonly historyView = signal<MiniGameHistoryView>('tables');
+  protected readonly joinedMiniGames = computed(() =>
+    joinedMiniGameHistory(this.miniGame.history())
+  );
+  protected readonly showMiniGameHistory = computed(
+    () => this.miniGame.historyLoading() || this.joinedMiniGames().length > 0
+  );
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {
     const userId = this.authState.user()?.id ?? null;
@@ -1447,8 +1464,8 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
       const view = miniGameHistoryViewFromQuery(queryParams.get('view'));
       this.historyView.set(view);
 
-      if (view === 'mini-games') {
-        void this.miniGame.loadHistory();
+      if (this.activeTab() === 'sessions') {
+        void this.loadMiniGameHistory();
       }
     });
     this.startCallTimeSync();
@@ -1595,6 +1612,10 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     return playerGameStatMode(entry.session, entry.player);
   }
 
+  protected detailSections(mode: PlayerGameStatMode) {
+    return playerGameDetailSections(mode);
+  }
+
   protected activePlayerCount(entry: PlayerSessionEntry): number {
     return this.publicTableStats(entry).activePlayerCount;
   }
@@ -1625,6 +1646,14 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
         // The store owns the visible error state; the polling loop must not disrupt the dashboard.
       });
     }, playerCallTimeSyncIntervalMs);
+  }
+
+  private async loadMiniGameHistory(): Promise<void> {
+    await this.miniGame.loadHistory();
+
+    if (this.historyView() === 'mini-games' && this.joinedMiniGames().length === 0) {
+      this.selectHistoryView('tables');
+    }
   }
 
   protected gamePlayers(entry: PlayerSessionEntry): PlayerPublicTableRosterEntry[] {

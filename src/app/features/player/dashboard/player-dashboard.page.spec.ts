@@ -1,12 +1,18 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, input, signal, WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap, ParamMap } from '@angular/router';
+import { RouterTestingModule } from '@angular/router/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { BehaviorSubject } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { GlobalChatPage } from '../../chat/global-chat.page';
+import { MiniGameDashboardSectionComponent } from '../../mini-game/mini-game-dashboard-section.component';
+import { MiniGameHistoryListComponent } from '../../mini-game/mini-game-history-list.component';
+import type { MiniGameSnapshot } from '../../mini-game/mini-game.models';
+import { MiniGameService } from '../../mini-game/mini-game.service';
+import type { PokerSession, SessionPlayer } from '../../host/data/poker-store.service';
 import { PokerStoreService } from '../../host/data/poker-store.service';
 import { PlayerDashboardPage } from './player-dashboard.page';
 
@@ -17,6 +23,12 @@ import { PlayerDashboardPage } from './player-dashboard.page';
 class GlobalChatPageStub {
   readonly compact = input(false);
 }
+
+@Component({
+  selector: 'app-mini-game-dashboard-section',
+  template: ''
+})
+class MiniGameDashboardSectionStub {}
 
 function findStyleRuleContaining(...selectorFragments: string[]): CSSStyleRule | undefined {
   const visit = (rules: CSSRuleList): CSSStyleRule | undefined => {
@@ -52,6 +64,9 @@ function findStyleRuleContaining(...selectorFragments: string[]): CSSStyleRule |
 describe('PlayerDashboardPage', () => {
   let fixture: ComponentFixture<PlayerDashboardPage>;
   let queryParamMap: BehaviorSubject<ParamMap>;
+  let sessions: WritableSignal<PokerSession[]>;
+  let miniGameHistory: WritableSignal<MiniGameSnapshot[]>;
+  let miniGameLoadHistory: jasmine.Spy;
 
   beforeEach(async () => {
     queryParamMap = new BehaviorSubject(convertToParamMap({ tab: 'chat' }));
@@ -59,14 +74,33 @@ describe('PlayerDashboardPage', () => {
       profile: signal({ displayName: 'Player' }),
       user: signal({ id: 'player-1' })
     };
+    sessions = signal<PokerSession[]>([]);
+    miniGameHistory = signal<MiniGameSnapshot[]>([]);
+    miniGameLoadHistory = jasmine
+      .createSpy('loadHistory')
+      .and.callFake(async () => miniGameHistory());
     const store = {
-      sessions: signal([]),
+      sessions: sessions.asReadonly(),
       error: signal<string | null>(null),
-      refreshSessions: jasmine.createSpy('refreshSessions').and.resolveTo()
+      refreshSessions: jasmine.createSpy('refreshSessions').and.resolveTo(),
+      activeTimeCallForSession: () => undefined,
+      isTimeCallStarting: () => false,
+      remainingTimeCallsForPlayer: () => 3,
+      timeCallSchemaReady: () => true,
+      canRequestTimeCall: () => true,
+      playerPublicTableRoster: signal([]),
+      playerPublicTableSummaries: signal([]),
+      supportsSharedSessionUpdates: () => true
+    };
+    const miniGame = {
+      history: miniGameHistory.asReadonly(),
+      historyLoading: signal(false),
+      error: signal<string | null>(null),
+      loadHistory: miniGameLoadHistory
     };
 
     await TestBed.configureTestingModule({
-      imports: [PlayerDashboardPage],
+      imports: [PlayerDashboardPage, RouterTestingModule],
       providers: [
         { provide: AuthStateService, useValue: authState },
         {
@@ -79,12 +113,13 @@ describe('PlayerDashboardPage', () => {
           }
         },
         { provide: MatDialog, useValue: { open: jasmine.createSpy('open') } },
-        { provide: PokerStoreService, useValue: store }
+        { provide: PokerStoreService, useValue: store },
+        { provide: MiniGameService, useValue: miniGame }
       ]
     })
       .overrideComponent(PlayerDashboardPage, {
-        remove: { imports: [GlobalChatPage] },
-        add: { imports: [GlobalChatPageStub] }
+        remove: { imports: [GlobalChatPage, MiniGameDashboardSectionComponent] },
+        add: { imports: [GlobalChatPageStub, MiniGameDashboardSectionStub] }
       })
       .compileComponents();
 
@@ -127,4 +162,124 @@ describe('PlayerDashboardPage', () => {
     expect(headingRule?.style.fontFamily).toContain('Share Tech Mono');
     expect(headingRule?.style.fontWeight).toBe('400');
   });
+
+  it('hides unjoined mini-game history and requests a table history fallback', async () => {
+    miniGameHistory.set([makeMiniGame({ viewerParticipantId: null })]);
+    const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
+
+    queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(miniGameLoadHistory).toHaveBeenCalled();
+    expect(compiled.querySelector('[aria-label="Mini-game history"]')).toBeNull();
+    expect(selectHistoryView).toHaveBeenCalledWith('tables');
+  });
+
+  it('shows the mini-game history icon and passes only joined games to the list', async () => {
+    miniGameHistory.set([
+      makeMiniGame({ id: 'joined', viewerParticipantId: 'participant-1' }),
+      makeMiniGame({ id: 'watched', viewerParticipantId: null })
+    ]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const historyList = fixture.debugElement.query(By.directive(MiniGameHistoryListComponent));
+
+    expect(compiled.querySelector('[aria-label="Mini-game history"]')).not.toBeNull();
+    expect(historyList).not.toBeNull();
+    if (historyList) {
+      expect((historyList.componentInstance as MiniGameHistoryListComponent).games().map((game) => game.id)).toEqual([
+        'joined'
+      ]);
+    }
+  });
+
+  it('renders completed game details with the timeline before players', () => {
+    sessions.set([makeSession({ status: 'COMPLETED', players: [makePlayer({ status: 'COMPLETED' })] })]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    expect(detailSectionOrder(fixture)).toEqual(['timeline', 'players']);
+  });
+
+  it('keeps active game details with players before the timeline', () => {
+    sessions.set([makeSession({ players: [makePlayer()] })]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    expect(detailSectionOrder(fixture)).toEqual(['players', 'timeline']);
+  });
 });
+
+function detailSectionOrder(fixture: ComponentFixture<PlayerDashboardPage>): Array<string | undefined> {
+  const compiled = fixture.nativeElement as HTMLElement;
+
+  return Array.from(compiled.querySelectorAll<HTMLElement>('[data-detail-section]')).map(
+    (section) => section.dataset['detailSection']
+  );
+}
+
+function makeMiniGame(overrides: Partial<MiniGameSnapshot> = {}): MiniGameSnapshot {
+  return {
+    id: 'mini-game-a',
+    creatorHostId: 'host-a',
+    name: 'Holdem',
+    minPlayers: 2,
+    maxPlayers: 6,
+    status: 'COMPLETE',
+    isCurrent: false,
+    stateVersion: 1,
+    equityVersion: 1,
+    equityStatus: 'READY',
+    createdAt: '2026-07-08T01:00:00.000Z',
+    updatedAt: '2026-07-08T01:00:00.000Z',
+    completedAt: '2026-07-08T02:00:00.000Z',
+    archivedAt: null,
+    activePlayerCount: 2,
+    viewerParticipantId: 'participant-a',
+    viewerCelebrationSeen: true,
+    board: [],
+    participants: [],
+    winnerParticipantIds: [],
+    ...overrides
+  };
+}
+
+function makeSession(overrides: Partial<PokerSession> = {}): PokerSession {
+  return {
+    id: 'session-a',
+    name: 'July 8 Game',
+    sessionDate: '2026-07-08',
+    status: 'ACTIVE',
+    createdAt: '2026-07-08T01:00:00.000Z',
+    closedAt: null,
+    tables: [],
+    players: [],
+    transactions: [],
+    timeCalls: [],
+    ...overrides
+  };
+}
+
+function makePlayer(overrides: Partial<SessionPlayer> = {}): SessionPlayer {
+  return {
+    id: 'seat-a',
+    tableId: null,
+    userId: 'player-1',
+    name: 'Player',
+    status: 'ACTIVE',
+    totalBuyIn: 100,
+    cashOut: 0,
+    net: 0,
+    joinedAt: '2026-07-08T01:00:00.000Z',
+    completedAt: null,
+    ...overrides
+  };
+}
