@@ -135,6 +135,45 @@ values
     now()
   );
 
+insert into public.users (id, username, display_name, role)
+values
+  (
+    '10000000-0000-0000-0000-000000000001',
+    'mini-host-1',
+    'Host One',
+    'HOST'
+  ),
+  (
+    '10000000-0000-0000-0000-000000000002',
+    'mini-host-2',
+    'Host Two',
+    'HOST'
+  ),
+  (
+    '20000000-0000-0000-0000-000000000001',
+    'mini-player-1',
+    'Ada',
+    'PLAYER'
+  ),
+  (
+    '20000000-0000-0000-0000-000000000002',
+    'mini-player-2',
+    'Ben',
+    'PLAYER'
+  ),
+  (
+    '20000000-0000-0000-0000-000000000003',
+    'mini-player-3',
+    'Cleo',
+    'PLAYER'
+  ),
+  (
+    '20000000-0000-0000-0000-000000000004',
+    'mini-player-4',
+    'Drew',
+    'PLAYER'
+  );
+
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
