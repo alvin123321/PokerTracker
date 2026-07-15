@@ -1,5 +1,4 @@
 import { evaluate, odds } from '@poker-apprentice/hand-evaluator';
-import type { Card } from '@poker-apprentice/types';
 
 import { mapMiniGameSnapshot, normalizeMiniGamePercentages } from './mini-game.logic';
 import {
@@ -32,6 +31,7 @@ interface CompletedLocalGameResult {
 
 const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'] as const;
 const suits = ['c', 'd', 'h', 's'] as const;
+type Card = `${(typeof ranks)[number]}${(typeof suits)[number]}`;
 const deck = ranks.flatMap((rank) => suits.map((suit) => `${rank}${suit}` as Card));
 const cardPattern = /^[2-9TJQKA][cdhs]$/;
 
