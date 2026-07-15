@@ -1624,6 +1624,21 @@ app-player-shell > main > header {
   view-transition-name: pokertrack-top-nav;
 }
 
+app-host-shell,
+app-player-shell {
+  --pokertrack-action-feedback-top: 4.25rem;
+}
+
+@media (min-width: 640px) {
+  app-host-shell {
+    --pokertrack-action-feedback-top: 8rem;
+  }
+
+  app-player-shell {
+    --pokertrack-action-feedback-top: 4.75rem;
+  }
+}
+
 app-host-shell > main > header {
   position: relative;
   z-index: 50;

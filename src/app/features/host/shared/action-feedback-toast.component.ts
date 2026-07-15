@@ -49,7 +49,7 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
         pointer-events: none;
         position: fixed;
         inset: 0;
-        z-index: 60;
+        z-index: 70;
       }
 
       .action-feedback-toast {
@@ -60,7 +60,10 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
         --action-feedback-exit-delay: 2.15s;
 
         position: absolute;
-        top: max(0.75rem, env(safe-area-inset-top));
+        top: calc(
+          var(--pokertrack-action-feedback-top, 4.25rem) +
+          max(0.65rem, env(safe-area-inset-top))
+        );
         left: 50%;
         width: min(calc(100vw - 2rem), 23rem);
         transform: translateX(-50%);
@@ -155,12 +158,6 @@ export type ActionFeedbackToastTone = 'success' | 'error' | 'info' | 'saving';
       @keyframes action-feedback-spin {
         to {
           transform: rotate(360deg);
-        }
-      }
-
-      @media (min-width: 640px) {
-        .action-feedback-toast {
-          top: max(1rem, env(safe-area-inset-top));
         }
       }
 
