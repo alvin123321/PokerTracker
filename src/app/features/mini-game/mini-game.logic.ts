@@ -13,12 +13,6 @@ import {
 const cardCodePattern = /^[2-9TJQKA][cdhs]$/;
 const miniGameStatuses = new Set<MiniGameStatus>(['OPEN', 'FLOP', 'TURN', 'COMPLETE']);
 const equityStatuses = new Set<MiniGameEquityStatus>(['PENDING', 'READY', 'ERROR']);
-const realtimeTables = new Set([
-  'mini_games',
-  'mini_game_participants',
-  'mini_game_cards',
-  'mini_game_equities',
-]);
 
 export function mapMiniGameSnapshot(value: unknown): MiniGameSnapshot | null {
   if (value === null || value === undefined) {
@@ -161,10 +155,6 @@ export function normalizeMiniGamePercentages(shares: number[]): number[] {
   }
 
   return tenths.map((value) => value / 10);
-}
-
-export function shouldRefreshMiniGameFromRealtime(table: string): boolean {
-  return realtimeTables.has(table);
 }
 
 export function miniGameHistoryViewFromQuery(value: string | null): MiniGameHistoryView {

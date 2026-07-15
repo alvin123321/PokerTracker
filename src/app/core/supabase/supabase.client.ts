@@ -1,5 +1,5 @@
 import { InjectionToken } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { environment } from '../../../environments/environment';
 import { shouldCreateSupabaseClient } from './supabase-environment.logic';
@@ -8,16 +8,16 @@ export const SUPABASE_CLIENT = new InjectionToken<SupabaseClient | null>('SUPABA
   providedIn: 'root',
   factory: () => {
     const appHostname = typeof window === 'undefined' ? '' : window.location.hostname;
+    const canCreateClient =
+      Boolean(environment.supabaseUrl) &&
+      shouldCreateSupabaseClient(appHostname, environment.supabaseUrl);
 
     if (
       !environment.supabaseUrl ||
       !environment.supabaseAnonKey ||
-      !shouldCreateSupabaseClient(appHostname, environment.supabaseUrl)
+      !canCreateClient
     ) {
-      if (
-        environment.supabaseUrl &&
-        !shouldCreateSupabaseClient(appHostname, environment.supabaseUrl)
-      ) {
+      if (environment.supabaseUrl && !canCreateClient) {
         console.error('PokerTracker blocked a remote Supabase client from a local preview origin.');
       }
       return null;

@@ -1,5 +1,6 @@
 import { evaluate, odds } from '@poker-apprentice/hand-evaluator';
 
+import { MINI_GAME_LOCAL_STORAGE_KEY } from './mini-game-local.constants';
 import { mapMiniGameSnapshot, normalizeMiniGamePercentages } from './mini-game.logic';
 import {
   MiniGameActionRequest,
@@ -9,8 +10,6 @@ import {
   MiniGameSnapshot,
   MiniGameViewerRole,
 } from './mini-game.models';
-
-export const MINI_GAME_LOCAL_STORAGE_KEY = 'pokertrack.localMiniGame.v1';
 
 export interface MiniGameLocalViewer {
   userId: string;
@@ -89,20 +88,24 @@ export class MiniGameLocalStore {
   ) {}
 
   current(viewer: MiniGameLocalViewer): MiniGameSnapshot | null {
-    const game = this.read().games.find((candidate) => candidate.isCurrent) ?? null;
-    return game ? this.forViewer(game, viewer) : null;
+    const state = this.read();
+    const game = state.games.find((candidate) => candidate.isCurrent) ?? null;
+    return game ? this.forViewer(game, viewer, state.celebrationClaims) : null;
   }
 
   history(viewer: MiniGameLocalViewer): MiniGameSnapshot[] {
-    return this.read()
-      .games.filter((game) => game.status === 'COMPLETE')
+    const state = this.read();
+
+    return state.games
+      .filter((game) => game.status === 'COMPLETE')
       .sort((left, right) => String(right.completedAt).localeCompare(String(left.completedAt)))
-      .map((game) => this.forViewer(game, viewer));
+      .map((game) => this.forViewer(game, viewer, state.celebrationClaims));
   }
 
   detail(gameId: string, viewer: MiniGameLocalViewer): MiniGameSnapshot | null {
-    const game = this.read().games.find((candidate) => candidate.id === gameId) ?? null;
-    return game ? this.forViewer(game, viewer) : null;
+    const state = this.read();
+    const game = state.games.find((candidate) => candidate.id === gameId) ?? null;
+    return game ? this.forViewer(game, viewer, state.celebrationClaims) : null;
   }
 
   perform(request: MiniGameActionRequest, viewer: MiniGameLocalViewer): MiniGameActionSuccess {
@@ -128,7 +131,7 @@ export class MiniGameLocalStore {
       gameId: request.action === 'create' ? snapshot.id : request.gameId,
       stateVersion: snapshot.stateVersion,
       equityStatus: snapshot.equityStatus,
-      snapshot: this.forViewer(snapshot, viewer),
+      snapshot: this.forViewer(snapshot, viewer, state.celebrationClaims),
     };
   }
 
@@ -401,12 +404,16 @@ export class MiniGameLocalStore {
     }
   }
 
-  private forViewer(game: MiniGameSnapshot, viewer: MiniGameLocalViewer): MiniGameSnapshot {
+  private forViewer(
+    game: MiniGameSnapshot,
+    viewer: MiniGameLocalViewer,
+    celebrationClaims: Record<string, string[]>,
+  ): MiniGameSnapshot {
     const snapshot = clone(game);
     snapshot.viewerParticipantId =
       snapshot.participants.find((participant) => participant.userId === viewer.userId)?.id ?? null;
     snapshot.viewerCelebrationSeen =
-      this.read().celebrationClaims[snapshot.id]?.includes(viewer.userId) ?? false;
+      celebrationClaims[snapshot.id]?.includes(viewer.userId) ?? false;
     return snapshot;
   }
 
@@ -445,11 +452,15 @@ export class MiniGameLocalStore {
   }
 
   private write(state: MiniGameLocalState): void {
-    const canonical = clone(state);
-    canonical.games.forEach((game) => {
-      game.viewerParticipantId = null;
-      game.viewerCelebrationSeen = false;
-    });
+    const canonical: MiniGameLocalState = {
+      ...state,
+      games: state.games.map((game) => ({
+        ...game,
+        viewerParticipantId: null,
+        viewerCelebrationSeen: false,
+      })),
+    };
+
     this.storage.setItem(MINI_GAME_LOCAL_STORAGE_KEY, JSON.stringify(canonical));
   }
 }

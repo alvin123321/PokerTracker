@@ -110,6 +110,38 @@ describe('MiniGameLocalStore', () => {
     expect(store.claimCelebration(river.id, 'not-joined')).toBeFalse();
   });
 
+  it('reads persisted state once per public snapshot operation', () => {
+    const river = runningGameThroughRiver();
+
+    storage.resetGetItemCalls();
+    store.current(player);
+    expect(storage.getItemCalls).toBe(1);
+
+    storage.resetGetItemCalls();
+    store.history(player);
+    expect(storage.getItemCalls).toBe(1);
+
+    storage.resetGetItemCalls();
+    store.detail(river.id, player);
+    expect(storage.getItemCalls).toBe(1);
+
+    storage.resetGetItemCalls();
+    store.perform({ action: 'archive', gameId: river.id }, host);
+    expect(storage.getItemCalls).toBe(1);
+  });
+
+  it('does not clone the full state through JSON before persistence', () => {
+    const game = perform(
+      { action: 'create', name: 'Local table', minPlayers: 2, maxPlayers: 10 },
+      host,
+    );
+    const parseSpy = spyOn(JSON, 'parse').and.callThrough();
+
+    store.perform({ action: 'join', gameId: game.id }, host);
+
+    expect(parseSpy.calls.count()).toBeLessThanOrEqual(2);
+  });
+
   function runningGameThroughRiver(): MiniGameSnapshot {
     const game = perform(
       { action: 'create', name: 'Local table', minPlayers: 2, maxPlayers: 10 },
@@ -166,6 +198,7 @@ function participant(id: string, cards: [string, string]) {
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
+  getItemCalls = 0;
 
   get length(): number {
     return this.values.size;
@@ -176,7 +209,12 @@ class MemoryStorage implements Storage {
   }
 
   getItem(key: string): string | null {
+    this.getItemCalls += 1;
     return this.values.get(key) ?? null;
+  }
+
+  resetGetItemCalls(): void {
+    this.getItemCalls = 0;
   }
 
   key(index: number): string | null {

@@ -85,11 +85,4 @@ export interface MiniGameActionSuccess {
   warning?: string;
 }
 
-export interface MiniGameActionFailure {
-  ok: false;
-  error: string;
-}
-
-export type MiniGameActionResponse = MiniGameActionSuccess | MiniGameActionFailure;
-
 export type MiniGameActionName = MiniGameActionRequest['action'];

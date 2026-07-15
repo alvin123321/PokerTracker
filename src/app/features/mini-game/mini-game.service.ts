@@ -1,5 +1,5 @@
 import { computed, effect, inject, Injectable, OnDestroy, signal } from '@angular/core';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { AuthStateService } from '../../core/auth/auth-state.service';
 import { SupabaseService } from '../../core/supabase/supabase.service';
@@ -13,11 +13,8 @@ import {
   mapMiniGameSnapshot,
   shouldApplyMiniGameSnapshotResponse,
 } from './mini-game.logic';
-import {
-  MINI_GAME_LOCAL_STORAGE_KEY,
-  MiniGameLocalStore,
-  MiniGameLocalViewer,
-} from './mini-game-local.store';
+import { MINI_GAME_LOCAL_STORAGE_KEY } from './mini-game-local.constants';
+import type { MiniGameLocalStore, MiniGameLocalViewer } from './mini-game-local.store';
 import {
   MiniGameActionName,
   MiniGameActionRequest,
@@ -31,7 +28,7 @@ import {
 export class MiniGameService implements OnDestroy {
   private readonly authState = inject(AuthStateService);
   private readonly supabaseService = inject(SupabaseService);
-  private readonly localStore = new MiniGameLocalStore();
+  private localStorePromise: Promise<MiniGameLocalStore> | null = null;
   private readonly currentSignal = signal<MiniGameSnapshot | null>(null);
   private readonly historySignal = signal<MiniGameSnapshot[]>([]);
   private readonly loadingSignal = signal(false);
@@ -129,7 +126,8 @@ export class MiniGameService implements OnDestroy {
 
     try {
       if (!this.supabaseService.isConfigured) {
-        const snapshot = this.localStore.current(this.localViewer());
+        const viewer = this.localViewer();
+        const snapshot = (await this.getLocalStore()).current(viewer);
         this.applyCurrentSnapshot(snapshot, operationOrder);
         return snapshot;
       }
@@ -166,7 +164,8 @@ export class MiniGameService implements OnDestroy {
 
     try {
       if (!this.supabaseService.isConfigured) {
-        const history = this.localStore.history(this.localViewer());
+        const viewer = this.localViewer();
+        const history = (await this.getLocalStore()).history(viewer);
         if (loadOrder === this.historyLoadOrder) {
           this.historySignal.set(history);
         }
@@ -205,7 +204,8 @@ export class MiniGameService implements OnDestroy {
 
     try {
       if (!this.supabaseService.isConfigured) {
-        return this.localStore.detail(gameId, this.localViewer());
+        const viewer = this.localViewer();
+        return (await this.getLocalStore()).detail(gameId, viewer);
       }
 
       const { data, error } = await this.supabaseService
@@ -276,7 +276,9 @@ export class MiniGameService implements OnDestroy {
     try {
       if (!this.supabaseService.isConfigured) {
         const userId = this.authState.user()?.id;
-        const claimed = userId ? this.localStore.claimCelebration(gameId, userId) : false;
+        const claimed = userId
+          ? (await this.getLocalStore()).claimCelebration(gameId, userId)
+          : false;
 
         if (claimed) {
           this.currentSignal.update((snapshot) =>
@@ -328,7 +330,8 @@ export class MiniGameService implements OnDestroy {
       let result: MiniGameActionSuccess;
 
       if (!this.supabaseService.isConfigured) {
-        result = this.localStore.perform(request, this.localViewer());
+        const viewer = this.localViewer();
+        result = (await this.getLocalStore()).perform(request, viewer);
       } else {
         const { data, error } = await this.supabaseService
           .requireClient()
@@ -427,6 +430,14 @@ export class MiniGameService implements OnDestroy {
       displayName: profile.displayName?.trim() || 'Player',
       role: profile.role,
     };
+  }
+
+  private getLocalStore(): Promise<MiniGameLocalStore> {
+    this.localStorePromise ??= import('./mini-game-local.store').then(
+      ({ MiniGameLocalStore }) => new MiniGameLocalStore(),
+    );
+
+    return this.localStorePromise;
   }
 
   private connectRealtime(userId: string): void {

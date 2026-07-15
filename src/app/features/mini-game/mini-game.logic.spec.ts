@@ -7,7 +7,6 @@ import {
   miniGameHistoryViewFromQuery,
   normalizeMiniGamePercentages,
   shouldApplyMiniGameSnapshotResponse,
-  shouldRefreshMiniGameFromRealtime,
 } from './mini-game.logic';
 
 describe('mini-game snapshot mapping', () => {
@@ -176,14 +175,6 @@ describe('mini-game presentation logic', () => {
 
     expect(slots.length).toBe(5);
     expect(slots.map((slot) => slot.card?.code ?? null)).toEqual(['As', 'Kd', '2h', null, null]);
-  });
-
-  it('refreshes for every table that can change a public snapshot', () => {
-    expect(shouldRefreshMiniGameFromRealtime('mini_games')).toBeTrue();
-    expect(shouldRefreshMiniGameFromRealtime('mini_game_participants')).toBeTrue();
-    expect(shouldRefreshMiniGameFromRealtime('mini_game_cards')).toBeTrue();
-    expect(shouldRefreshMiniGameFromRealtime('mini_game_equities')).toBeTrue();
-    expect(shouldRefreshMiniGameFromRealtime('sessions')).toBeFalse();
   });
 
   it('selects mini-game history only for its explicit query value', () => {
