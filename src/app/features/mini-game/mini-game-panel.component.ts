@@ -248,7 +248,8 @@ import { MiniGameActionName, MiniGameParticipant, MiniGameSnapshot } from './min
             [participant]="participant"
             [winner]="isWinner(participant)"
             [viewer]="participant.id === snapshot().viewerParticipantId"
-            [removable]="canManage() && snapshot().status === 'OPEN' && !readOnly() && !busy()"
+            [removable]="canManage() && snapshot().status === 'OPEN' && !readOnly()"
+            [removeDisabled]="busy()"
             (remove)="removePlayer.emit($event)"
           />
         } @empty {

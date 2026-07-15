@@ -18,7 +18,7 @@ export const SUPABASE_CLIENT = new InjectionToken<SupabaseClient | null>('SUPABA
         environment.supabaseUrl &&
         !shouldCreateSupabaseClient(appHostname, environment.supabaseUrl)
       ) {
-        console.error('PokerTracker blocked a cloud Supabase client from a local preview origin.');
+        console.error('PokerTracker blocked a remote Supabase client from a local preview origin.');
       }
       return null;
     }

@@ -41,6 +41,7 @@ import { PlayingCardComponent } from './playing-card.component';
           class="participant-remove"
           aria-label="Remove {{ participant().displayName }}"
           title="Remove player"
+          [disabled]="removeDisabled()"
           (click)="remove.emit(participant())"
         >
           <svg lucideUserMinus [strokeWidth]="2.1" aria-hidden="true"></svg>
@@ -165,6 +166,11 @@ import { PlayingCardComponent } from './playing-card.component';
         height: 0.92rem;
       }
 
+      .participant-remove:disabled {
+        cursor: wait;
+        opacity: 0.42;
+      }
+
       @media (max-width: 370px) {
         .participant-row {
           grid-template-columns: 1.85rem minmax(0, 1fr) auto auto;
@@ -186,6 +192,7 @@ export class MiniGameParticipantRowComponent {
   readonly winner = input(false);
   readonly viewer = input(false);
   readonly removable = input(false);
+  readonly removeDisabled = input(false);
   readonly remove = output<MiniGameParticipant>();
   protected readonly initials = computed(() =>
     this.participant()

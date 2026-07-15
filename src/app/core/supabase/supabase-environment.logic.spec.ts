@@ -12,7 +12,13 @@ describe('Supabase environment safety', () => {
       '10.0.0.8',
       '172.16.0.2',
       '172.31.255.254',
+      '169.254.10.20',
+      '100.64.10.20',
       'pokertrack.local',
+      'pokertrack.internal',
+      'ALVIN-PC',
+      '[fc00::1234]',
+      '[fe80::1234]',
     ]) {
       expect(shouldCreateSupabaseClient(hostname, productionUrl)).withContext(hostname).toBeFalse();
     }
@@ -24,6 +30,10 @@ describe('Supabase environment safety', () => {
 
   it('allows a local Supabase project from a local preview hostname', () => {
     expect(shouldCreateSupabaseClient('localhost', 'http://127.0.0.1:54321')).toBeTrue();
+  });
+
+  it('blocks every remote Supabase endpoint from a local preview hostname', () => {
+    expect(shouldCreateSupabaseClient('ALVIN-PC', 'https://database.example.com')).toBeFalse();
   });
 
   it('rejects missing and malformed Supabase URLs', () => {

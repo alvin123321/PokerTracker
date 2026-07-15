@@ -61,6 +61,17 @@ describe('MiniGamePanelComponent', () => {
     expect(compiled.textContent).not.toContain('Delete result');
   });
 
+  it('keeps the participant remove control in place while an action is loading', () => {
+    const fixture = render(makeSnapshot(), true, 'start');
+    const compiled = fixture.nativeElement as HTMLElement;
+    const removeButton = compiled.querySelector<HTMLButtonElement>(
+      '.participant-remove',
+    );
+
+    expect(removeButton).not.toBeNull();
+    expect(removeButton?.disabled).toBeTrue();
+  });
+
   for (const state of [
     { status: 'OPEN', action: 'join', label: 'Dealing cards...' },
     { status: 'OPEN', action: 'start', label: 'Dealing flop...' },
