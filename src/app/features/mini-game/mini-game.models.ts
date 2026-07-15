@@ -72,6 +72,7 @@ export type MiniGameActionRequest =
   | { action: 'start'; gameId: string }
   | { action: 'reveal-turn'; gameId: string }
   | { action: 'reveal-river'; gameId: string }
+  | { action: 'archive'; gameId: string }
   | { action: 'delete'; gameId: string }
   | { action: 'recalculate'; gameId: string };
 

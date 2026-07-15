@@ -14,6 +14,11 @@ import {
   shouldApplyMiniGameSnapshotResponse,
 } from './mini-game.logic';
 import {
+  MINI_GAME_LOCAL_STORAGE_KEY,
+  MiniGameLocalStore,
+  MiniGameLocalViewer,
+} from './mini-game-local.store';
+import {
   MiniGameActionName,
   MiniGameActionRequest,
   MiniGameActionSuccess,
@@ -26,6 +31,7 @@ import {
 export class MiniGameService implements OnDestroy {
   private readonly authState = inject(AuthStateService);
   private readonly supabaseService = inject(SupabaseService);
+  private readonly localStore = new MiniGameLocalStore();
   private readonly currentSignal = signal<MiniGameSnapshot | null>(null);
   private readonly historySignal = signal<MiniGameSnapshot[]>([]);
   private readonly loadingSignal = signal(false);
@@ -44,6 +50,16 @@ export class MiniGameService implements OnDestroy {
   private historyLoadOrder = 0;
   private activeActionOrder = 0;
   private readonly retriedStateVersions = new Set<string>();
+  private readonly localStorageListener = (event: StorageEvent) => {
+    if (event.key !== MINI_GAME_LOCAL_STORAGE_KEY) {
+      return;
+    }
+
+    void Promise.all([
+      this.loadCurrent(),
+      this.historyRequested ? this.loadHistory() : Promise.resolve([]),
+    ]);
+  };
 
   readonly current = this.currentSignal.asReadonly();
   readonly history = this.historySignal.asReadonly();
@@ -75,6 +91,10 @@ export class MiniGameService implements OnDestroy {
   });
 
   constructor() {
+    if (!this.supabaseService.isConfigured && typeof window !== 'undefined') {
+      window.addEventListener('storage', this.localStorageListener);
+    }
+
     effect(() => {
       const userId = this.authState.user()?.id ?? null;
 
@@ -96,6 +116,10 @@ export class MiniGameService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.disconnectRealtime();
+
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('storage', this.localStorageListener);
+    }
   }
 
   async loadCurrent(): Promise<MiniGameSnapshot | null> {
@@ -104,6 +128,12 @@ export class MiniGameService implements OnDestroy {
     this.errorSignal.set(null);
 
     try {
+      if (!this.supabaseService.isConfigured) {
+        const snapshot = this.localStore.current(this.localViewer());
+        this.applyCurrentSnapshot(snapshot, operationOrder);
+        return snapshot;
+      }
+
       const { data, error } = await this.supabaseService
         .requireClient()
         .rpc('get_current_mini_game');
@@ -135,6 +165,14 @@ export class MiniGameService implements OnDestroy {
     this.errorSignal.set(null);
 
     try {
+      if (!this.supabaseService.isConfigured) {
+        const history = this.localStore.history(this.localViewer());
+        if (loadOrder === this.historyLoadOrder) {
+          this.historySignal.set(history);
+        }
+        return history;
+      }
+
       const { data, error } = await this.supabaseService
         .requireClient()
         .rpc('list_mini_game_history');
@@ -166,6 +204,10 @@ export class MiniGameService implements OnDestroy {
     this.errorSignal.set(null);
 
     try {
+      if (!this.supabaseService.isConfigured) {
+        return this.localStore.detail(gameId, this.localViewer());
+      }
+
       const { data, error } = await this.supabaseService
         .requireClient()
         .rpc('get_mini_game_detail', { p_game_id: gameId });
@@ -218,6 +260,10 @@ export class MiniGameService implements OnDestroy {
     return this.performAction({ action: 'reveal-river', gameId });
   }
 
+  archive(gameId: string): Promise<MiniGameActionSuccess> {
+    return this.performAction({ action: 'archive', gameId });
+  }
+
   delete(gameId: string): Promise<MiniGameActionSuccess> {
     return this.performAction({ action: 'delete', gameId });
   }
@@ -228,6 +274,19 @@ export class MiniGameService implements OnDestroy {
 
   async claimCelebration(gameId: string): Promise<boolean> {
     try {
+      if (!this.supabaseService.isConfigured) {
+        const userId = this.authState.user()?.id;
+        const claimed = userId ? this.localStore.claimCelebration(gameId, userId) : false;
+
+        if (claimed) {
+          this.currentSignal.update((snapshot) =>
+            snapshot?.id === gameId ? { ...snapshot, viewerCelebrationSeen: true } : snapshot,
+          );
+        }
+
+        return claimed;
+      }
+
       const { data, error } = await this.supabaseService
         .requireClient()
         .rpc('claim_mini_game_celebration', { p_game_id: gameId });
@@ -266,18 +325,24 @@ export class MiniGameService implements OnDestroy {
     this.warningSignal.set(null);
 
     try {
-      const { data, error } = await this.supabaseService
-        .requireClient()
-        .functions.invoke('mini-game-action', { body: request });
+      let result: MiniGameActionSuccess;
 
-      if (error) {
-        throw error;
+      if (!this.supabaseService.isConfigured) {
+        result = this.localStore.perform(request, this.localViewer());
+      } else {
+        const { data, error } = await this.supabaseService
+          .requireClient()
+          .functions.invoke('mini-game-action', { body: request });
+
+        if (error) {
+          throw error;
+        }
+
+        result = this.parseActionSuccess(data);
       }
-
-      const result = this.parseActionSuccess(data);
       this.warningSignal.set(result.warning ?? null);
 
-      if (request.action === 'delete') {
+      if (request.action === 'delete' || request.action === 'archive') {
         this.applyCurrentSnapshot(null, operationOrder);
       } else if (result.snapshot !== undefined) {
         this.applyCurrentSnapshot(result.snapshot ?? null, operationOrder);
@@ -285,7 +350,11 @@ export class MiniGameService implements OnDestroy {
         await this.loadCurrent();
       }
 
-      if (request.action === 'reveal-river' || request.action === 'delete') {
+      if (
+        request.action === 'reveal-river' ||
+        request.action === 'archive' ||
+        request.action === 'delete'
+      ) {
         void this.loadHistory();
       }
 
@@ -343,6 +412,21 @@ export class MiniGameService implements OnDestroy {
     }
 
     return result;
+  }
+
+  private localViewer(): MiniGameLocalViewer {
+    const user = this.authState.user();
+    const profile = this.authState.profile();
+
+    if (!user || !profile) {
+      throw new Error('Authentication required.');
+    }
+
+    return {
+      userId: user.id,
+      displayName: profile.displayName?.trim() || 'Player',
+      role: profile.role,
+    };
   }
 
   private connectRealtime(userId: string): void {
@@ -410,10 +494,7 @@ export class MiniGameService implements OnDestroy {
     }
   }
 
-  private applyCurrentSnapshot(
-    snapshot: MiniGameSnapshot | null,
-    operationOrder: number,
-  ): boolean {
+  private applyCurrentSnapshot(snapshot: MiniGameSnapshot | null, operationOrder: number): boolean {
     if (
       !shouldApplyMiniGameSnapshotResponse(
         this.currentSignal(),
