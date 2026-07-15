@@ -522,14 +522,6 @@ select is(
   100.0::numeric,
   'displayed equity totals exactly 100.0 percent'
 );
-select ok(
-  jsonb_array_length(
-    public.mini_game_snapshot(
-      (select id from public.mini_games where is_current and deleted_at is null)
-    ) -> 'winnerParticipantIds'
-  ) > 0,
-  'the completed snapshot exposes winner ids as soon as final equity is ready'
-);
 
 reset role;
 set local role authenticated;
@@ -537,6 +529,14 @@ select set_config(
   'request.jwt.claims',
   '{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}',
   true
+);
+select ok(
+  jsonb_array_length(
+    public.get_mini_game_detail(
+      (select id from public.mini_games where is_current and deleted_at is null)
+    ) -> 'winnerParticipantIds'
+  ) > 0,
+  'the completed snapshot exposes winner ids as soon as final equity is ready'
 );
 select throws_ok(
   $$select public.archive_mini_game((select id from public.mini_games where is_current and deleted_at is null))$$,
