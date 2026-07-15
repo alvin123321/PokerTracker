@@ -19,6 +19,7 @@ export type MiniGameAction =
   | { action: "start"; gameId: string }
   | { action: "reveal-turn"; gameId: string }
   | { action: "reveal-river"; gameId: string }
+  | { action: "archive"; gameId: string }
   | { action: "delete"; gameId: string }
   | { action: "recalculate"; gameId: string };
 
@@ -156,6 +157,7 @@ export const parseMiniGameAction = (value: unknown): MiniGameAction => {
     case "start":
     case "reveal-turn":
     case "reveal-river":
+    case "archive":
     case "delete":
     case "recalculate":
       return {
@@ -221,6 +223,8 @@ export const rpcCallForAction = (request: MiniGameAction): RpcCall | null => {
         name: "reveal_mini_game_river",
         args: { p_game_id: request.gameId },
       };
+    case "archive":
+      return { name: "archive_mini_game", args: { p_game_id: request.gameId } };
     case "delete":
       return { name: "delete_mini_game", args: { p_game_id: request.gameId } };
     case "recalculate":
@@ -660,7 +664,7 @@ export const createMiniGameHandler = (
       return errorResponse("Unexpected server error.", 500);
     }
 
-    if (action.action === "delete") {
+    if (action.action === "archive" || action.action === "delete") {
       return json({
         ok: true,
         gameId: state.gameId,

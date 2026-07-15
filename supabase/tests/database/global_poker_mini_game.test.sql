@@ -33,6 +33,7 @@ select has_function('public', 'reshuffle_mini_game', array['uuid']);
 select has_function('public', 'start_mini_game', array['uuid']);
 select has_function('public', 'reveal_mini_game_turn', array['uuid']);
 select has_function('public', 'reveal_mini_game_river', array['uuid']);
+select has_function('public', 'archive_mini_game', array['uuid']);
 select has_function('public', 'delete_mini_game', array['uuid']);
 select has_function('public', 'claim_mini_game_celebration', array['uuid']);
 select has_function('public', 'get_current_mini_game', array[]::text[]);
@@ -398,6 +399,12 @@ select throws_ok(
   'A running mini-game cannot be deleted.',
   'running games cannot be deleted'
 );
+select throws_ok(
+  $$select public.archive_mini_game((select id from public.mini_games where is_current and deleted_at is null))$$,
+  'P0001',
+  'Only a completed mini-game can be archived.',
+  'running games cannot be archived'
+);
 select lives_ok(
   $$select public.reveal_mini_game_turn((select id from public.mini_games where is_current and deleted_at is null))$$,
   'creator reveals the turn'
@@ -426,6 +433,12 @@ select throws_ok(
   'P0001',
   'Wait for final odds before creating another mini-game.',
   'a completed game cannot be archived before final equity is ready'
+);
+select throws_ok(
+  $$select public.archive_mini_game((select id from public.mini_games where is_current and deleted_at is null))$$,
+  'P0001',
+  'Wait for final odds before completing this mini-game.',
+  'a completed game cannot be manually archived before final equity is ready'
 );
 
 select set_config(
@@ -509,9 +522,28 @@ select is(
   100.0::numeric,
   'displayed equity totals exactly 100.0 percent'
 );
+select ok(
+  jsonb_array_length(
+    public.mini_game_snapshot(
+      (select id from public.mini_games where is_current and deleted_at is null)
+    ) -> 'winnerParticipantIds'
+  ) > 0,
+  'the completed snapshot exposes winner ids as soon as final equity is ready'
+);
 
 reset role;
 set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}',
+  true
+);
+select throws_ok(
+  $$select public.archive_mini_game((select id from public.mini_games where is_current and deleted_at is null))$$,
+  'P0001',
+  'Only the creator host can manage this mini-game.',
+  'another host cannot archive the creator game'
+);
 select set_config(
   'request.jwt.claims',
   '{"sub":"20000000-0000-0000-0000-000000000001","role":"authenticated"}',
@@ -529,6 +561,12 @@ select ok(
   ),
   'a second celebration claim is denied'
 );
+select throws_ok(
+  $$select public.archive_mini_game((select id from public.mini_games where is_current and deleted_at is null))$$,
+  'P0001',
+  'Only the creator host can manage this mini-game.',
+  'players cannot archive a completed mini-game'
+);
 select set_config(
   'request.jwt.claims',
   '{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}',
@@ -541,8 +579,32 @@ select throws_ok(
   'authenticated clients cannot write mini-game tables directly'
 );
 select lives_ok(
+  $$select public.archive_mini_game((select id from public.mini_games where is_current and deleted_at is null))$$,
+  'creator can archive a completed game with final equity'
+);
+select is(
+  public.get_current_mini_game(),
+  null::jsonb,
+  'archiving removes the completed game from the current dashboard'
+);
+select is(
+  jsonb_array_length(public.list_mini_game_history()),
+  1,
+  'archiving preserves the completed game in history'
+);
+select is(
+  (
+    select equity_status
+    from public.mini_games
+    where name = 'Friday Draw'
+      and deleted_at is null
+  ),
+  'READY',
+  'archiving preserves final equity and winner data'
+);
+select lives_ok(
   $$select public.create_mini_game('Next Deal', 2::smallint, 10::smallint)$$,
-  'creating after completion archives the previous result'
+  'creator can open a new game after manually archiving the previous result'
 );
 select is(
   (select count(*)::integer from public.mini_games where is_current and deleted_at is null),

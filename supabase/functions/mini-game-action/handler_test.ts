@@ -155,6 +155,9 @@ Deno.test("parseMiniGameAction and rpcCallForAction map every public action", ()
         "reveal_mini_game_river",
         { p_game_id: GAME_ID },
       ],
+      [{ action: "archive", gameId: GAME_ID }, "archive_mini_game", {
+        p_game_id: GAME_ID,
+      }],
       [{ action: "delete", gameId: GAME_ID }, "delete_mini_game", {
         p_game_id: GAME_ID,
       }],
@@ -388,6 +391,36 @@ Deno.test("handler skips equity work for delete", async () => {
   });
   assert.deepEqual(calls, [
     { client: "user", name: "delete_mini_game", args: { p_game_id: GAME_ID } },
+  ]);
+});
+
+Deno.test("handler skips equity work for archive", async () => {
+  const calls: RecordedCall[] = [];
+  const handler = createMiniGameHandler({
+    createContext: () =>
+      context(calls, {
+        mutation: result([
+          { game_id: GAME_ID, state_version: 3, equity_status: "READY" },
+        ]),
+      }),
+    calculateEquities: () => {
+      throw new Error("must not run");
+    },
+  });
+
+  const response = await handler(
+    request({ action: "archive", gameId: GAME_ID }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await responseBody(response), {
+    ok: true,
+    gameId: GAME_ID,
+    stateVersion: 3,
+    equityStatus: "READY",
+  });
+  assert.deepEqual(calls, [
+    { client: "user", name: "archive_mini_game", args: { p_game_id: GAME_ID } },
   ]);
 });
 
