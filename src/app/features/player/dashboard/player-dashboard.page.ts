@@ -1409,6 +1409,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   protected readonly actionError = signal<string | null>(null);
   private callTimeSyncTimer: ReturnType<typeof setInterval> | null = null;
   private routeTabSubscription: Subscription | null = null;
+  private destroyed = false;
 
   protected readonly tabs: Array<{ id: PlayerDashboardTab; label: string }> = [
     { id: 'calculator', label: 'Calculator' },
@@ -1478,6 +1479,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.routeTabSubscription?.unsubscribe();
     this.routeTabSubscription = null;
 
@@ -1653,9 +1655,11 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   }
 
   private async loadMiniGameHistory(): Promise<void> {
-    const result = await this.miniGame.loadHistory();
+    const result = await this.miniGame.loadLatestHistory();
 
     if (
+      !this.destroyed &&
+      this.activeTab() === 'sessions' &&
       this.historyView() === 'mini-games' &&
       result.success &&
       result.current &&

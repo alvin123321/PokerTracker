@@ -94,6 +94,8 @@ describe('MiniGameService history request ordering', () => {
   let historyRequests: Array<Deferred<{ data: unknown; error: unknown }>>;
 
   beforeEach(() => {
+    user.set({ id: 'player-a' });
+    profile.set({ id: 'player-a', displayName: 'Player A', role: 'PLAYER' });
     historyRequests = [];
     rpc = jasmine.createSpy('rpc').and.callFake((name: string) => {
       if (name !== 'list_mini_game_history') {
@@ -104,6 +106,12 @@ describe('MiniGameService history request ordering', () => {
       historyRequests.push(request);
       return request.promise;
     });
+    const channel = {
+      on: jasmine.createSpy('on'),
+      subscribe: jasmine.createSpy('subscribe'),
+    };
+    channel.on.and.returnValue(channel);
+    channel.subscribe.and.returnValue(channel);
 
     TestBed.configureTestingModule({
       providers: [
@@ -115,9 +123,9 @@ describe('MiniGameService history request ordering', () => {
         {
           provide: SupabaseService,
           useValue: {
-            client: null,
+            client: { removeChannel: jasmine.createSpy('removeChannel').and.resolveTo() },
             isConfigured: true,
-            requireClient: () => ({ rpc }),
+            requireClient: () => ({ channel: () => channel, rpc }),
           },
         },
       ],
@@ -142,6 +150,21 @@ describe('MiniGameService history request ordering', () => {
 
     historyRequests[1].resolve({ data: [], error: null });
     await latest;
+  });
+
+  it('awaits a newer same-user history request that supersedes its foreground load', async () => {
+    const service = await createHistoryService();
+    const foreground = service.loadLatestHistory();
+    const background = service.loadHistory();
+
+    historyRequests[0].resolve({ data: [historySnapshot('superseded-game')], error: null });
+    historyRequests[1].resolve({ data: [], error: null });
+
+    const [foregroundResult, backgroundResult] = await Promise.all([foreground, background]);
+
+    expect(foregroundResult).toEqual(backgroundResult);
+    expect(foregroundResult).toEqual({ history: [], success: true, current: true });
+    expect(service.history()).toEqual([]);
   });
 
   it('does not let an older failure replace a newer successful result', async () => {
@@ -195,10 +218,51 @@ describe('MiniGameService history request ordering', () => {
     expect(service.error()).toBe('Latest history failure');
   });
 
+  it('invalidates an in-flight history request when its user logs out', async () => {
+    const service = await createHistoryService();
+    const request = service.loadHistory();
+
+    user.set(null);
+    profile.set(null);
+    await flushAuthEffect();
+    historyRequests[0].resolve({ data: [historySnapshot('player-a-game')], error: null });
+    const result = await request;
+
+    expect(result.current).toBeFalse();
+    expect(service.history()).toEqual([]);
+    expect(service.historyLoading()).toBeFalse();
+  });
+
+  it('clears history and rejects an old-account response when the authenticated user changes', async () => {
+    const service = await createHistoryService();
+    const seed = service.loadHistory();
+    historyRequests[0].resolve({ data: [historySnapshot('player-a-seed')], error: null });
+    await seed;
+    const request = service.loadHistory();
+
+    user.set({ id: 'player-b' });
+    profile.set({ id: 'player-b', displayName: 'Player B', role: 'PLAYER' });
+    await flushAuthEffect();
+
+    expect(service.history()).toEqual([]);
+
+    historyRequests[1].resolve({ data: [historySnapshot('player-a-late-game')], error: null });
+    const result = await request;
+
+    expect(result.current).toBeFalse();
+    expect(service.history()).toEqual([]);
+    expect(service.historyLoading()).toBeFalse();
+  });
+
   async function createHistoryService(): Promise<MiniGameService> {
     const service = TestBed.inject(MiniGameService);
-    await Promise.resolve();
+    await flushAuthEffect();
     return service;
+  }
+
+  async function flushAuthEffect(): Promise<void> {
+    TestBed.flushEffects();
+    await Promise.resolve();
   }
 });
 

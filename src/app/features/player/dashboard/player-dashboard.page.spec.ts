@@ -11,7 +11,10 @@ import { GlobalChatPage } from '../../chat/global-chat.page';
 import { MiniGameDashboardSectionComponent } from '../../mini-game/mini-game-dashboard-section.component';
 import { MiniGameHistoryListComponent } from '../../mini-game/mini-game-history-list.component';
 import type { MiniGameSnapshot } from '../../mini-game/mini-game.models';
-import { MiniGameService } from '../../mini-game/mini-game.service';
+import {
+  type MiniGameHistoryLoadResult,
+  MiniGameService
+} from '../../mini-game/mini-game.service';
 import type { PokerSession, SessionPlayer } from '../../host/data/poker-store.service';
 import { PokerStoreService } from '../../host/data/poker-store.service';
 import { PlayerDashboardPage } from './player-dashboard.page';
@@ -69,6 +72,7 @@ describe('PlayerDashboardPage', () => {
   let miniGameHistoryLoading: WritableSignal<boolean>;
   let miniGameError: WritableSignal<string | null>;
   let miniGameLoadHistory: jasmine.Spy;
+  let miniGameLoadLatestHistory: jasmine.Spy;
 
   beforeEach(async () => {
     queryParamMap = new BehaviorSubject(convertToParamMap({ tab: 'chat' }));
@@ -87,6 +91,9 @@ describe('PlayerDashboardPage', () => {
         success: true,
         current: true
       }));
+    miniGameLoadLatestHistory = jasmine
+      .createSpy('loadLatestHistory')
+      .and.callFake(() => miniGameLoadHistory());
     const store = {
       sessions: sessions.asReadonly(),
       error: signal<string | null>(null),
@@ -104,7 +111,8 @@ describe('PlayerDashboardPage', () => {
       history: miniGameHistory.asReadonly(),
       historyLoading: miniGameHistoryLoading.asReadonly(),
       error: miniGameError.asReadonly(),
-      loadHistory: miniGameLoadHistory
+      loadHistory: miniGameLoadHistory,
+      loadLatestHistory: miniGameLoadLatestHistory
     };
 
     await TestBed.configureTestingModule({
@@ -135,7 +143,11 @@ describe('PlayerDashboardPage', () => {
     fixture.detectChanges();
   });
 
-  afterEach(() => fixture.destroy());
+  afterEach(() => {
+    if (!fixture.componentRef.hostView.destroyed) {
+      fixture.destroy();
+    }
+  });
 
   it('uses the full chat layout in the player chat tab', () => {
     const chat = fixture.debugElement.query(By.directive(GlobalChatPageStub));
@@ -207,6 +219,18 @@ describe('PlayerDashboardPage', () => {
     expect(selectHistoryView).toHaveBeenCalledWith('tables');
   });
 
+  it('uses the latest winning history request when deciding the empty-history fallback', async () => {
+    miniGameLoadHistory.and.resolveTo({ history: [], success: true, current: false });
+    miniGameLoadLatestHistory.and.resolveTo({ history: [], success: true, current: true });
+    const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
+
+    queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    await Promise.resolve();
+
+    expect(miniGameLoadLatestHistory).toHaveBeenCalled();
+    expect(selectHistoryView).toHaveBeenCalledWith('tables');
+  });
+
   it('keeps mini-game history selected when loading history fails', async () => {
     miniGameLoadHistory.and.callFake(async () => {
       miniGameHistoryLoading.set(true);
@@ -262,6 +286,42 @@ describe('PlayerDashboardPage', () => {
     const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
 
     queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    await Promise.resolve();
+
+    expect(selectHistoryView).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back after leaving History while the history request is loading', async () => {
+    const request = deferred<MiniGameHistoryLoadResult>();
+    miniGameLoadHistory.and.returnValue(request.promise);
+    const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
+
+    queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    await Promise.resolve();
+    fixture.detectChanges();
+    const homeButton = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '.player-tab[aria-label="Home"]'
+    );
+
+    homeButton?.click();
+    request.resolve({ history: [], success: true, current: true });
+    await request.promise;
+    await Promise.resolve();
+
+    expect(homeButton).not.toBeNull();
+    expect(selectHistoryView).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back after the dashboard is destroyed while history is loading', async () => {
+    const request = deferred<MiniGameHistoryLoadResult>();
+    miniGameLoadHistory.and.returnValue(request.promise);
+    const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
+
+    queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    await Promise.resolve();
+    fixture.destroy();
+    request.resolve({ history: [], success: true, current: true });
+    await request.promise;
     await Promise.resolve();
 
     expect(selectHistoryView).not.toHaveBeenCalled();
@@ -334,6 +394,20 @@ function detailSectionOrder(fixture: ComponentFixture<PlayerDashboardPage>): Arr
   return Array.from(compiled.querySelectorAll<HTMLElement>('[data-detail-section]')).map(
     (section) => section.dataset['detailSection']
   );
+}
+
+interface Deferred<T> {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+}
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
 }
 
 function makeMiniGame(overrides: Partial<MiniGameSnapshot> = {}): MiniGameSnapshot {

@@ -30,6 +30,12 @@ export interface MiniGameHistoryLoadResult {
   current: boolean;
 }
 
+interface MiniGameHistoryRequest {
+  loadOrder: number;
+  userId: string | null;
+  promise: Promise<MiniGameHistoryLoadResult>;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MiniGameService implements OnDestroy {
   private readonly authState = inject(AuthStateService);
@@ -51,6 +57,9 @@ export class MiniGameService implements OnDestroy {
   private snapshotOperationOrder = 0;
   private lastAppliedSnapshotOrder = 0;
   private historyLoadOrder = 0;
+  private historyUserId = this.authState.user()?.id ?? null;
+  private historyStateUserId: string | null = null;
+  private latestHistoryRequest: MiniGameHistoryRequest | null = null;
   private activeActionOrder = 0;
   private readonly retriedStateVersions = new Set<string>();
   private readonly localStorageListener = (event: StorageEvent) => {
@@ -100,12 +109,40 @@ export class MiniGameService implements OnDestroy {
 
     effect(() => {
       const userId = this.authState.user()?.id ?? null;
+      const historyUserChanged = userId !== this.historyUserId;
+
+      if (historyUserChanged) {
+        this.historyUserId = userId;
+
+        if (this.latestHistoryRequest?.userId !== userId) {
+          this.historyLoadOrder += 1;
+          this.latestHistoryRequest = null;
+        }
+      }
 
       queueMicrotask(() => {
+        if ((this.authState.user()?.id ?? null) !== userId) {
+          return;
+        }
+
+        if (historyUserChanged) {
+          if (this.historyStateUserId !== userId) {
+            this.historyStateUserId = userId;
+            this.historySignal.set([]);
+          }
+
+          if (this.latestHistoryRequest?.userId !== userId) {
+            this.historyLoadingSignal.set(false);
+            this.historyRequested = false;
+          }
+        }
+
         if (!userId) {
           const operationOrder = ++this.snapshotOperationOrder;
           this.applyCurrentSnapshot(null, operationOrder);
           this.historySignal.set([]);
+          this.historyStateUserId = null;
+          this.historyLoadingSignal.set(false);
           this.historyRequested = false;
           this.disconnectRealtime();
           return;
@@ -162,18 +199,61 @@ export class MiniGameService implements OnDestroy {
     }
   }
 
-  async loadHistory(): Promise<MiniGameHistoryLoadResult> {
+  loadHistory(): Promise<MiniGameHistoryLoadResult> {
+    return this.startHistoryLoad().promise;
+  }
+
+  async loadLatestHistory(): Promise<MiniGameHistoryLoadResult> {
+    let request = this.startHistoryLoad();
+    const userId = request.userId;
+
+    while (true) {
+      const result = await request.promise;
+
+      if (result.current) {
+        return result;
+      }
+
+      const latestRequest = this.latestHistoryRequest;
+      if (
+        !latestRequest ||
+        latestRequest.loadOrder <= request.loadOrder ||
+        latestRequest.userId !== userId
+      ) {
+        return result;
+      }
+
+      request = latestRequest;
+    }
+  }
+
+  private startHistoryLoad(): MiniGameHistoryRequest {
     const loadOrder = ++this.historyLoadOrder;
+    const userId = this.authState.user()?.id ?? null;
     this.historyRequested = true;
     this.historyLoadingSignal.set(true);
     this.errorSignal.set(null);
 
+    const request: MiniGameHistoryRequest = {
+      loadOrder,
+      userId,
+      promise: this.executeHistoryLoad(loadOrder, userId),
+    };
+    this.latestHistoryRequest = request;
+    return request;
+  }
+
+  private async executeHistoryLoad(
+    loadOrder: number,
+    userId: string | null,
+  ): Promise<MiniGameHistoryLoadResult> {
     try {
       if (!this.supabaseService.isConfigured) {
         const viewer = this.localViewer();
         const history = (await this.getLocalStore()).history(viewer);
-        const current = loadOrder === this.historyLoadOrder;
+        const current = this.isCurrentHistoryRequest(loadOrder, userId);
         if (current) {
+          this.historyStateUserId = userId;
           this.historySignal.set(history);
         }
         return { history, success: true, current };
@@ -194,13 +274,14 @@ export class MiniGameService implements OnDestroy {
       const history = data
         .map((snapshot) => mapMiniGameSnapshot(snapshot))
         .filter((snapshot): snapshot is MiniGameSnapshot => snapshot !== null);
-      const current = loadOrder === this.historyLoadOrder;
+      const current = this.isCurrentHistoryRequest(loadOrder, userId);
       if (current) {
+        this.historyStateUserId = userId;
         this.historySignal.set(history);
       }
       return { history, success: true, current };
     } catch (error) {
-      const current = loadOrder === this.historyLoadOrder;
+      const current = this.isCurrentHistoryRequest(loadOrder, userId);
       if (current) {
         this.errorSignal.set(messageFromUnknownError(error, 'Unable to load mini-game history.'));
       }
@@ -210,6 +291,14 @@ export class MiniGameService implements OnDestroy {
         this.historyLoadingSignal.set(false);
       }
     }
+  }
+
+  private isCurrentHistoryRequest(loadOrder: number, userId: string | null): boolean {
+    return (
+      userId !== null &&
+      userId === (this.authState.user()?.id ?? null) &&
+      loadOrder === this.historyLoadOrder
+    );
   }
 
   async loadDetail(gameId: string): Promise<MiniGameSnapshot | null> {
