@@ -1,13 +1,25 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { LucideEllipsis } from '@lucide/angular';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { AuthStateService } from '../../../core/auth/auth-state.service';
 import {
   PokerSession,
   PokerStoreService,
   PokerTransaction,
   SessionPlayer
 } from '../data/poker-store.service';
+import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData,
+} from '../shared/confirmation-dialog.component';
+import { messageFromUnknownError } from '../shared/action-feedback.logic';
+import {
+  ActionFeedbackToastComponent,
+  ActionFeedbackToastTone,
+} from '../shared/action-feedback-toast.component';
 
 interface SessionTableGroup {
   tableId: string | null;
@@ -15,11 +27,27 @@ interface SessionTableGroup {
   players: SessionPlayer[];
 }
 
+interface SessionSummaryFeedback {
+  message: string;
+  tone: ActionFeedbackToastTone;
+}
+
 @Component({
   selector: 'app-session-summary-page',
-  imports: [CurrencyPipe, DatePipe, RouterLink],
+  imports: [
+    ActionFeedbackToastComponent,
+    CurrencyPipe,
+    DatePipe,
+    LucideEllipsis,
+    MatDialogModule,
+    RouterLink,
+  ],
   template: `
     @if (session(); as currentSession) {
+      @if (actionToast(); as toast) {
+        <app-action-feedback-toast [message]="toast.message" [tone]="toast.tone" />
+      }
+
       @let totals = store.totalsFor(currentSession);
       @let adminNet = adminNetTotal(currentSession);
       @let netPending = isNetPending(currentSession);
@@ -48,6 +76,27 @@ interface SessionTableGroup {
               }
             </p>
           </div>
+          @if (currentSession.status === 'COMPLETED' && authState.isHostAdmin()) {
+            <div class="session-summary-menu" (click)="$event.stopPropagation()">
+              <button
+                type="button"
+                class="session-summary-menu-trigger"
+                aria-label="Session actions"
+                [attr.aria-expanded]="sessionMenuOpen()"
+                [disabled]="deletingSession()"
+                (click)="toggleSessionMenu()"
+              >
+                <svg lucideEllipsis [strokeWidth]="2.3" aria-hidden="true"></svg>
+              </button>
+              @if (sessionMenuOpen()) {
+                <div class="session-summary-menu-panel" role="menu">
+                  <button type="button" role="menuitem" (click)="confirmDeleteSession()">
+                    Delete session
+                  </button>
+                </div>
+              }
+            </div>
+          }
         </div>
 
         @if (store.error()) {
@@ -297,14 +346,78 @@ interface SessionTableGroup {
           0 0 0 1px rgb(52 211 153 / 0.14),
           0 0 22px rgb(16 185 129 / 0.13);
       }
+
+      .session-summary-menu {
+        position: relative;
+        flex: 0 0 auto;
+        align-self: flex-end;
+      }
+
+      .session-summary-menu-trigger {
+        display: inline-grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.5rem;
+        background: rgb(255 255 255 / 0.035);
+        color: rgb(209 250 229);
+      }
+
+      .session-summary-menu-trigger:hover:not(:disabled) {
+        border-color: rgb(110 231 183 / 0.48);
+        background: rgb(16 185 129 / 0.12);
+      }
+
+      .session-summary-menu-trigger:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .session-summary-menu-trigger svg {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      .session-summary-menu-panel {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        z-index: 30;
+        min-width: min(12rem, calc(100vw - 2rem));
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 0.5rem;
+        background: rgb(10 10 10);
+        padding: 0.4rem;
+        box-shadow: 0 1.25rem 2.5rem rgb(0 0 0 / 0.38);
+      }
+
+      .session-summary-menu-panel button {
+        width: 100%;
+        border-radius: 0.35rem;
+        padding: 0.7rem 0.8rem;
+        color: rgb(252 165 165);
+        text-align: left;
+      }
+
+      .session-summary-menu-panel button:hover {
+        background: rgb(248 113 113 / 0.12);
+      }
     `
   ]
 })
-export class SessionSummaryPage {
+export class SessionSummaryPage implements OnDestroy {
   protected readonly store = inject(PokerStoreService);
+  protected readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
   protected readonly expandedPlayerId = signal<string | null>(null);
+  protected readonly deletingSession = signal(false);
+  protected readonly sessionMenuOpen = signal(false);
+  protected readonly actionToast = signal<SessionSummaryFeedback | null>(null);
+  private actionToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly tableGroups = computed<SessionTableGroup[]>(() => {
@@ -357,12 +470,108 @@ export class SessionSummaryPage {
     return this.expandedPlayerId() === playerId;
   }
 
+  ngOnDestroy(): void {
+    this.clearActionToast();
+  }
+
+  @HostListener('document:click')
+  protected closeSessionMenu(): void {
+    this.sessionMenuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected closeSessionMenuOnEscape(): void {
+    this.sessionMenuOpen.set(false);
+  }
+
+  protected toggleSessionMenu(): void {
+    this.sessionMenuOpen.update((isOpen) => !isOpen);
+  }
+
+  protected confirmDeleteSession(): void {
+    const currentSession = this.session();
+
+    if (
+      !currentSession ||
+      currentSession.status !== 'COMPLETED' ||
+      !this.authState.isHostAdmin() ||
+      this.deletingSession()
+    ) {
+      return;
+    }
+
+    this.sessionMenuOpen.set(false);
+    const totals = this.store.totalsFor(currentSession);
+    const playerCount = `${totals.totalPlayers} players`;
+    const totalBuyIn = `${this.formatMoney(totals.totalBuyIn)} total buy-in`;
+    const dialogRef = this.dialog.open<
+      ConfirmationDialogComponent,
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Delete completed session?',
+        message:
+          'This permanently deletes this session and all game records. Registered members remain available.',
+        cancelLabel: 'No, keep session',
+        confirmLabel: 'Yes, delete',
+        tone: 'danger',
+        details: [currentSession.name, playerCount, totalBuyIn],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      this.deletingSession.set(true);
+
+      try {
+        await this.store.deleteSession(this.sessionId);
+        await this.router.navigateByUrl('/host/sessions/history', { replaceUrl: true });
+      } catch (error) {
+        this.showActionToast(messageFromUnknownError(error, 'Unable to delete this session.'), 'error');
+      } finally {
+        this.deletingSession.set(false);
+      }
+    });
+  }
+
   protected transactionsForPlayer(playerId: string): PokerTransaction[] {
     return (
       this.session()
         ?.transactions.filter((transaction) => transaction.playerId === playerId && !transaction.deletedAt)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt)) ?? []
     );
+  }
+
+  private showActionToast(message: string, tone: ActionFeedbackToastTone): void {
+    this.clearActionToast();
+    this.actionToast.set({ message, tone });
+    this.actionToastTimer = setTimeout(() => {
+      this.actionToast.set(null);
+      this.actionToastTimer = null;
+    }, tone === 'error' ? 4300 : 2700);
+  }
+
+  private clearActionToast(): void {
+    if (this.actionToastTimer) {
+      clearTimeout(this.actionToastTimer);
+      this.actionToastTimer = null;
+    }
+
+    this.actionToast.set(null);
+  }
+
+  private formatMoney(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(amount);
   }
 
   private sortedPlayersForTable(
