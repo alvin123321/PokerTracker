@@ -56,18 +56,17 @@ interface MiniGameFeedback {
         (openDetail)="openDetail(snapshot)"
       />
     } @else if (canShowCreate() && !miniGame.loading()) {
-      <section class="mini-game-create-band">
-        <span class="mini-game-create-icon" aria-hidden="true">
-          <svg lucideDices [strokeWidth]="2.1"></svg>
-        </span>
-        <div>
-          <h2>Mini-game</h2>
-          <span>No game running</span>
+      <section class="mini-game-empty-section">
+        <div class="mini-game-empty-heading">
+          <svg lucideDices [strokeWidth]="2.1" aria-hidden="true"></svg>
+          <h2>Mini game</h2>
         </div>
-        <button type="button" (click)="create()">
-          <svg lucidePlus [strokeWidth]="2.2" aria-hidden="true"></svg>
-          Create
-        </button>
+        <div class="mini-game-empty-action">
+          <button type="button" (click)="create()">
+            <svg lucidePlus [strokeWidth]="2.2" aria-hidden="true"></svg>
+            Create mini game
+          </button>
+        </div>
       </section>
     }
 
@@ -97,47 +96,38 @@ interface MiniGameFeedback {
         display: none;
       }
 
-      .mini-game-create-band {
+      .mini-game-empty-section {
         display: grid;
-        grid-template-columns: 2.55rem minmax(0, 1fr) auto;
-        min-height: 4.5rem;
-        align-items: center;
-        gap: 0.7rem;
-        border-block: 1px solid rgb(255 255 255 / 0.08);
-        padding: 0.7rem 0;
+        gap: 0.9rem;
+        border-top: 1px solid rgb(255 255 255 / 0.08);
+        padding: 1rem 0;
       }
 
-      .mini-game-create-icon {
-        display: grid;
-        width: 2.55rem;
-        height: 2.55rem;
-        place-items: center;
-        border: 1px solid rgb(52 211 153 / 0.2);
-        border-radius: 0.45rem;
-        background: rgb(16 185 129 / 0.08);
+      .mini-game-empty-heading {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
         color: rgb(110 231 183);
       }
 
-      .mini-game-create-icon svg {
+      .mini-game-empty-heading svg {
         width: 1.15rem;
         height: 1.15rem;
       }
 
-      .mini-game-create-band h2 {
+      .mini-game-empty-heading h2 {
         margin: 0;
         color: rgb(248 250 252);
         font-size: 0.9rem;
         line-height: 1.1;
       }
 
-      .mini-game-create-band div > span {
-        display: block;
-        margin-top: 0.22rem;
-        color: rgb(148 163 184);
-        font-size: 0.65rem;
+      .mini-game-empty-action {
+        display: flex;
+        justify-content: center;
       }
 
-      .mini-game-create-band button {
+      .mini-game-empty-action button {
         display: inline-flex;
         min-height: 2.45rem;
         align-items: center;
@@ -151,9 +141,20 @@ interface MiniGameFeedback {
         font-weight: 820;
       }
 
-      .mini-game-create-band button svg {
+      .mini-game-empty-action button svg {
         width: 0.88rem;
         height: 0.88rem;
+      }
+
+      @media (min-width: 640px) {
+        .mini-game-empty-section {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+        }
+
+        .mini-game-empty-action {
+          justify-content: end;
+        }
       }
     `,
   ],

@@ -3862,19 +3862,28 @@ h3 {
   box-shadow: 0 1rem 2.8rem rgb(0 0 0 / 0.48) !important;
 }
 
-.mini-game-menu [mat-menu-item] {
-  display: flex;
+.mini-game-menu .mat-mdc-menu-item {
   min-height: 2.8rem;
-  align-items: center;
-  gap: 0.65rem;
   color: rgb(226 232 240);
+  font-family: Aptos, Inter, ui-sans-serif, system-ui, sans-serif !important;
   font-size: 0.75rem;
 }
 
-.mini-game-menu [mat-menu-item] svg {
+.mini-game-menu .mat-mdc-menu-item-text {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.mini-game-menu .mat-mdc-menu-item-text svg {
   width: 0.95rem;
   height: 0.95rem;
   flex: 0 0 auto;
+}
+
+.mini-game-menu .mat-mdc-menu-item:disabled {
+  color: rgb(148 163 184);
 }
 
 .mini-game-menu .mini-menu-danger:not(:disabled) {

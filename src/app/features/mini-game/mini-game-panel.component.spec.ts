@@ -27,6 +27,12 @@ describe('MiniGamePanelComponent', () => {
 
     expect(menuLabels).toEqual(['Open game', 'Edit game', 'Reshuffle cards', 'Delete game']);
     expect(fixture.nativeElement.querySelector('.mini-tool-row')).toBeNull();
+
+    const item = document.querySelector<HTMLElement>('.mini-game-menu .mat-mdc-menu-item');
+    const content = item?.querySelector<HTMLElement>('.mat-mdc-menu-item-text');
+    expect(getComputedStyle(item!).fontFamily).toContain('Aptos');
+    expect(getComputedStyle(content!).display).toBe('flex');
+    expect(getComputedStyle(content!).alignItems).toBe('center');
   });
 
   it('removes join positions, seat copy, and displayed equity from participant rows', () => {
