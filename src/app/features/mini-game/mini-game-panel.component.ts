@@ -15,6 +15,7 @@ import {
 } from '@lucide/angular';
 
 import { MiniGameBoardComponent } from './mini-game-board.component';
+import { miniGameWinPercentage } from './mini-game.logic';
 import { MiniGameParticipantRowComponent } from './mini-game-participant-row.component';
 import { MiniGameActionName, MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
 
@@ -243,9 +244,10 @@ import { MiniGameActionName, MiniGameParticipant, MiniGameSnapshot } from './min
       </div>
 
       <div class="mini-game-roster">
-        @for (participant of snapshot().participants; track participant.id) {
+        @for (participant of sortedParticipants(); track participant.id) {
           <app-mini-game-participant-row
             [participant]="participant"
+            [stateVersion]="snapshot().stateVersion"
             [winner]="isWinner(participant)"
             [viewer]="participant.id === snapshot().viewerParticipantId"
             [removable]="canManage() && snapshot().status === 'OPEN' && !readOnly()"
@@ -552,6 +554,28 @@ export class MiniGamePanelComponent {
   readonly removePlayer = output<MiniGameParticipant>();
   readonly openDetail = output<void>();
   protected readonly busy = computed(() => this.activeAction() !== null);
+  protected readonly sortedParticipants = computed(() => {
+    const snapshot = this.snapshot();
+
+    return [...snapshot.participants].sort((left, right) => {
+      const leftPercentage = miniGameWinPercentage(left.equity, snapshot.stateVersion);
+      const rightPercentage = miniGameWinPercentage(right.equity, snapshot.stateVersion);
+
+      if (leftPercentage === null && rightPercentage === null) {
+        return left.joinPosition - right.joinPosition;
+      }
+
+      if (leftPercentage === null) {
+        return 1;
+      }
+
+      if (rightPercentage === null) {
+        return -1;
+      }
+
+      return rightPercentage - leftPercentage || left.joinPosition - right.joinPosition;
+    });
+  });
   protected readonly canJoin = computed(
     () =>
       !this.readOnly() &&

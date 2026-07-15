@@ -37,15 +37,34 @@ describe('MiniGamePanelComponent', () => {
     expect(contentStyles.alignItems).toBe('center');
   });
 
-  it('removes join positions, seat copy, and displayed equity from participant rows', () => {
+  it('shows pure win percentage from exact outcome counts', () => {
     const fixture = render(makeSnapshot());
     const compiled = fixture.nativeElement as HTMLElement;
+    const winRate = compiled.querySelector<HTMLElement>('.participant-win-rate');
 
     expect(compiled.querySelector('.participant-position')).toBeNull();
-    expect(compiled.querySelector('.participant-equity')).toBeNull();
     expect(compiled.textContent).not.toContain('Seat 1');
-    expect(compiled.textContent).not.toContain('Equity');
+    expect(winRate?.textContent).not.toContain('Win');
+    expect(winRate?.textContent).toContain('75.0%');
     expect(compiled.textContent).not.toContain('100.0%');
+  });
+
+  it('does not show a percentage from a stale calculation', () => {
+    const snapshot = makeSnapshot();
+    snapshot.participants[0] = {
+      ...snapshot.participants[0],
+      equity: {
+        ...snapshot.participants[0].equity!,
+        stateVersion: snapshot.stateVersion - 1,
+      },
+    };
+    const fixture = render(snapshot);
+    const winRate = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '.participant-win-rate',
+    );
+
+    expect(winRate?.textContent).toContain('--');
+    expect(winRate?.textContent).not.toContain('75.0%');
   });
 
   it('marks the final winner and offers a complete mini-game action to the creator', () => {
@@ -162,9 +181,9 @@ function makeSnapshot(overrides: Partial<MiniGameSnapshot> = {}): MiniGameSnapsh
           stateVersion: 4,
           share: 1,
           percentage: 100,
-          wins: 1,
-          ties: 0,
-          totalOutcomes: 1,
+          wins: 3,
+          ties: 1,
+          totalOutcomes: 4,
           finalHandLabel: 'Straight Flush',
           calculatedAt: '2026-07-14T12:05:00.000Z',
         },

@@ -29,7 +29,9 @@ const suitNames: Record<string, string> = {
       @if (card()) {
         <span class="playing-card-rank">{{ rank() }}</span>
         <span class="playing-card-suit" aria-hidden="true">{{ suit() }}</span>
-        <span class="playing-card-corner" aria-hidden="true">{{ suit() }}</span>
+        @if (size() === 'board') {
+          <span class="playing-card-corner" aria-hidden="true">{{ rank() }}</span>
+        }
       } @else {
         <span class="playing-card-placeholder" aria-hidden="true">♠</span>
       }
@@ -70,8 +72,8 @@ const suitNames: Record<string, string> = {
         top: 0.28rem;
         left: 0.34rem;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 0.94rem;
-        font-weight: 800;
+        font-size: 1.1rem;
+        font-weight: 900;
         line-height: 1;
       }
 
@@ -86,7 +88,7 @@ const suitNames: Record<string, string> = {
         inset: 0;
         display: grid;
         place-items: center;
-        font-size: 1.65rem;
+        font-size: 1.8rem;
         line-height: 1;
       }
 
@@ -98,15 +100,11 @@ const suitNames: Record<string, string> = {
         position: absolute;
         right: 0.28rem;
         bottom: 0.2rem;
-        font-size: 0.68rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 1.1rem;
+        font-weight: 900;
         line-height: 1;
         transform: rotate(180deg);
-      }
-
-      .playing-card-hole .playing-card-corner {
-        right: 0.22rem;
-        bottom: 0.16rem;
-        font-size: 0.56rem;
       }
 
       .playing-card-empty {

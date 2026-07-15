@@ -2,7 +2,7 @@ import { MiniGameActionRequest, MiniGameSnapshot } from './mini-game.models';
 import {
   MiniGameLocalStore,
   MiniGameLocalViewer,
-  evaluateCompletedLocalGame,
+  evaluateLocalGameStage,
 } from './mini-game-local.store';
 
 describe('MiniGameLocalStore', () => {
@@ -19,12 +19,6 @@ describe('MiniGameLocalStore', () => {
     displayName: 'Player',
     role: 'PLAYER',
   };
-  const secondPlayer: MiniGameLocalViewer = {
-    userId: 'dev-player-two',
-    displayName: 'Second Player',
-    role: 'PLAYER',
-  };
-
   beforeEach(() => {
     storage = new MemoryStorage();
     store = new MiniGameLocalStore(
@@ -66,6 +60,25 @@ describe('MiniGameLocalStore', () => {
     expect(() => perform({ action: 'start', gameId: game.id }, host)).toThrowError(
       /not enough players/i,
     );
+  });
+
+  it('calculates fresh outcome counts before the flop and after every board reveal', () => {
+    const game = perform(
+      { action: 'create', name: 'Local table', minPlayers: 2, maxPlayers: 10 },
+      host,
+    );
+    perform({ action: 'join', gameId: game.id }, host);
+    const preflop = perform({ action: 'join', gameId: game.id }, player);
+    expectFreshOutcomes(preflop, 'OPEN');
+
+    const flop = perform({ action: 'start', gameId: game.id }, host);
+    expectFreshOutcomes(flop, 'FLOP');
+
+    const turn = perform({ action: 'reveal-turn', gameId: game.id }, host);
+    expectFreshOutcomes(turn, 'TURN');
+
+    const river = perform({ action: 'reveal-river', gameId: game.id }, host);
+    expectFreshOutcomes(river, 'COMPLETE');
   });
 
   it('selects and publishes the winner as part of revealing the river', () => {
@@ -149,10 +162,26 @@ describe('MiniGameLocalStore', () => {
     );
     perform({ action: 'join', gameId: game.id }, host);
     perform({ action: 'join', gameId: game.id }, player);
-    perform({ action: 'join', gameId: game.id }, secondPlayer);
     perform({ action: 'start', gameId: game.id }, host);
     perform({ action: 'reveal-turn', gameId: game.id }, host);
     return perform({ action: 'reveal-river', gameId: game.id }, host);
+  }
+
+  function expectFreshOutcomes(
+    snapshot: MiniGameSnapshot,
+    expectedStatus: MiniGameSnapshot['status'],
+  ): void {
+    expect(snapshot.status).toBe(expectedStatus);
+    expect(snapshot.equityStatus).toBe('READY');
+    expect(snapshot.equityVersion).toBe(snapshot.stateVersion);
+    expect(snapshot.participants).toHaveSize(2);
+
+    snapshot.participants.forEach((participant) => {
+      expect(participant.equity?.stateVersion).toBe(snapshot.stateVersion);
+      expect(participant.equity?.totalOutcomes).toBeGreaterThan(0);
+      expect(participant.equity?.wins).toBeGreaterThanOrEqual(0);
+      expect(participant.equity!.wins).toBeLessThanOrEqual(participant.equity!.totalOutcomes);
+    });
   }
 
   function perform(request: MiniGameActionRequest, viewer: MiniGameLocalViewer): MiniGameSnapshot {
@@ -166,9 +195,9 @@ describe('MiniGameLocalStore', () => {
   }
 });
 
-describe('evaluateCompletedLocalGame', () => {
+describe('evaluateLocalGameStage', () => {
   it('supports split-pot winners and labels final hands', () => {
-    const result = evaluateCompletedLocalGame(
+    const result = evaluateLocalGameStage(
       [participant('one', ['2c', '3d']), participant('two', ['4c', '5d'])],
       ['As', 'Ks', 'Qs', 'Js', 'Ts'],
       7,

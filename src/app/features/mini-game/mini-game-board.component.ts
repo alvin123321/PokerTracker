@@ -25,8 +25,8 @@ import { PlayingCardComponent } from './playing-card.component';
 
       <div class="mini-board-streets" aria-hidden="true">
         <span class="mini-board-street-flop">FLOP</span>
-        <span>TURN</span>
-        <span>RIVER</span>
+        <span class="mini-board-street-turn">TURN</span>
+        <span class="mini-board-street-river">RIVER</span>
       </div>
     </section>
   `,
@@ -101,11 +101,27 @@ import { PlayingCardComponent } from './playing-card.component';
         gap: clamp(0.28rem, 1.8vw, 0.48rem);
         margin: 0.45rem auto 0;
         width: min(100%, 22.5rem);
-        color: rgb(255 255 255 / 0.32);
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 0.54rem;
-        font-weight: 700;
+        font-family: 'Share Tech Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          monospace;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0;
         text-align: center;
+      }
+
+      .mini-board-street-flop {
+        color: rgb(110 231 183);
+        text-shadow: 0 0 0.36rem rgb(52 211 153 / 0.62);
+      }
+
+      .mini-board-street-turn {
+        color: rgb(253 224 71);
+        text-shadow: 0 0 0.36rem rgb(250 204 21 / 0.58);
+      }
+
+      .mini-board-street-river {
+        color: rgb(251 113 133);
+        text-shadow: 0 0 0.36rem rgb(244 63 94 / 0.58);
       }
     `,
   ],
