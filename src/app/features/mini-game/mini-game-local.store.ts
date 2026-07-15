@@ -23,7 +23,7 @@ interface MiniGameLocalState {
   celebrationClaims: Record<string, string[]>;
 }
 
-interface CompletedLocalGameResult {
+interface LocalGameStageResult {
   equities: MiniGameEquity[];
   winnerParticipantIds: string[];
 }
@@ -34,17 +34,49 @@ type Card = `${(typeof ranks)[number]}${(typeof suits)[number]}`;
 const deck = ranks.flatMap((rank) => suits.map((suit) => `${rank}${suit}` as Card));
 const cardPattern = /^[2-9TJQKA][cdhs]$/;
 
-export function evaluateCompletedLocalGame(
+export function evaluateLocalGameStage(
   participants: MiniGameParticipant[],
   boardCodes: string[],
   stateVersion: number,
   calculatedAt: string,
-): CompletedLocalGameResult {
-  if (participants.length === 0 || boardCodes.length !== 5) {
-    throw new Error('A completed mini-game needs players and five board cards.');
+): LocalGameStageResult {
+  if (![0, 3, 4, 5].includes(boardCodes.length)) {
+    throw new Error('A mini-game needs zero, three, four, or five board cards.');
   }
 
   const board = boardCodes.map(asCard);
+
+  if (participants.length === 0) {
+    return { equities: [], winnerParticipantIds: [] };
+  }
+
+  if (participants.length === 1) {
+    const participant = participants[0];
+    return {
+      equities: [
+        {
+          stateVersion,
+          share: 1,
+          percentage: 100,
+          wins: 1,
+          ties: 0,
+          totalOutcomes: 1,
+          finalHandLabel:
+            board.length === 5
+              ? handLabel(
+                  evaluate({
+                    holeCards: participant.cards.map((card) => asCard(card.code)),
+                    communityCards: board,
+                  }).strength,
+                )
+              : null,
+          calculatedAt,
+        },
+      ],
+      winnerParticipantIds: board.length === 5 ? [participant.id] : [],
+    };
+  }
+
   const results = odds(
     participants.map((participant) => participant.cards.map((card) => asCard(card.code))),
     {
@@ -63,20 +95,26 @@ export function evaluateCompletedLocalGame(
     wins: results[index].wins,
     ties: results[index].ties,
     totalOutcomes: results[index].total,
-    finalHandLabel: handLabel(
-      evaluate({
-        holeCards: participant.cards.map((card) => asCard(card.code)),
-        communityCards: board,
-      }).strength,
-    ),
+    finalHandLabel:
+      board.length === 5
+        ? handLabel(
+            evaluate({
+              holeCards: participant.cards.map((card) => asCard(card.code)),
+              communityCards: board,
+            }).strength,
+          )
+        : null,
     calculatedAt,
   }));
 
   return {
     equities,
-    winnerParticipantIds: participants
-      .filter((_, index) => results[index].equity > 0)
-      .map((participant) => participant.id),
+    winnerParticipantIds:
+      board.length === 5
+        ? participants
+            .filter((_, index) => results[index].equity > 0)
+            .map((participant) => participant.id)
+        : [],
   };
 }
 
@@ -298,18 +336,6 @@ export class MiniGameLocalStore {
         game.status = 'COMPLETE';
         game.completedAt = this.now();
         this.advance(game);
-        const result = evaluateCompletedLocalGame(
-          game.participants,
-          game.board.map((card) => card.code),
-          game.stateVersion,
-          this.now(),
-        );
-        game.participants.forEach((participant, index) => {
-          participant.equity = result.equities[index];
-        });
-        game.winnerParticipantIds = result.winnerParticipantIds;
-        game.equityVersion = game.stateVersion;
-        game.equityStatus = 'READY';
         break;
       }
       case 'archive':
@@ -353,6 +379,32 @@ export class MiniGameLocalStore {
       participant.equity = null;
     });
     game.activePlayerCount = game.participants.length;
+    this.calculateCurrentStage(game);
+  }
+
+  private calculateCurrentStage(game: MiniGameSnapshot): void {
+    try {
+      const result = evaluateLocalGameStage(
+        game.participants,
+        game.board.map((card) => card.code),
+        game.stateVersion,
+        this.now(),
+      );
+
+      game.participants.forEach((participant, index) => {
+        participant.equity = result.equities[index] ?? null;
+      });
+      game.winnerParticipantIds = result.winnerParticipantIds;
+      game.equityVersion = game.stateVersion;
+      game.equityStatus = 'READY';
+    } catch {
+      game.participants.forEach((participant) => {
+        participant.equity = null;
+      });
+      game.winnerParticipantIds = [];
+      game.equityVersion = 0;
+      game.equityStatus = 'ERROR';
+    }
   }
 
   private draw(game: MiniGameSnapshot, count: number): string[] {

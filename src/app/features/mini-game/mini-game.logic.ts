@@ -157,6 +157,23 @@ export function normalizeMiniGamePercentages(shares: number[]): number[] {
   return tenths.map((value) => value / 10);
 }
 
+export function miniGameWinPercentage(
+  equity: MiniGameEquity | null,
+  stateVersion: number,
+): number | null {
+  if (
+    !equity ||
+    equity.stateVersion !== stateVersion ||
+    equity.totalOutcomes <= 0 ||
+    equity.wins < 0 ||
+    equity.wins > equity.totalOutcomes
+  ) {
+    return null;
+  }
+
+  return (equity.wins / equity.totalOutcomes) * 100;
+}
+
 export function miniGameHistoryViewFromQuery(value: string | null): MiniGameHistoryView {
   return value === 'mini-games' ? 'mini-games' : 'tables';
 }

@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { LucideTrophy, LucideUserMinus } from '@lucide/angular';
 
+import { miniGameWinPercentage } from './mini-game.logic';
 import { MiniGameParticipant } from './mini-game.models';
 import { PlayingCardComponent } from './playing-card.component';
 
@@ -35,6 +36,13 @@ import { PlayingCardComponent } from './playing-card.component';
         }
       </div>
 
+      <div
+        class="participant-win-rate"
+        [attr.aria-label]="'Win percentage ' + winPercentageLabel()"
+      >
+        <strong>{{ winPercentageLabel() }}</strong>
+      </div>
+
       @if (removable()) {
         <button
           type="button"
@@ -57,7 +65,7 @@ import { PlayingCardComponent } from './playing-card.component';
 
       .participant-row {
         display: grid;
-        grid-template-columns: 2.1rem minmax(0, 1fr) auto auto;
+        grid-template-columns: 2.1rem minmax(0, 1fr) auto 4rem auto;
         min-height: 4.15rem;
         align-items: center;
         gap: 0.5rem;
@@ -150,6 +158,26 @@ import { PlayingCardComponent } from './playing-card.component';
         gap: 0.22rem;
       }
 
+      .participant-win-rate {
+        display: grid;
+        width: 4rem;
+        justify-items: end;
+        line-height: 1;
+      }
+
+      .participant-win-rate strong {
+        color: rgb(110 231 183);
+        font-family: 'Share Tech Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          monospace;
+        font-size: 1.1rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0;
+        line-height: 1;
+        text-shadow: 0 0 0.28rem rgb(52 211 153 / 0.42);
+        white-space: nowrap;
+      }
+
       .participant-remove {
         display: grid;
         width: 2rem;
@@ -173,7 +201,7 @@ import { PlayingCardComponent } from './playing-card.component';
 
       @media (max-width: 370px) {
         .participant-row {
-          grid-template-columns: 1.85rem minmax(0, 1fr) auto auto;
+          grid-template-columns: 1.85rem minmax(0, 1fr) auto 4rem auto;
           gap: 0.36rem;
           padding-inline: 0.4rem;
         }
@@ -183,12 +211,21 @@ import { PlayingCardComponent } from './playing-card.component';
           height: 1.85rem;
           font-size: 0.61rem;
         }
+
+        .participant-win-rate {
+          width: 4rem;
+        }
+
+        .participant-win-rate strong {
+          font-size: 1.05rem;
+        }
       }
     `,
   ],
 })
 export class MiniGameParticipantRowComponent {
   readonly participant = input.required<MiniGameParticipant>();
+  readonly stateVersion = input.required<number>();
   readonly winner = input(false);
   readonly viewer = input(false);
   readonly removable = input(false);
@@ -202,4 +239,8 @@ export class MiniGameParticipantRowComponent {
       .map((part) => part.slice(0, 1).toUpperCase())
       .join(''),
   );
+  protected readonly winPercentageLabel = computed(() => {
+    const percentage = miniGameWinPercentage(this.participant().equity, this.stateVersion());
+    return percentage === null ? '--' : `${percentage.toFixed(1)}%`;
+  });
 }
