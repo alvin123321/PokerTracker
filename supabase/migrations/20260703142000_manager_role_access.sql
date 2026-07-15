@@ -137,6 +137,8 @@ using (
   and role::text in ('PLAYER', 'MANAGER')
 );
 
+drop function if exists public.list_registered_players();
+
 create or replace function public.list_registered_players()
 returns table (
   id uuid,

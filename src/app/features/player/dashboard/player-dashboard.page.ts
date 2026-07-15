@@ -2,7 +2,6 @@ import { CurrencyPipe, DOCUMENT, DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
-  LucideArrowDownToLine,
   LucideBanknoteArrowDown,
   LucideCalculator,
   LucideBadgeCheck,
@@ -13,14 +12,18 @@ import {
   LucideMessageCircle,
   LucideAlarmClock,
   LucideReceiptText,
-  LucideRefreshCcw,
-  LucideUsersRound,
-  LucideZap
+  LucideUsersRound
 } from '@lucide/angular';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom, Subscription } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
+import { MiniGameDashboardSectionComponent } from '../../mini-game/mini-game-dashboard-section.component';
+import { MiniGameHistoryListComponent } from '../../mini-game/mini-game-history-list.component';
+import { MiniGameHistoryToggleComponent } from '../../mini-game/mini-game-history-toggle.component';
+import { miniGameHistoryViewFromQuery } from '../../mini-game/mini-game.logic';
+import { MiniGameHistoryView } from '../../mini-game/mini-game.models';
+import { MiniGameService } from '../../mini-game/mini-game.service';
 import { PotCalculatorPage } from '../../host/tools/pot-calculator.page';
 import { GlobalChatPage } from '../../chat/global-chat.page';
 import {
@@ -62,15 +65,6 @@ interface PlayerSessionEntry {
   lastActivityAt: string;
 }
 
-interface PlayerActivityEntry {
-  id: string;
-  sessionId: string;
-  sessionName: string;
-  type: PokerTransactionType;
-  amount: number;
-  createdAt: string;
-}
-
 const playerCallTimeSyncIntervalMs = 1000;
 
 @Component({
@@ -79,7 +73,6 @@ const playerCallTimeSyncIntervalMs = 1000;
     CurrencyPipe,
     DatePipe,
     MatDialogModule,
-    LucideArrowDownToLine,
     LucideBanknoteArrowDown,
     LucideBadgeCheck,
     LucideCalculator,
@@ -90,10 +83,11 @@ const playerCallTimeSyncIntervalMs = 1000;
     LucideMessageCircle,
     LucideAlarmClock,
     LucideReceiptText,
-    LucideRefreshCcw,
     LucideUsersRound,
-    LucideZap,
     RouterLink,
+    MiniGameDashboardSectionComponent,
+    MiniGameHistoryListComponent,
+    MiniGameHistoryToggleComponent,
     PotCalculatorPage,
     GlobalChatPage
   ],
@@ -383,84 +377,33 @@ const playerCallTimeSyncIntervalMs = 1000;
                 </article>
               }
 
-              <section class="player-ledger-panel">
-                <div class="panel-heading">
-                  <div class="recent-heading-title">
-                    <h2>Recent</h2>
-                    <span class="recent-energy-icon" aria-hidden="true">
-                      <svg lucideZap [strokeWidth]="2.4" [absoluteStrokeWidth]="true"></svg>
-                    </span>
-                  </div>
-                </div>
-
-                <div class="activity-list">
-                  @for (activity of recentActivity(); track activity.id) {
-                    <a
-                      [routerLink]="['/player/sessions', activity.sessionId]"
-                      class="activity-row"
-                      (click)="preparePlayerRouteTransition('forward')"
-                    >
-                      <span
-                        class="activity-icon"
-                        [class.activity-icon-buyin]="activity.type === 'BUYIN'"
-                        [class.activity-icon-rebuy]="activity.type === 'REBUY'"
-                        [class.activity-icon-cashout]="activity.type === 'CASHOUT'"
-                      >
-                        @switch (activity.type) {
-                          @case ('BUYIN') {
-                            <svg
-                              lucideArrowDownToLine
-                              [strokeWidth]="3"
-                              [absoluteStrokeWidth]="true"
-                              aria-hidden="true"
-                            ></svg>
-                          }
-                          @case ('REBUY') {
-                            <svg
-                              lucideRefreshCcw
-                              [strokeWidth]="3"
-                              [absoluteStrokeWidth]="true"
-                              aria-hidden="true"
-                            ></svg>
-                          }
-                          @case ('CASHOUT') {
-                            <svg
-                              lucideBanknoteArrowDown
-                              [strokeWidth]="3"
-                              [absoluteStrokeWidth]="true"
-                              aria-hidden="true"
-                            ></svg>
-                          }
-                        }
-                      </span>
-                      <span class="activity-copy">
-                        <strong>{{ activityLabel(activity.type) }}</strong>
-                        <small>{{ activity.sessionName }} - {{ activity.createdAt | date: 'shortTime' }}</small>
-                      </span>
-                      <span class="activity-meta">
-                        <span
-                          class="activity-amount"
-                          [class.activity-amount-buyin]="activity.type === 'BUYIN'"
-                          [class.activity-amount-rebuy]="activity.type === 'REBUY'"
-                          [class.activity-amount-cashout]="activity.type === 'CASHOUT'"
-                        >
-                          {{ activity.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
-                        </span>
-                        <small>{{ activity.createdAt | date: 'MMM d' }}</small>
-                      </span>
-                    </a>
-                  } @empty {
-                    <p class="activity-empty">No activity yet.</p>
-                  }
-                </div>
-              </section>
+              <app-mini-game-dashboard-section />
             </section>
           }
 
           @case ('sessions') {
-            <section class="player-view player-session-grid">
-              @for (entry of entries(); track entry.session.id + entry.player.id) {
-                <a
+            <section class="player-view player-history-view">
+              <div class="player-history-switcher">
+                <app-mini-game-history-toggle
+                  [view]="historyView()"
+                  (viewChange)="selectHistoryView($event)"
+                />
+              </div>
+
+              @if (historyView() === 'mini-games') {
+                @if (miniGame.error()) {
+                  <div class="player-action-error" role="alert">{{ miniGame.error() }}</div>
+                }
+
+                <app-mini-game-history-list
+                  [games]="miniGame.history()"
+                  [loading]="miniGame.historyLoading()"
+                  detailBasePath="/player/mini-games"
+                />
+              } @else {
+                <div class="player-session-grid">
+                  @for (entry of entries(); track entry.session.id + entry.player.id) {
+                    <a
                   [routerLink]="['/player/sessions', entry.session.id]"
                   class="session-tile"
                   [class.session-tile-active]="entry.player.status === 'ACTIVE'"
@@ -536,12 +479,14 @@ const playerCallTimeSyncIntervalMs = 1000;
                       </strong>
                     </div>
                   </div>
-                </a>
-              } @empty {
-                <article class="player-empty-card">
-                  <h2>No sessions yet</h2>
-                  <p>Nothing to show.</p>
-                </article>
+                    </a>
+                  } @empty {
+                    <article class="player-empty-card">
+                      <h2>No sessions yet</h2>
+                      <p>Nothing to show.</p>
+                    </article>
+                  }
+                </div>
               }
             </section>
           }
@@ -703,7 +648,7 @@ const playerCallTimeSyncIntervalMs = 1000;
       }
 
       .player-view {
-        animation: player-view-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: player-view-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
       }
 
       .player-view-overview {
@@ -1231,6 +1176,16 @@ const playerCallTimeSyncIntervalMs = 1000;
         gap: 0.75rem;
       }
 
+      .player-history-view {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .player-history-switcher {
+        display: flex;
+        justify-content: flex-end;
+      }
+
       .session-tile {
         display: grid;
         gap: 0.58rem;
@@ -1433,9 +1388,11 @@ const playerCallTimeSyncIntervalMs = 1000;
 export class PlayerDashboardPage implements OnInit, OnDestroy {
   private readonly authState = inject(AuthStateService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly document = inject(DOCUMENT);
   protected readonly store = inject(PokerStoreService);
+  protected readonly miniGame = inject(MiniGameService);
   protected readonly callTimeLimit = CALL_TIME_LIMIT;
   protected readonly pendingTimeCallPlayerId = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
@@ -1449,6 +1406,7 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     { id: 'sessions', label: 'History' }
   ];
   protected readonly activeTab = signal<PlayerDashboardTab>('overview');
+  protected readonly historyView = signal<MiniGameHistoryView>('tables');
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
   protected readonly entries = computed<PlayerSessionEntry[]>(() => {
     const userId = this.authState.user()?.id ?? null;
@@ -1483,27 +1441,15 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
     this.entries().filter((entry) => entry.player.status === 'ACTIVE')
   );
   protected readonly featuredEntry = computed(() => this.activeEntries()[0] ?? this.entries()[0] ?? null);
-  protected readonly recentActivity = computed<PlayerActivityEntry[]>(() =>
-    this.entries()
-      .flatMap((entry) =>
-        entry.transactions
-          .filter((transaction) => !transaction.deletedAt)
-          .map((transaction) => ({
-            id: transaction.id,
-            sessionId: entry.session.id,
-            sessionName: entry.session.name,
-            type: transaction.type,
-            amount: transaction.amount,
-            createdAt: transaction.createdAt
-          }))
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 5)
-  );
-
   async ngOnInit(): Promise<void> {
     this.routeTabSubscription = this.route.queryParamMap.subscribe((queryParams) => {
       this.applyRouteTab(queryParams.get('tab'));
+      const view = miniGameHistoryViewFromQuery(queryParams.get('view'));
+      this.historyView.set(view);
+
+      if (view === 'mini-games') {
+        void this.miniGame.loadHistory();
+      }
     });
     this.startCallTimeSync();
 
@@ -1526,6 +1472,17 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
 
   protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
+  }
+
+  protected selectHistoryView(view: MiniGameHistoryView): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        tab: 'history',
+        view: view === 'mini-games' ? view : null
+      },
+      queryParamsHandling: 'merge'
+    });
   }
 
   protected preparePlayerRouteTransition(direction: 'forward' | 'back'): void {

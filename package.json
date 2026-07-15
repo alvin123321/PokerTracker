@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:local": "npx -p node@22 -c \"node ./node_modules/@angular/cli/bin/ng serve --configuration development --host 0.0.0.0 --port 4200\"",
     "build": "npx -p node@22 -c \"node ./node_modules/@angular/cli/bin/ng build\"",
     "build:prod": "npx -p node@22 -c \"node ./node_modules/@angular/cli/bin/ng build --configuration production\"",
     "test:ci": "npx -p node@22 -c \"node ./node_modules/@angular/cli/bin/ng test --watch=false --browsers=ChromeHeadless\"",
@@ -40,6 +41,7 @@
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
     "@lucide/angular": "^1.23.0",
+    "@poker-apprentice/hand-evaluator": "4.2.0",
     "@supabase/supabase-js": "^2.108.2",
     "@tailwindcss/postcss": "^4.3.1",
     "postcss": "^8.5.15",
