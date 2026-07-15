@@ -1,0 +1,80 @@
+# Completed Session Deletion and Feedback Positioning Design
+
+## Scope
+
+This change adds permanent deletion for completed poker sessions from the host-admin history detail and fixes shared action-feedback messages that are currently covered by the top navigation.
+
+The deletion affects only the selected session and its game records. Registered member and player accounts remain intact.
+
+## Completed Session Actions
+
+The completed-session summary header receives a compact ellipsis button aligned to the far right of the session title row. It is visible only when:
+
+- the session status is `COMPLETED`; and
+- the signed-in operator is the host administrator.
+
+Opening the menu reveals one destructive action, **Delete session**, styled in red. Managers and players never receive this control.
+
+Selecting the action opens the existing confirmation dialog with explicit choices:
+
+- **No, keep session** closes the dialog without changing data.
+- **Yes, delete** permanently removes the session.
+
+The confirmation explains that deletion cannot be undone and lists the session name, player count, and total buy-in so the administrator can verify the target before proceeding.
+
+## Deletion Data Flow
+
+The frontend reuses `PokerStoreService.deleteSession`, which calls the existing host-owned `delete_session` RPC. The RPC performs the deletion in one database transaction and removes:
+
+- transactions, including buy-ins, rebuys, and cash-outs;
+- session-player participation rows;
+- session tables;
+- time-call records through existing cascading foreign keys; and
+- the session itself.
+
+Rows in the registered `players` table and authentication accounts are preserved.
+
+The current RPC is preferred over a new completed-only RPC because it already enforces host ownership and performs the required dependency-ordered deletion atomically. Direct client-side table deletion is rejected because it could leave partial data.
+
+After success, the store removes the session from local state and the router replaces the summary URL with `/host/sessions/history`. During deletion, the menu is disabled and a centered loading treatment prevents duplicate submissions. If the RPC fails, the summary stays open and a red action-feedback toast displays the parsed database error.
+
+## Shared Feedback Positioning
+
+`ActionFeedbackToastComponent` remains a fixed overlay so messages never change document flow. Its top position changes from a viewport-edge offset to a shell-aware CSS custom property.
+
+The host and player shells define stable mobile and desktop offsets matching their rendered header heights. The toast adds a small visual gap beneath that offset and includes the safe-area inset. Its stacking level sits above navigation and account menus but below modal dialogs.
+
+This shared rule applies automatically to rebuy, cash-out, add-player, delete, and other existing actions that use the component. Per-page margins or placeholder space are not added because they would duplicate layout logic and cause page movement.
+
+## Mobile Layout
+
+- The session ellipsis control has a stable 44-by-44-pixel touch target.
+- It stays on the session-name row at the far right without squeezing the title or status.
+- The action menu aligns to the right edge and remains within the viewport.
+- Feedback cards remain centered with the existing responsive maximum width.
+- Showing or hiding feedback does not change the position of any page content.
+
+## Accessibility
+
+- The ellipsis button exposes `aria-label="Session actions"` and `aria-expanded`.
+- The menu uses `role="menu"` and its destructive command uses `role="menuitem"`.
+- Escape and outside-click behavior close the menu.
+- The confirmation remains keyboard accessible through Angular Material.
+- Feedback keeps the current polite status or assertive error live-region behavior.
+- Existing reduced-motion behavior remains unchanged.
+
+## Verification
+
+Frontend tests will cover:
+
+- host-admin visibility only for completed sessions;
+- manager and non-completed-session exclusion;
+- menu open and close behavior;
+- cancellation without deletion;
+- confirmed deletion, loading state, and history redirect;
+- failed deletion with visible error feedback; and
+- shell-aware feedback positioning without layout-flow participation.
+
+The database regression test will verify that deleting a completed session removes its tables, participation, transactions, and time calls while retaining the registered player record. Existing Angular, Edge Function, database, and production build checks will run before completion.
+
+The UI will be rendered and checked at mobile widths first, with a desktop sanity pass. No new migration is expected because the required production RPC and cascading relationships already exist; this will be revalidated before completion.
