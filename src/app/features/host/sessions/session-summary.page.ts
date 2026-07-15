@@ -1,7 +1,8 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { LucideEllipsis } from '@lucide/angular';
+import { MatMenuModule } from '@angular/material/menu';
+import { LucideEllipsis, LucideTrash2 } from '@lucide/angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -39,26 +40,28 @@ interface SessionSummaryFeedback {
     CurrencyPipe,
     DatePipe,
     LucideEllipsis,
+    LucideTrash2,
     MatDialogModule,
+    MatMenuModule,
     RouterLink,
   ],
   template: `
-    @if (session(); as currentSession) {
-      @if (actionToast(); as toast) {
-        <app-action-feedback-toast [message]="toast.message" [tone]="toast.tone" />
-      }
+    @if (actionToast(); as toast) {
+      <app-action-feedback-toast [message]="toast.message" [tone]="toast.tone" />
+    }
 
+    @if (session(); as currentSession) {
       @let totals = store.totalsFor(currentSession);
       @let adminNet = adminNetTotal(currentSession);
       @let netPending = isNetPending(currentSession);
       <section class="space-y-5 sm:space-y-6">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+          <div class="min-w-0 flex-1">
             <a routerLink="/host/sessions/history" class="text-sm font-semibold text-emerald-300">&larr; History</a>
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <h1 class="text-2xl font-semibold text-white sm:text-3xl">Session Summary</h1>
+            <div class="session-summary-title-row mt-3 flex min-w-0 items-center gap-2 sm:gap-3">
+              <h1 class="min-w-0 text-lg font-semibold text-white sm:text-3xl">Session Summary</h1>
               <span
-                class="rounded-full border px-3 py-1 text-xs font-semibold"
+                class="rounded-full border px-2 py-1 text-xs font-semibold sm:px-3"
                 [class.bg-emerald-300]="currentSession.status === 'ACTIVE'"
                 [class.text-neutral-950]="currentSession.status === 'ACTIVE'"
                 [class.border-emerald-300/50]="currentSession.status === 'ACTIVE'"
@@ -68,6 +71,30 @@ interface SessionSummaryFeedback {
               >
                 {{ currentSession.status }}
               </span>
+              @if (currentSession.status === 'COMPLETED' && authState.isHostAdmin()) {
+                <button
+                  type="button"
+                  class="session-summary-menu-trigger ml-auto"
+                  [matMenuTriggerFor]="sessionMenu"
+                  aria-label="Session actions"
+                  title="Session actions"
+                  [disabled]="deletingSession()"
+                >
+                  <svg lucideEllipsis [strokeWidth]="2.3" aria-hidden="true"></svg>
+                </button>
+                <mat-menu #sessionMenu="matMenu" class="mini-game-menu" xPosition="before">
+                  <button
+                    type="button"
+                    mat-menu-item
+                    class="mini-menu-danger session-summary-delete-action"
+                    [disabled]="deletingSession()"
+                    (click)="confirmDeleteSession()"
+                  >
+                    <svg lucideTrash2 [strokeWidth]="2" aria-hidden="true"></svg>
+                    <span>Delete session</span>
+                  </button>
+                </mat-menu>
+              }
             </div>
             <p class="mt-2 text-sm text-neutral-400 sm:text-base">
               {{ currentSession.name }} · {{ currentSession.sessionDate | date: 'mediumDate' }}
@@ -76,27 +103,6 @@ interface SessionSummaryFeedback {
               }
             </p>
           </div>
-          @if (currentSession.status === 'COMPLETED' && authState.isHostAdmin()) {
-            <div class="session-summary-menu" (click)="$event.stopPropagation()">
-              <button
-                type="button"
-                class="session-summary-menu-trigger"
-                aria-label="Session actions"
-                [attr.aria-expanded]="sessionMenuOpen()"
-                [disabled]="deletingSession()"
-                (click)="toggleSessionMenu()"
-              >
-                <svg lucideEllipsis [strokeWidth]="2.3" aria-hidden="true"></svg>
-              </button>
-              @if (sessionMenuOpen()) {
-                <div class="session-summary-menu-panel" role="menu">
-                  <button type="button" role="menuitem" (click)="confirmDeleteSession()">
-                    Delete session
-                  </button>
-                </div>
-              }
-            </div>
-          }
         </div>
 
         @if (store.error()) {
@@ -347,16 +353,13 @@ interface SessionSummaryFeedback {
           0 0 22px rgb(16 185 129 / 0.13);
       }
 
-      .session-summary-menu {
-        position: relative;
-        flex: 0 0 auto;
-        align-self: flex-end;
-      }
-
       .session-summary-menu-trigger {
         display: inline-grid;
         width: 44px;
         height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        flex: 0 0 44px;
         place-items: center;
         border: 1px solid rgb(255 255 255 / 0.12);
         border-radius: 0.5rem;
@@ -379,30 +382,6 @@ interface SessionSummaryFeedback {
         height: 1.25rem;
       }
 
-      .session-summary-menu-panel {
-        position: absolute;
-        top: calc(100% + 0.5rem);
-        right: 0;
-        z-index: 30;
-        min-width: min(12rem, calc(100vw - 2rem));
-        border: 1px solid rgb(255 255 255 / 0.12);
-        border-radius: 0.5rem;
-        background: rgb(10 10 10);
-        padding: 0.4rem;
-        box-shadow: 0 1.25rem 2.5rem rgb(0 0 0 / 0.38);
-      }
-
-      .session-summary-menu-panel button {
-        width: 100%;
-        border-radius: 0.35rem;
-        padding: 0.7rem 0.8rem;
-        color: rgb(252 165 165);
-        text-align: left;
-      }
-
-      .session-summary-menu-panel button:hover {
-        background: rgb(248 113 113 / 0.12);
-      }
     `
   ]
 })
@@ -415,7 +394,6 @@ export class SessionSummaryPage implements OnDestroy {
   private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
   protected readonly expandedPlayerId = signal<string | null>(null);
   protected readonly deletingSession = signal(false);
-  protected readonly sessionMenuOpen = signal(false);
   protected readonly actionToast = signal<SessionSummaryFeedback | null>(null);
   private actionToastTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -474,20 +452,6 @@ export class SessionSummaryPage implements OnDestroy {
     this.clearActionToast();
   }
 
-  @HostListener('document:click')
-  protected closeSessionMenu(): void {
-    this.sessionMenuOpen.set(false);
-  }
-
-  @HostListener('document:keydown.escape')
-  protected closeSessionMenuOnEscape(): void {
-    this.sessionMenuOpen.set(false);
-  }
-
-  protected toggleSessionMenu(): void {
-    this.sessionMenuOpen.update((isOpen) => !isOpen);
-  }
-
   protected confirmDeleteSession(): void {
     const currentSession = this.session();
 
@@ -500,7 +464,6 @@ export class SessionSummaryPage implements OnDestroy {
       return;
     }
 
-    this.sessionMenuOpen.set(false);
     const totals = this.store.totalsFor(currentSession);
     const playerCount = `${totals.totalPlayers} players`;
     const totalBuyIn = `${this.formatMoney(totals.totalBuyIn)} total buy-in`;
@@ -531,9 +494,21 @@ export class SessionSummaryPage implements OnDestroy {
 
       try {
         await this.store.deleteSession(this.sessionId);
-        await this.router.navigateByUrl('/host/sessions/history', { replaceUrl: true });
       } catch (error) {
         this.showActionToast(messageFromUnknownError(error, 'Unable to delete this session.'), 'error');
+        this.deletingSession.set(false);
+        return;
+      }
+
+      try {
+        const navigated = await this.router.navigateByUrl('/host/sessions/history', {
+          replaceUrl: true,
+        });
+        if (!navigated) {
+          this.showActionToast('Session deleted, but History could not be opened.', 'error');
+        }
+      } catch {
+        this.showActionToast('Session deleted, but History could not be opened.', 'error');
       } finally {
         this.deletingSession.set(false);
       }

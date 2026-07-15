@@ -324,7 +324,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                       @for (section of detailSections(statMode); track section) {
                         @switch (section) {
                           @case ('players') {
-                            <div class="feature-roster" data-detail-section="players">
+                            <div class="feature-detail-section feature-roster" data-detail-section="players">
                               <div class="feature-detail-heading">
                                 <span>Game players</span>
                                 @if (statMode === 'ACTIVE_GAME') {
@@ -353,7 +353,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                             </div>
                           }
                           @case ('timeline') {
-                            <div data-detail-section="timeline">
+                            <div class="feature-detail-section" data-detail-section="timeline">
                               <div class="feature-detail-heading">
                                 <span>Game timeline</span>
                               </div>
@@ -1489,6 +1489,10 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
 
   protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
+
+    if (tab === 'sessions') {
+      void this.loadMiniGameHistory();
+    }
   }
 
   protected selectHistoryView(view: MiniGameHistoryView): void {
@@ -1649,12 +1653,13 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   }
 
   private async loadMiniGameHistory(): Promise<void> {
-    await this.miniGame.loadHistory();
+    const result = await this.miniGame.loadHistory();
 
     if (
       this.historyView() === 'mini-games' &&
-      !this.miniGame.error() &&
-      this.joinedMiniGames().length === 0
+      result.success &&
+      result.current &&
+      joinedMiniGameHistory(result.history).length === 0
     ) {
       this.selectHistoryView('tables');
     }

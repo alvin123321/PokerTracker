@@ -1,7 +1,9 @@
-import { signal } from '@angular/core';
-import { TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
+import { signal, WritableSignal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatMenuTrigger } from '@angular/material/menu';
 import { of } from 'rxjs';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -12,6 +14,7 @@ import { SessionSummaryPage } from './session-summary.page';
 describe('SessionSummaryPage', () => {
   let authState: { isHostAdmin: jasmine.Spy<() => boolean> };
   let router: Router;
+  let sessionState: WritableSignal<PokerSession | undefined>;
   let store: {
     deleteSession: jasmine.Spy;
     error: ReturnType<typeof signal<string | null>>;
@@ -24,10 +27,11 @@ describe('SessionSummaryPage', () => {
     authState = {
       isHostAdmin: jasmine.createSpy('isHostAdmin').and.returnValue(true),
     };
+    sessionState = signal<PokerSession | undefined>(undefined);
     store = {
       deleteSession: jasmine.createSpy('deleteSession').and.resolveTo(),
       error: signal<string | null>(null),
-      getSession: jasmine.createSpy('getSession'),
+      getSession: jasmine.createSpy('getSession').and.callFake(() => sessionState()),
       playersForTable: jasmine.createSpy('playersForTable').and.callFake(
         (session: PokerSession | undefined, tableId: string | null) =>
           session?.players.filter((player) => player.tableId === tableId) ?? [],
@@ -68,12 +72,45 @@ describe('SessionSummaryPage', () => {
     expect(activeFixture.nativeElement.querySelector('.session-summary-menu-trigger')).toBeNull();
   });
 
+  it('uses a Material menu with a mobile-safe trigger and one-row destructive action', async () => {
+    const fixture = renderSummary(completedSession(), true);
+    const triggerDebug = fixture.debugElement.query(By.directive(MatMenuTrigger));
+    const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '.session-summary-menu-trigger'
+    );
+
+    expect(triggerDebug).not.toBeNull();
+    expect(trigger?.closest('.session-summary-title-row')).not.toBeNull();
+    expect(trigger?.classList.contains('ml-auto')).toBeTrue();
+    expect(trigger!.getBoundingClientRect().width).toBeCloseTo(44, 0);
+    expect(trigger!.getBoundingClientRect().height).toBeCloseTo(44, 0);
+
+    if (!triggerDebug) {
+      return;
+    }
+
+    triggerDebug.injector.get(MatMenuTrigger).openMenu();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const deleteButton = document.querySelector<HTMLButtonElement>(
+      '.session-summary-delete-action'
+    );
+    const menuText = deleteButton?.querySelector<HTMLElement>('.mat-mdc-menu-item-text');
+
+    expect(deleteButton).not.toBeNull();
+    expect(deleteButton?.querySelector('svg')).not.toBeNull();
+    expect(deleteButton?.querySelector('span')?.textContent).toContain('Delete session');
+    expect(menuText ? getComputedStyle(menuText).display : null).toBe('flex');
+    expect(getComputedStyle(deleteButton!).color).toBe('rgb(252, 165, 165)');
+  });
+
   it('keeps the session when No is selected', async () => {
     const fixture = renderSummary(completedSession(), true);
     const dialog = fixture.debugElement.injector.get(MatDialog);
     spyOn(dialog, 'open').and.returnValue(dialogResult(false));
-    clickDeleteMenu(fixture);
-    await fixture.whenStable();
+    await clickDeleteMenu(fixture);
+    await settleAsyncWork();
 
     expect(store.deleteSession).not.toHaveBeenCalled();
   });
@@ -82,8 +119,8 @@ describe('SessionSummaryPage', () => {
     const fixture = renderSummary(completedSession(), true);
     const dialog = fixture.debugElement.injector.get(MatDialog);
     spyOn(dialog, 'open').and.returnValue(dialogResult(true));
-    clickDeleteMenu(fixture);
-    await fixture.whenStable();
+    await clickDeleteMenu(fixture);
+    await settleAsyncWork();
 
     expect(dialog.open).toHaveBeenCalledWith(ConfirmationDialogComponent, {
       autoFocus: false,
@@ -104,44 +141,80 @@ describe('SessionSummaryPage', () => {
     });
   });
 
-  it('shows the parsed deletion error and keeps the summary open when deletion fails', fakeAsync(() => {
+  it('shows the parsed deletion error and keeps the summary open when deletion fails', async () => {
     store.deleteSession.and.rejectWith(new Error('The completed session could not be deleted.'));
     const fixture = renderSummary(completedSession(), true);
     const dialog = fixture.debugElement.injector.get(MatDialog);
     spyOn(dialog, 'open').and.returnValue(dialogResult(true));
-    clickDeleteMenu(fixture);
-    flushMicrotasks();
+    await clickDeleteMenu(fixture);
+    await settleAsyncWork();
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(compiled.textContent).toContain('The completed session could not be deleted.');
     expect(compiled.querySelector<HTMLButtonElement>('.session-summary-menu-trigger')?.disabled).toBeFalse();
     expect(router.navigateByUrl).not.toHaveBeenCalled();
-  }));
+  });
+
+  it('shows feedback after deletion when navigation resolves false', async () => {
+    store.deleteSession.and.callFake(async () => sessionState.set(undefined));
+    (router.navigateByUrl as jasmine.Spy).and.resolveTo(false);
+    const fixture = renderSummary(completedSession(), true);
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(dialogResult(true));
+
+    await clickDeleteMenu(fixture);
+    await settleAsyncWork();
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Session deleted, but History could not be opened.'
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Summary not found');
+  });
+
+  it('shows feedback after deletion when navigation rejects', async () => {
+    store.deleteSession.and.callFake(async () => sessionState.set(undefined));
+    (router.navigateByUrl as jasmine.Spy).and.rejectWith(new Error('Navigation rejected'));
+    const fixture = renderSummary(completedSession(), true);
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(dialogResult(true));
+
+    await clickDeleteMenu(fixture);
+    await settleAsyncWork();
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Session deleted, but History could not be opened.'
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Summary not found');
+  });
 
   function renderSummary(session: PokerSession, isHostAdmin: boolean) {
     authState.isHostAdmin.and.returnValue(isHostAdmin);
-    store.getSession.and.returnValue(session);
+    sessionState.set(session);
 
     const fixture = TestBed.createComponent(SessionSummaryPage);
     fixture.detectChanges();
     return fixture;
   }
 
-  function clickDeleteMenu(fixture: ReturnType<typeof TestBed.createComponent<SessionSummaryPage>>): void {
-    const compiled = fixture.nativeElement as HTMLElement;
-    const trigger = compiled.querySelector<HTMLButtonElement>('.session-summary-menu-trigger');
+  async function clickDeleteMenu(
+    fixture: ReturnType<typeof TestBed.createComponent<SessionSummaryPage>>
+  ): Promise<void> {
+    const triggerDebug = fixture.debugElement.query(By.directive(MatMenuTrigger));
 
-    if (!trigger) {
+    if (!triggerDebug) {
       fail('Expected the completed-session action menu trigger to be rendered.');
       return;
     }
 
-    trigger.click();
+    triggerDebug.injector.get(MatMenuTrigger).openMenu();
     fixture.detectChanges();
+    await fixture.whenStable();
 
-    const deleteButton = compiled.querySelector<HTMLButtonElement>(
-      '.session-summary-menu-panel [role="menuitem"]',
+    const deleteButton = document.querySelector<HTMLButtonElement>(
+      '.session-summary-delete-action'
     );
 
     if (!deleteButton) {
@@ -153,6 +226,12 @@ describe('SessionSummaryPage', () => {
     fixture.detectChanges();
   }
 });
+
+async function settleAsyncWork(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+}
 
 function dialogResult(confirmed: boolean): MatDialogRef<unknown, boolean> {
   return {

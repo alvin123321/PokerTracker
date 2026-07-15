@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(10);
+select plan(11);
 
 insert into auth.users (
   id,
@@ -43,21 +43,43 @@ values
     '{"username":"completed-session-player","display_name":"Registered Player","role":"PLAYER"}',
     now(),
     now()
+  ),
+  (
+    '38000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    'completed-session-manager@example.test',
+    '',
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    '{"username":"completed-session-manager","display_name":"Completed Session Manager","role":"MANAGER"}',
+    now(),
+    now()
   );
 
-insert into public.users (id, username, display_name, role)
+insert into public.users (id, username, display_name, role, manager_host_id)
 values
   (
     '30000000-0000-0000-0000-000000000001',
     'completed-session-host',
     'Completed Session Host',
-    'HOST'
+    'HOST',
+    null
   ),
   (
     '33000000-0000-0000-0000-000000000001',
     'completed-session-player',
     'Registered Player',
-    'PLAYER'
+    'PLAYER',
+    null
+  ),
+  (
+    '38000000-0000-0000-0000-000000000001',
+    'completed-session-manager',
+    'Completed Session Manager',
+    'MANAGER',
+    '30000000-0000-0000-0000-000000000001'
   );
 
 insert into public.players (id, user_id, host_id, name)
@@ -177,8 +199,21 @@ select set_config(
 select throws_ok(
   $$select public.delete_session('31000000-0000-0000-0000-000000000001'::uuid)$$,
   'P0001',
-  'Host or manager privileges required.',
+  'Host privileges required.',
   'registered player cannot delete a completed session'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"38000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+
+select throws_ok(
+  $$select public.delete_session('31000000-0000-0000-0000-000000000001'::uuid)$$,
+  'P0001',
+  'Host privileges required.',
+  'associated manager cannot delete a completed session'
 );
 
 select set_config(

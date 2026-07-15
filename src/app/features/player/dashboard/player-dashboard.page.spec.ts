@@ -82,7 +82,11 @@ describe('PlayerDashboardPage', () => {
     miniGameError = signal<string | null>(null);
     miniGameLoadHistory = jasmine
       .createSpy('loadHistory')
-      .and.callFake(async () => miniGameHistory());
+      .and.callFake(async () => ({
+        history: miniGameHistory(),
+        success: true,
+        current: true
+      }));
     const store = {
       sessions: sessions.asReadonly(),
       error: signal<string | null>(null),
@@ -167,6 +171,28 @@ describe('PlayerDashboardPage', () => {
     expect(headingRule?.style.fontWeight).toBe('400');
   });
 
+  it('loads joined mini-game history when the History tab is tapped from Home', async () => {
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+    miniGameLoadHistory.calls.reset();
+    miniGameLoadHistory.and.callFake(async () => {
+      const history = [makeMiniGame({ id: 'joined-from-home', viewerParticipantId: 'participant-1' })];
+      miniGameHistory.set(history);
+      return { history, success: true, current: true };
+    });
+
+    const historyButton = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.player-tab')
+    ).find((button) => button.textContent?.includes('History'));
+    historyButton?.click();
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(historyButton).toBeDefined();
+    expect(miniGameLoadHistory).toHaveBeenCalledTimes(1);
+    expect((fixture.nativeElement as HTMLElement).querySelector('[aria-label="Mini-game history"]')).not.toBeNull();
+  });
+
   it('hides unjoined mini-game history and requests a table history fallback', async () => {
     miniGameHistory.set([makeMiniGame({ viewerParticipantId: null })]);
     const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
@@ -186,7 +212,7 @@ describe('PlayerDashboardPage', () => {
       miniGameHistoryLoading.set(true);
       miniGameError.set('Unable to load mini-game history.');
       miniGameHistoryLoading.set(false);
-      return [];
+      return { history: [], success: false, current: true };
     });
     const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
 
@@ -207,11 +233,11 @@ describe('PlayerDashboardPage', () => {
       miniGameHistoryLoading.set(true);
       miniGameError.set(null);
 
-      return new Promise<MiniGameSnapshot[]>((resolve) => {
+      return new Promise((resolve) => {
         resolveHistory = (history) => {
           miniGameHistory.set(history);
           miniGameHistoryLoading.set(false);
-          resolve(history);
+          resolve({ history, success: true, current: true });
         };
       });
     });
@@ -228,6 +254,17 @@ describe('PlayerDashboardPage', () => {
     await Promise.resolve();
 
     expect(selectHistoryView).toHaveBeenCalledWith('tables');
+  });
+
+  it('does not fall back for an empty success from a stale history request', async () => {
+    miniGameHistoryLoading.set(true);
+    miniGameLoadHistory.and.resolveTo({ history: [], success: true, current: false });
+    const selectHistoryView = spyOn(fixture.componentInstance as any, 'selectHistoryView');
+
+    queryParamMap.next(convertToParamMap({ tab: 'history', view: 'mini-games' }));
+    await Promise.resolve();
+
+    expect(selectHistoryView).not.toHaveBeenCalled();
   });
 
   it('shows the mini-game history icon and passes only joined games to the list', async () => {
@@ -268,6 +305,26 @@ describe('PlayerDashboardPage', () => {
     fixture.detectChanges();
 
     expect(detailSectionOrder(fixture)).toEqual(['players', 'timeline']);
+  });
+
+  it('uses the shared detail-section wrapper and actual adjacency for section spacing', () => {
+    sessions.set([makeSession({ players: [makePlayer()] })]);
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    const sections = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[data-detail-section]')
+    );
+    const spacingRule = findStyleRuleContaining(
+      '.feature-detail-section',
+      '+',
+      '.feature-detail-heading'
+    );
+
+    expect(sections.length).toBe(2);
+    expect(sections.every((section) => section.classList.contains('feature-detail-section'))).toBeTrue();
+    expect(spacingRule).toBeDefined();
+    expect(spacingRule?.style.marginTop).toBe('0.82rem');
   });
 });
 

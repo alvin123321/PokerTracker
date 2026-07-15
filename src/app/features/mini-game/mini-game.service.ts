@@ -24,6 +24,12 @@ import {
   MiniGameSnapshot,
 } from './mini-game.models';
 
+export interface MiniGameHistoryLoadResult {
+  history: MiniGameSnapshot[];
+  success: boolean;
+  current: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MiniGameService implements OnDestroy {
   private readonly authState = inject(AuthStateService);
@@ -156,7 +162,7 @@ export class MiniGameService implements OnDestroy {
     }
   }
 
-  async loadHistory(): Promise<MiniGameSnapshot[]> {
+  async loadHistory(): Promise<MiniGameHistoryLoadResult> {
     const loadOrder = ++this.historyLoadOrder;
     this.historyRequested = true;
     this.historyLoadingSignal.set(true);
@@ -166,10 +172,11 @@ export class MiniGameService implements OnDestroy {
       if (!this.supabaseService.isConfigured) {
         const viewer = this.localViewer();
         const history = (await this.getLocalStore()).history(viewer);
-        if (loadOrder === this.historyLoadOrder) {
+        const current = loadOrder === this.historyLoadOrder;
+        if (current) {
           this.historySignal.set(history);
         }
-        return history;
+        return { history, success: true, current };
       }
 
       const { data, error } = await this.supabaseService
@@ -187,15 +194,21 @@ export class MiniGameService implements OnDestroy {
       const history = data
         .map((snapshot) => mapMiniGameSnapshot(snapshot))
         .filter((snapshot): snapshot is MiniGameSnapshot => snapshot !== null);
-      if (loadOrder === this.historyLoadOrder) {
+      const current = loadOrder === this.historyLoadOrder;
+      if (current) {
         this.historySignal.set(history);
       }
-      return history;
+      return { history, success: true, current };
     } catch (error) {
-      this.errorSignal.set(messageFromUnknownError(error, 'Unable to load mini-game history.'));
-      return [];
+      const current = loadOrder === this.historyLoadOrder;
+      if (current) {
+        this.errorSignal.set(messageFromUnknownError(error, 'Unable to load mini-game history.'));
+      }
+      return { history: [], success: false, current };
     } finally {
-      this.historyLoadingSignal.set(false);
+      if (loadOrder === this.historyLoadOrder) {
+        this.historyLoadingSignal.set(false);
+      }
     }
   }
 

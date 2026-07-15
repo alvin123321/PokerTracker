@@ -988,7 +988,11 @@ export class PokerStoreService implements OnDestroy {
       }
 
       this.updateSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
-      await this.refreshHostSessions();
+      try {
+        await this.refreshHostSessions();
+      } catch {
+        this.setError(null);
+      }
       return;
     }
 

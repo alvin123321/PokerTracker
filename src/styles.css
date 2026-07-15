@@ -2062,7 +2062,7 @@ h3 {
   font-weight: 720;
 }
 
-.feature-roster + .feature-detail-heading {
+.feature-detail-section + .feature-detail-section .feature-detail-heading {
   margin-top: 0.82rem;
 }
 
