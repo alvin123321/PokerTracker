@@ -3865,8 +3865,6 @@ h3 {
 .mini-game-menu .mat-mdc-menu-item {
   min-height: 2.8rem;
   color: rgb(226 232 240);
-  font-family: Aptos, Inter, ui-sans-serif, system-ui, sans-serif !important;
-  font-size: 0.75rem;
 }
 
 .mini-game-menu .mat-mdc-menu-item-text {
@@ -3874,6 +3872,8 @@ h3 {
   width: 100%;
   align-items: center;
   gap: 0.65rem;
+  font-family: Aptos, Inter, ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 0.75rem !important;
 }
 
 .mini-game-menu .mat-mdc-menu-item-text svg {

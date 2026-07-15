@@ -30,9 +30,11 @@ describe('MiniGamePanelComponent', () => {
 
     const item = document.querySelector<HTMLElement>('.mini-game-menu .mat-mdc-menu-item');
     const content = item?.querySelector<HTMLElement>('.mat-mdc-menu-item-text');
-    expect(getComputedStyle(item!).fontFamily).toContain('Aptos');
-    expect(getComputedStyle(content!).display).toBe('flex');
-    expect(getComputedStyle(content!).alignItems).toBe('center');
+    const contentStyles = getComputedStyle(content!);
+    expect(contentStyles.fontFamily).toContain('Aptos');
+    expect(contentStyles.fontSize).toBe('12px');
+    expect(contentStyles.display).toBe('flex');
+    expect(contentStyles.alignItems).toBe('center');
   });
 
   it('removes join positions, seat copy, and displayed equity from participant rows', () => {
