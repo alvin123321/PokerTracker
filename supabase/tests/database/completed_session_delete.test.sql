@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(7);
+select plan(10);
 
 insert into auth.users (
   id,
@@ -27,7 +27,7 @@ values
     '',
     now(),
     '{"provider":"email","providers":["email"]}',
-    '{"display_name":"Completed Session Host","role":"HOST"}',
+    '{"username":"completed-session-host","display_name":"Completed Session Host","role":"HOST"}',
     now(),
     now()
   ),
@@ -40,7 +40,7 @@ values
     '',
     now(),
     '{"provider":"email","providers":["email"]}',
-    '{"display_name":"Registered Player","role":"PLAYER"}',
+    '{"username":"completed-session-player","display_name":"Registered Player","role":"PLAYER"}',
     now(),
     now()
   );
@@ -170,6 +170,19 @@ values (
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
+  '{"sub":"33000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+
+select throws_ok(
+  $$select public.delete_session('31000000-0000-0000-0000-000000000001'::uuid)$$,
+  'P0001',
+  'Host or manager privileges required.',
+  'registered player cannot delete a completed session'
+);
+
+select set_config(
+  'request.jwt.claims',
   '{"sub":"30000000-0000-0000-0000-000000000001","role":"authenticated"}',
   true
 );
@@ -179,13 +192,16 @@ select lives_ok(
   'owning host can delete a completed session'
 );
 
+reset role;
+
 select is((select count(*) from public.sessions where id = '31000000-0000-0000-0000-000000000001'), 0::bigint, 'session removed');
 select is((select count(*) from public.session_tables where session_id = '31000000-0000-0000-0000-000000000001'), 0::bigint, 'tables removed');
 select is((select count(*) from public.session_players where session_id = '31000000-0000-0000-0000-000000000001'), 0::bigint, 'participation removed');
 select is((select count(*) from public.transactions where session_id = '31000000-0000-0000-0000-000000000001'), 0::bigint, 'transactions removed');
 select is((select count(*) from public.time_calls where session_id = '31000000-0000-0000-0000-000000000001'), 0::bigint, 'time calls removed');
 select is((select count(*) from public.players where id = '32000000-0000-0000-0000-000000000001'), 1::bigint, 'registered player retained');
+select is((select count(*) from public.users where id = '33000000-0000-0000-0000-000000000001' and role = 'PLAYER'), 1::bigint, 'registered player profile retained');
+select is((select count(*) from auth.users where id = '33000000-0000-0000-0000-000000000001'), 1::bigint, 'registered player auth account retained');
 
-reset role;
 select * from finish();
 rollback;
