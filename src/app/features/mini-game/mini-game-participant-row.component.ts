@@ -13,7 +13,6 @@ import { PlayingCardComponent } from './playing-card.component';
       [class.participant-row-winner]="winner()"
       [class.participant-row-viewer]="viewer()"
     >
-      <span class="participant-position">{{ participant().joinPosition }}</span>
       <span class="participant-avatar" aria-hidden="true">{{ initials() }}</span>
       <div class="participant-copy">
         <div class="participant-name-line">
@@ -27,8 +26,6 @@ import { PlayingCardComponent } from './playing-card.component';
         </div>
         @if (participant().equity?.finalHandLabel; as handLabel) {
           <small>{{ handLabel }}</small>
-        } @else {
-          <small>Seat {{ participant().joinPosition }}</small>
         }
       </div>
 
@@ -36,15 +33,6 @@ import { PlayingCardComponent } from './playing-card.component';
         @for (card of participant().cards; track card.position) {
           <app-playing-card [card]="card" size="hole" />
         }
-      </div>
-
-      <div class="participant-equity">
-        @if (participant().equity; as equity) {
-          <strong>{{ equity.percentage.toFixed(1) }}%</strong>
-        } @else {
-          <strong>--</strong>
-        }
-        <span>Equity</span>
       </div>
 
       @if (removable()) {
@@ -68,35 +56,28 @@ import { PlayingCardComponent } from './playing-card.component';
 
       .participant-row {
         display: grid;
-        grid-template-columns: 1rem 2.1rem minmax(0, 1fr) auto auto;
-        min-height: 4.25rem;
+        grid-template-columns: 2.1rem minmax(0, 1fr) auto auto;
+        min-height: 4.15rem;
         align-items: center;
-        gap: 0.48rem;
-        border: 1px solid rgb(255 255 255 / 0.075);
-        border-left: 2px solid rgb(148 163 184 / 0.34);
+        gap: 0.5rem;
+        border: 1px solid rgb(255 255 255 / 0.095);
         border-radius: 0.42rem;
-        background: rgb(255 255 255 / 0.035);
-        padding: 0.46rem 0.5rem;
+        background: rgb(255 255 255 / 0.04);
+        padding: 0.5rem 0.55rem;
+        box-shadow: 0 0.3rem 0.8rem rgb(0 0 0 / 0.12);
       }
 
       .participant-row-viewer {
-        border-left-color: rgb(52 211 153 / 0.8);
-        background: rgb(16 185 129 / 0.055);
+        border-color: rgb(52 211 153 / 0.34);
+        background: rgb(16 185 129 / 0.065);
       }
 
       .participant-row-winner {
-        border-color: rgb(251 191 36 / 0.38);
-        border-left-color: rgb(251 191 36);
-        background: rgb(245 158 11 / 0.09);
-        box-shadow: inset 0 0 1.2rem rgb(245 158 11 / 0.055);
-      }
-
-      .participant-position {
-        color: rgb(255 255 255 / 0.3);
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 0.64rem;
-        font-weight: 800;
-        text-align: center;
+        border-color: rgb(251 191 36 / 0.48);
+        background: rgb(245 158 11 / 0.105);
+        box-shadow:
+          inset 0 0 1.3rem rgb(245 158 11 / 0.06),
+          0 0.32rem 0.9rem rgb(0 0 0 / 0.16);
       }
 
       .participant-avatar {
@@ -104,12 +85,17 @@ import { PlayingCardComponent } from './playing-card.component';
         width: 2.1rem;
         height: 2.1rem;
         place-items: center;
-        border: 1px solid rgb(255 255 255 / 0.12);
+        border: 1px solid rgb(255 255 255 / 0.13);
         border-radius: 9999px;
         background: rgb(15 23 42 / 0.9);
         color: rgb(226 232 240);
         font-size: 0.68rem;
         font-weight: 850;
+      }
+
+      .participant-row-winner .participant-avatar {
+        border-color: rgb(251 191 36 / 0.5);
+        color: rgb(253 230 138);
       }
 
       .participant-copy {
@@ -150,8 +136,8 @@ import { PlayingCardComponent } from './playing-card.component';
       .participant-copy small {
         display: block;
         overflow: hidden;
-        margin-top: 0.18rem;
-        color: rgb(148 163 184);
+        margin-top: 0.2rem;
+        color: rgb(253 230 138);
         font-size: 0.62rem;
         line-height: 1.15;
         text-overflow: ellipsis;
@@ -160,32 +146,7 @@ import { PlayingCardComponent } from './playing-card.component';
 
       .participant-cards {
         display: flex;
-        gap: 0.2rem;
-      }
-
-      .participant-equity {
-        display: grid;
-        min-width: 3.45rem;
-        justify-items: end;
-      }
-
-      .participant-equity strong {
-        color: rgb(167 243 208);
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 0.82rem;
-        line-height: 1;
-      }
-
-      .participant-row-winner .participant-equity strong {
-        color: rgb(253 230 138);
-      }
-
-      .participant-equity span {
-        margin-top: 0.18rem;
-        color: rgb(255 255 255 / 0.34);
-        font-size: 0.52rem;
-        font-weight: 700;
-        text-transform: uppercase;
+        gap: 0.22rem;
       }
 
       .participant-remove {
@@ -206,18 +167,15 @@ import { PlayingCardComponent } from './playing-card.component';
 
       @media (max-width: 370px) {
         .participant-row {
-          grid-template-columns: 0.8rem 1.85rem minmax(0, 1fr) auto auto;
-          gap: 0.35rem;
-          padding-inline: 0.38rem;
+          grid-template-columns: 1.85rem minmax(0, 1fr) auto auto;
+          gap: 0.36rem;
+          padding-inline: 0.4rem;
         }
 
         .participant-avatar {
           width: 1.85rem;
           height: 1.85rem;
-        }
-
-        .participant-equity {
-          min-width: 3.1rem;
+          font-size: 0.61rem;
         }
       }
     `,

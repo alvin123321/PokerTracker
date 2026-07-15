@@ -1,13 +1,13 @@
 import { Component, computed, input } from '@angular/core';
-import { LucideLoaderCircle, LucideRadio } from '@lucide/angular';
+import { LucideRadio } from '@lucide/angular';
 
-import { isMiniGameEquityFresh, miniGameBoardSlots } from './mini-game.logic';
+import { miniGameBoardSlots } from './mini-game.logic';
 import { MiniGameSnapshot } from './mini-game.models';
 import { PlayingCardComponent } from './playing-card.component';
 
 @Component({
   selector: 'app-mini-game-board',
-  imports: [LucideLoaderCircle, LucideRadio, PlayingCardComponent],
+  imports: [LucideRadio, PlayingCardComponent],
   template: `
     <section class="mini-board" aria-label="Community cards">
       <div class="mini-board-heading">
@@ -15,14 +15,6 @@ import { PlayingCardComponent } from './playing-card.component';
           <svg lucideRadio [strokeWidth]="2.2" aria-hidden="true"></svg>
           {{ streetLabel() }}
         </span>
-        @if (!equityFresh() && snapshot().participants.length > 0) {
-          <span class="mini-board-calculating" role="status">
-            <svg lucideLoaderCircle [strokeWidth]="2" aria-hidden="true"></svg>
-            Calculating odds
-          </span>
-        } @else {
-          <span class="mini-board-equity">Exact equity</span>
-        }
       </div>
 
       <div class="mini-board-cards">
@@ -79,9 +71,7 @@ import { PlayingCardComponent } from './playing-card.component';
         gap: 0.65rem;
       }
 
-      .mini-board-live,
-      .mini-board-calculating,
-      .mini-board-equity {
+      .mini-board-live {
         display: inline-flex;
         align-items: center;
         gap: 0.32rem;
@@ -92,24 +82,9 @@ import { PlayingCardComponent } from './playing-card.component';
         text-transform: uppercase;
       }
 
-      .mini-board-live svg,
-      .mini-board-calculating svg {
+      .mini-board-live svg {
         width: 0.78rem;
         height: 0.78rem;
-      }
-
-      .mini-board-calculating {
-        color: rgb(253 230 138);
-        text-transform: none;
-      }
-
-      .mini-board-calculating svg {
-        animation: mini-board-spin 800ms linear infinite;
-      }
-
-      .mini-board-equity {
-        color: rgb(255 255 255 / 0.44);
-        font-weight: 650;
       }
 
       .mini-board-cards {
@@ -132,25 +107,12 @@ import { PlayingCardComponent } from './playing-card.component';
         font-weight: 700;
         text-align: center;
       }
-
-      @keyframes mini-board-spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .mini-board-calculating svg {
-          animation: none;
-        }
-      }
     `,
   ],
 })
 export class MiniGameBoardComponent {
   readonly snapshot = input.required<MiniGameSnapshot>();
   protected readonly slots = computed(() => miniGameBoardSlots(this.snapshot()));
-  protected readonly equityFresh = computed(() => isMiniGameEquityFresh(this.snapshot()));
   protected readonly streetLabel = computed(() => {
     const labels: Record<MiniGameSnapshot['status'], string> = {
       OPEN: 'Waiting room',

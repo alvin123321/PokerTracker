@@ -1,7 +1,11 @@
 import { Component, computed, input, output } from '@angular/core';
+import { MatMenuModule } from '@angular/material/menu';
 import {
   LucideChevronRight,
+  LucideCircleCheck,
+  LucideEllipsis,
   LucideEye,
+  LucideLoaderCircle,
   LucidePencil,
   LucidePlay,
   LucideRotateCcw,
@@ -12,19 +16,23 @@ import {
 
 import { MiniGameBoardComponent } from './mini-game-board.component';
 import { MiniGameParticipantRowComponent } from './mini-game-participant-row.component';
-import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
+import { MiniGameActionName, MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
 
 @Component({
   selector: 'app-mini-game-panel',
   imports: [
     LucideChevronRight,
+    LucideCircleCheck,
+    LucideEllipsis,
     LucideEye,
+    LucideLoaderCircle,
     LucidePencil,
     LucidePlay,
     LucideRotateCcw,
     LucideTrash2,
     LucideUserPlus,
     LucideUsersRound,
+    MatMenuModule,
     MiniGameBoardComponent,
     MiniGameParticipantRowComponent,
   ],
@@ -40,7 +48,57 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
             <span aria-hidden="true"></span>
             {{ statusLabel() }}
           </span>
-          @if (showDetailButton()) {
+
+          @if (canManage() && !readOnly()) {
+            <button
+              type="button"
+              class="mini-icon-button mini-overflow-button"
+              [matMenuTriggerFor]="gameMenu"
+              aria-label="Open mini-game controls"
+              title="Game controls"
+            >
+              <svg lucideEllipsis [strokeWidth]="2.2" aria-hidden="true"></svg>
+            </button>
+            <mat-menu #gameMenu="matMenu" class="mini-game-menu" xPosition="before">
+              <button
+                type="button"
+                mat-menu-item
+                [disabled]="!showDetailButton()"
+                (click)="openDetail.emit()"
+              >
+                <svg lucideEye [strokeWidth]="2" aria-hidden="true"></svg>
+                <span>Open game</span>
+              </button>
+              <button
+                type="button"
+                mat-menu-item
+                [disabled]="snapshot().status !== 'OPEN' || busy()"
+                (click)="edit.emit()"
+              >
+                <svg lucidePencil [strokeWidth]="2" aria-hidden="true"></svg>
+                <span>Edit game</span>
+              </button>
+              <button
+                type="button"
+                mat-menu-item
+                [disabled]="snapshot().status !== 'OPEN' || busy()"
+                (click)="reshuffle.emit()"
+              >
+                <svg lucideRotateCcw [strokeWidth]="2" aria-hidden="true"></svg>
+                <span>Reshuffle cards</span>
+              </button>
+              <button
+                type="button"
+                mat-menu-item
+                class="mini-menu-danger"
+                [disabled]="!deletable() || busy()"
+                (click)="deleteGame.emit()"
+              >
+                <svg lucideTrash2 [strokeWidth]="2" aria-hidden="true"></svg>
+                <span>Delete game</span>
+              </button>
+            </mat-menu>
+          } @else if (showDetailButton()) {
             <button
               type="button"
               class="mini-icon-button"
@@ -57,11 +115,29 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
       <app-mini-game-board [snapshot]="snapshot()" />
 
       @if (!readOnly()) {
-        <div class="mini-game-actions">
+        <div
+          class="mini-game-actions"
+          [class.mini-game-actions-complete]="snapshot().status === 'COMPLETE'"
+        >
           @if (canJoin()) {
-            <button type="button" class="mini-primary-action" (click)="join.emit()">
-              <svg lucideUserPlus [strokeWidth]="2.2" aria-hidden="true"></svg>
-              Join game
+            <button
+              type="button"
+              class="mini-primary-action"
+              [disabled]="busy()"
+              (click)="join.emit()"
+            >
+              @if (activeAction() === 'join') {
+                <svg
+                  class="mini-action-spinner"
+                  lucideLoaderCircle
+                  [strokeWidth]="2.2"
+                  aria-hidden="true"
+                ></svg>
+                Dealing cards...
+              } @else {
+                <svg lucideUserPlus [strokeWidth]="2.2" aria-hidden="true"></svg>
+                Join game
+              }
             </button>
           } @else if (snapshot().viewerParticipantId && snapshot().status === 'OPEN') {
             <span class="mini-joined-state">Your cards are live</span>
@@ -76,57 +152,81 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
                   [disabled]="snapshot().activePlayerCount < snapshot().minPlayers || busy()"
                   (click)="start.emit()"
                 >
-                  <svg lucidePlay [strokeWidth]="2.2" aria-hidden="true"></svg>
-                  Start game
+                  @if (activeAction() === 'start') {
+                    <svg
+                      class="mini-action-spinner"
+                      lucideLoaderCircle
+                      [strokeWidth]="2.2"
+                      aria-hidden="true"
+                    ></svg>
+                    Dealing flop...
+                  } @else {
+                    <svg lucidePlay [strokeWidth]="2.2" aria-hidden="true"></svg>
+                    Start game
+                  }
                 </button>
-                <div class="mini-tool-row" aria-label="Open game controls">
-                  <button
-                    type="button"
-                    title="Edit game"
-                    aria-label="Edit game"
-                    (click)="edit.emit()"
-                  >
-                    <svg lucidePencil [strokeWidth]="2" aria-hidden="true"></svg>
-                  </button>
-                  <button
-                    type="button"
-                    title="Reshuffle cards"
-                    aria-label="Reshuffle cards"
-                    (click)="reshuffle.emit()"
-                  >
-                    <svg lucideRotateCcw [strokeWidth]="2" aria-hidden="true"></svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="mini-tool-danger"
-                    title="Delete game"
-                    aria-label="Delete game"
-                    (click)="deleteGame.emit()"
-                  >
-                    <svg lucideTrash2 [strokeWidth]="2" aria-hidden="true"></svg>
-                  </button>
-                </div>
               }
               @case ('FLOP') {
-                <button type="button" class="mini-primary-action" (click)="revealTurn.emit()">
-                  Deal turn
-                  <svg lucideChevronRight [strokeWidth]="2.2" aria-hidden="true"></svg>
+                <button
+                  type="button"
+                  class="mini-primary-action"
+                  [disabled]="busy()"
+                  (click)="revealTurn.emit()"
+                >
+                  @if (activeAction() === 'reveal-turn') {
+                    <svg
+                      class="mini-action-spinner"
+                      lucideLoaderCircle
+                      [strokeWidth]="2.2"
+                      aria-hidden="true"
+                    ></svg>
+                    Dealing turn...
+                  } @else {
+                    Deal turn
+                    <svg lucideChevronRight [strokeWidth]="2.2" aria-hidden="true"></svg>
+                  }
                 </button>
               }
               @case ('TURN') {
-                <button type="button" class="mini-river-action" (click)="revealRiver.emit()">
-                  Deal river
-                  <svg lucideChevronRight [strokeWidth]="2.2" aria-hidden="true"></svg>
+                <button
+                  type="button"
+                  class="mini-river-action"
+                  [disabled]="busy()"
+                  (click)="revealRiver.emit()"
+                >
+                  @if (activeAction() === 'reveal-river') {
+                    <svg
+                      class="mini-action-spinner"
+                      lucideLoaderCircle
+                      [strokeWidth]="2.2"
+                      aria-hidden="true"
+                    ></svg>
+                    Dealing river...
+                  } @else {
+                    Deal river
+                    <svg lucideChevronRight [strokeWidth]="2.2" aria-hidden="true"></svg>
+                  }
                 </button>
               }
               @case ('COMPLETE') {
                 <button
                   type="button"
-                  class="mini-secondary-action mini-secondary-danger"
-                  (click)="deleteGame.emit()"
+                  class="mini-complete-action"
+                  [disabled]="!winnerReady() || busy()"
+                  (click)="completeGame.emit()"
                 >
-                  <svg lucideTrash2 [strokeWidth]="2" aria-hidden="true"></svg>
-                  Delete result
+                  @if (activeAction() === 'archive') {
+                    <svg
+                      class="mini-action-spinner"
+                      lucideLoaderCircle
+                      [strokeWidth]="2.2"
+                      aria-hidden="true"
+                    ></svg>
+                    Completing...
+                  } @else {
+                    <svg lucideCircleCheck [strokeWidth]="2.2" aria-hidden="true"></svg>
+                    Complete mini-game
+                  }
                 </button>
               }
             }
@@ -148,7 +248,7 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
             [participant]="participant"
             [winner]="isWinner(participant)"
             [viewer]="participant.id === snapshot().viewerParticipantId"
-            [removable]="canManage() && snapshot().status === 'OPEN' && !readOnly()"
+            [removable]="canManage() && snapshot().status === 'OPEN' && !readOnly() && !busy()"
             (remove)="removePlayer.emit($event)"
           />
         } @empty {
@@ -182,7 +282,7 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
       }
 
       .mini-game-complete {
-        border-color: rgb(251 191 36 / 0.25);
+        border-color: rgb(251 191 36 / 0.28);
       }
 
       .mini-game-header {
@@ -190,7 +290,7 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
         min-height: 4.2rem;
         align-items: center;
         justify-content: space-between;
-        gap: 0.75rem;
+        gap: 0.65rem;
         padding: 0.75rem;
       }
 
@@ -260,8 +360,7 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
         box-shadow: 0 0 0.62rem rgb(251 191 36 / 0.72);
       }
 
-      .mini-icon-button,
-      .mini-tool-row button {
+      .mini-icon-button {
         display: grid;
         width: 2.2rem;
         height: 2.2rem;
@@ -272,25 +371,28 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
         color: rgb(203 213 225);
       }
 
-      .mini-icon-button svg,
-      .mini-tool-row svg {
-        width: 0.95rem;
-        height: 0.95rem;
+      .mini-icon-button svg {
+        width: 0.98rem;
+        height: 0.98rem;
       }
 
       .mini-game-actions {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
         gap: 0.5rem;
         padding: 0.65rem 0.75rem 0;
       }
 
+      .mini-game-actions-complete {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
       .mini-primary-action,
       .mini-river-action,
-      .mini-secondary-action,
+      .mini-complete-action,
       .mini-joined-state {
         display: inline-flex;
-        min-height: 2.65rem;
+        min-height: 2.72rem;
         align-items: center;
         justify-content: center;
         gap: 0.48rem;
@@ -306,43 +408,41 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
         color: rgb(3 18 14);
       }
 
-      .mini-primary-action:disabled {
-        cursor: not-allowed;
-        opacity: 0.38;
-      }
-
       .mini-river-action {
         background: rgb(251 191 36);
         color: rgb(31 20 3);
       }
 
-      .mini-secondary-action,
+      .mini-complete-action {
+        width: 100%;
+        border: 1px solid rgb(251 191 36 / 0.45);
+        background: rgb(245 158 11 / 0.14);
+        color: rgb(253 230 138);
+      }
+
       .mini-joined-state {
         border: 1px solid rgb(255 255 255 / 0.1);
         background: rgb(255 255 255 / 0.045);
         color: rgb(203 213 225);
       }
 
-      .mini-secondary-danger {
-        border-color: rgb(248 113 113 / 0.2);
-        color: rgb(252 165 165);
+      .mini-primary-action:disabled,
+      .mini-river-action:disabled,
+      .mini-complete-action:disabled {
+        cursor: not-allowed;
+        opacity: 0.42;
       }
 
       .mini-primary-action svg,
       .mini-river-action svg,
-      .mini-secondary-action svg {
+      .mini-complete-action svg {
         width: 0.98rem;
         height: 0.98rem;
+        flex: 0 0 auto;
       }
 
-      .mini-tool-row {
-        display: flex;
-        gap: 0.38rem;
-      }
-
-      .mini-tool-row .mini-tool-danger {
-        border-color: rgb(248 113 113 / 0.2);
-        color: rgb(252 165 165);
+      .mini-action-spinner {
+        animation: mini-action-spin 780ms linear infinite;
       }
 
       .mini-game-roster-heading {
@@ -375,7 +475,7 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
 
       .mini-game-roster {
         display: grid;
-        gap: 0.42rem;
+        gap: 0.5rem;
         padding-inline: 0.75rem;
       }
 
@@ -406,16 +506,16 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
         text-transform: uppercase;
       }
 
+      @keyframes mini-action-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
       @media (max-width: 370px) {
-        .mini-game-header {
-          padding-inline: 0.62rem;
-        }
-
+        .mini-game-header,
         .mini-game-actions,
-        .mini-game-roster {
-          padding-inline: 0.62rem;
-        }
-
+        .mini-game-roster,
         .mini-game-roster-heading,
         .mini-game-footer {
           padding-inline: 0.62rem;
@@ -423,6 +523,12 @@ import { MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
 
         .mini-game-status {
           display: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .mini-action-spinner {
+          animation: none;
         }
       }
     `,
@@ -433,23 +539,33 @@ export class MiniGamePanelComponent {
   readonly canManage = input(false);
   readonly readOnly = input(false);
   readonly showDetailButton = input(true);
-  readonly busy = input(false);
+  readonly activeAction = input<MiniGameActionName | null>(null);
   readonly join = output<void>();
   readonly edit = output<void>();
   readonly reshuffle = output<void>();
   readonly start = output<void>();
   readonly revealTurn = output<void>();
   readonly revealRiver = output<void>();
+  readonly completeGame = output<void>();
   readonly deleteGame = output<void>();
   readonly removePlayer = output<MiniGameParticipant>();
   readonly openDetail = output<void>();
+  protected readonly busy = computed(() => this.activeAction() !== null);
   protected readonly canJoin = computed(
     () =>
       !this.readOnly() &&
       this.snapshot().status === 'OPEN' &&
       !this.snapshot().viewerParticipantId &&
-      this.snapshot().activePlayerCount < this.snapshot().maxPlayers &&
-      !this.busy(),
+      this.snapshot().activePlayerCount < this.snapshot().maxPlayers,
+  );
+  protected readonly deletable = computed(() =>
+    ['OPEN', 'COMPLETE'].includes(this.snapshot().status),
+  );
+  protected readonly winnerReady = computed(
+    () =>
+      this.snapshot().equityStatus === 'READY' &&
+      this.snapshot().equityVersion === this.snapshot().stateVersion &&
+      this.snapshot().winnerParticipantIds.length > 0,
   );
   protected readonly statusLabel = computed(() => {
     const labels: Record<MiniGameSnapshot['status'], string> = {

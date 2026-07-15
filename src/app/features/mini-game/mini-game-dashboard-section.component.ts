@@ -43,13 +43,14 @@ interface MiniGameFeedback {
       <app-mini-game-panel
         [snapshot]="snapshot"
         [canManage]="miniGame.canManage()"
-        [busy]="miniGame.action() !== null"
+        [activeAction]="miniGame.action()"
         (join)="join(snapshot)"
         (edit)="edit(snapshot)"
         (reshuffle)="confirmReshuffle(snapshot)"
         (start)="start(snapshot)"
         (revealTurn)="revealTurn(snapshot)"
         (revealRiver)="revealRiver(snapshot)"
+        (completeGame)="complete(snapshot)"
         (deleteGame)="confirmDelete(snapshot)"
         (removePlayer)="confirmRemove(snapshot, $event)"
         (openDetail)="openDetail(snapshot)"
@@ -250,6 +251,13 @@ export class MiniGameDashboardSectionComponent implements OnDestroy {
 
   protected revealRiver(snapshot: MiniGameSnapshot): void {
     void this.runAction(() => this.miniGame.revealRiver(snapshot.id), 'River revealed.');
+  }
+
+  protected complete(snapshot: MiniGameSnapshot): void {
+    void this.runAction(
+      () => this.miniGame.archive(snapshot.id),
+      'Mini-game completed and saved to history.',
+    );
   }
 
   protected confirmReshuffle(snapshot: MiniGameSnapshot): void {
