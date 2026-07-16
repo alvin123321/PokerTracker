@@ -15,7 +15,11 @@ import {
   type MiniGameHistoryLoadResult,
   MiniGameService
 } from '../../mini-game/mini-game.service';
-import type { PokerSession, SessionPlayer } from '../../host/data/poker-store.service';
+import type {
+  PlayerActiveTable,
+  PokerSession,
+  SessionPlayer
+} from '../../host/data/poker-store.service';
 import { PokerStoreService } from '../../host/data/poker-store.service';
 import { PlayerDashboardPage } from './player-dashboard.page';
 
@@ -68,6 +72,7 @@ describe('PlayerDashboardPage', () => {
   let fixture: ComponentFixture<PlayerDashboardPage>;
   let queryParamMap: BehaviorSubject<ParamMap>;
   let sessions: WritableSignal<PokerSession[]>;
+  let playerActiveTables: WritableSignal<PlayerActiveTable[]>;
   let miniGameHistory: WritableSignal<MiniGameSnapshot[]>;
   let miniGameHistoryLoading: WritableSignal<boolean>;
   let miniGameError: WritableSignal<string | null>;
@@ -81,6 +86,7 @@ describe('PlayerDashboardPage', () => {
       user: signal({ id: 'player-1' })
     };
     sessions = signal<PokerSession[]>([]);
+    playerActiveTables = signal<PlayerActiveTable[]>([]);
     miniGameHistory = signal<MiniGameSnapshot[]>([]);
     miniGameHistoryLoading = signal(false);
     miniGameError = signal<string | null>(null);
@@ -96,6 +102,7 @@ describe('PlayerDashboardPage', () => {
       .and.callFake(() => miniGameLoadHistory());
     const store = {
       sessions: sessions.asReadonly(),
+      playerActiveTables: playerActiveTables.asReadonly(),
       error: signal<string | null>(null),
       refreshSessions: jasmine.createSpy('refreshSessions').and.resolveTo(),
       activeTimeCallForSession: () => undefined,
@@ -358,6 +365,34 @@ describe('PlayerDashboardPage', () => {
     expect(detailSectionOrder(fixture)).toEqual(['timeline', 'players']);
   });
 
+  it('shows unseated active tables before completed history and restores history when the directory clears', () => {
+    playerActiveTables.set([makeActiveTable()]);
+    sessions.set([makeSession({ status: 'COMPLETED', players: [makePlayer({ status: 'COMPLETED' })] })]);
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.player-active-table-card')).not.toBeNull();
+    expect(compiled.querySelector('.player-active-table-name')?.textContent).toContain('Main Table');
+    expect(compiled.querySelector('.player-feature-card-completed')).toBeNull();
+
+    playerActiveTables.set([]);
+    fixture.detectChanges();
+
+    expect(compiled.querySelector('.player-feature-card-completed')).not.toBeNull();
+
+    playerActiveTables.set([makeActiveTable()]);
+    sessions.set([
+      makeSession({
+        players: [makePlayer({ tableId: 'table-a' })]
+      })
+    ]);
+    fixture.detectChanges();
+
+    expect(compiled.querySelector('.player-active-table-card')).toBeNull();
+    expect(compiled.querySelector('.player-feature-card-active')).not.toBeNull();
+  });
+
   it('keeps active game details with players before the timeline', () => {
     sessions.set([makeSession({ players: [makePlayer()] })]);
 
@@ -464,6 +499,20 @@ function makePlayer(overrides: Partial<SessionPlayer> = {}): SessionPlayer {
     net: 0,
     joinedAt: '2026-07-08T01:00:00.000Z',
     completedAt: null,
+    ...overrides
+  };
+}
+
+function makeActiveTable(overrides: Partial<PlayerActiveTable> = {}): PlayerActiveTable {
+  return {
+    sessionId: 'session-a',
+    sessionName: 'July 8 Game',
+    sessionDate: '2026-07-08',
+    sessionCreatedAt: '2026-07-08T01:00:00.000Z',
+    tableId: 'table-a',
+    tableName: 'Main Table',
+    tableNumber: 1,
+    tableCreatedAt: '2026-07-08T01:00:00.000Z',
     ...overrides
   };
 }

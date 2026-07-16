@@ -52,10 +52,12 @@ import {
   playerPublicTableRoster,
   playerPublicTableStats,
   shouldPollPlayerCallTime,
+  unseatedPlayerActiveTables,
   PlayerCallTimeDisplayState,
   PlayerGameStatMode,
   PlayerGameStatusKind
 } from './player-dashboard.logic';
+import { PlayerActiveTableCardComponent } from './player-active-table-card.component';
 
 type PlayerDashboardTab = 'overview' | 'sessions' | 'calculator' | 'chat';
 
@@ -90,6 +92,7 @@ const playerCallTimeSyncIntervalMs = 1000;
     MiniGameDashboardSectionComponent,
     MiniGameHistoryListComponent,
     MiniGameHistoryToggleComponent,
+    PlayerActiveTableCardComponent,
     PotCalculatorPage,
     GlobalChatPage
   ],
@@ -162,10 +165,15 @@ const playerCallTimeSyncIntervalMs = 1000;
         @switch (activeTab()) {
           @case ('overview') {
             <section class="player-view player-view-overview">
+              @for (table of unseatedActiveTables(); track table.tableId) {
+                <app-player-active-table-card [table]="table" />
+              }
+
               @if (featuredEntry(); as entry) {
                 <article
                   class="player-feature-card player-feature-card-open"
                   [class.player-feature-card-active]="entry.player.status === 'ACTIVE'"
+                  [class.player-feature-card-completed]="gameStatusKind(entry) === 'COMPLETED'"
                   [class.player-feature-card-time-starting]="store.isTimeCallStarting(store.activeTimeCallForSession(entry.session))"
                   [class.player-feature-card-time-running]="store.activeTimeCallForSession(entry.session) && !store.isTimeCallStarting(store.activeTimeCallForSession(entry.session))"
                   aria-expanded="true"
@@ -380,7 +388,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                     </div>
                   </div>
                 </article>
-              } @else {
+              } @else if (!hasLiveTables()) {
                 <article class="player-empty-card">
                   <h2>No sessions yet</h2>
                   <p>Ask the host to add your login before play starts.</p>
@@ -1458,7 +1466,18 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   protected readonly activeEntries = computed(() =>
     this.entries().filter((entry) => entry.player.status === 'ACTIVE')
   );
-  protected readonly featuredEntry = computed(() => this.activeEntries()[0] ?? this.entries()[0] ?? null);
+  protected readonly seatedActiveTableIds = computed(
+    () => new Set(this.activeEntries().map((entry) => entry.player.tableId).filter(Boolean) as string[])
+  );
+  protected readonly unseatedActiveTables = computed(() =>
+    unseatedPlayerActiveTables(this.store.playerActiveTables(), this.seatedActiveTableIds())
+  );
+  protected readonly hasLiveTables = computed(
+    () => this.activeEntries().length > 0 || this.unseatedActiveTables().length > 0
+  );
+  protected readonly featuredEntry = computed(
+    () => this.activeEntries()[0] ?? (this.hasLiveTables() ? null : this.entries()[0] ?? null)
+  );
   async ngOnInit(): Promise<void> {
     this.routeTabSubscription = this.route.queryParamMap.subscribe((queryParams) => {
       this.applyRouteTab(queryParams.get('tab'));
