@@ -82,6 +82,65 @@ describe('PokerStoreService player active tables', () => {
     expect(store.playerActiveTables()).toEqual([activeTable()]);
   });
 
+  it('keeps the newest same-player directory response when requests resolve newest-first', async () => {
+    const store = TestBed.inject(PokerStoreService);
+    const olderRefresh = store.refreshSessions();
+    await flushAsyncWork();
+    const newerRefresh = store.refreshSessions();
+    await flushAsyncWork();
+
+    expect(activeTableRequests).toHaveSize(2);
+
+    activeTableRequests[1].resolve(
+      activeTableResult({ tableId: 'table-new', tableName: 'Newest Table' })
+    );
+    await newerRefresh;
+    expect(store.playerActiveTables()).toEqual([
+      activeTable({ tableId: 'table-new', tableName: 'Newest Table' })
+    ]);
+
+    activeTableRequests[0].resolve(
+      activeTableResult({ tableId: 'table-old', tableName: 'Older Table' })
+    );
+    await olderRefresh;
+
+    expect(store.playerActiveTables()).toEqual([
+      activeTable({ tableId: 'table-new', tableName: 'Newest Table' })
+    ]);
+  });
+
+  it('immediately clears a populated directory when switching player accounts', async () => {
+    const store = TestBed.inject(PokerStoreService);
+    const refresh = store.refreshSessions();
+    await flushAsyncWork();
+
+    activeTableRequests[0].resolve(activeTableResult());
+    await refresh;
+    expect(store.playerActiveTables()).toEqual([activeTable()]);
+
+    user.set({ id: 'player-b' });
+    TestBed.flushEffects();
+
+    expect(store.playerActiveTables()).toEqual([]);
+  });
+
+  it('preserves the last confirmed directory when a same-player refresh fails', async () => {
+    const store = TestBed.inject(PokerStoreService);
+    const successfulRefresh = store.refreshSessions();
+    await flushAsyncWork();
+    activeTableRequests[0].resolve(activeTableResult());
+    await successfulRefresh;
+
+    const failure = new Error('Directory refresh failed');
+    const failedRefresh = store.refreshSessions();
+    await flushAsyncWork();
+    activeTableRequests[1].resolve({ data: null, error: failure });
+
+    await expectAsync(failedRefresh).toBeRejectedWith(failure);
+    expect(store.playerActiveTables()).toEqual([activeTable()]);
+    expect(store.error()).toBe('Directory refresh failed');
+  });
+
   it('does not apply a pending directory response after sign-out', async () => {
     const store = TestBed.inject(PokerStoreService);
     const refresh = store.refreshSessions();
@@ -265,7 +324,12 @@ async function flushAsyncWork(): Promise<void> {
   }
 }
 
-function activeTableResult(): SupabaseResult {
+interface ActiveTableOverrides {
+  tableId?: string;
+  tableName?: string;
+}
+
+function activeTableResult(overrides: ActiveTableOverrides = {}): SupabaseResult {
   return {
     data: [
       {
@@ -273,8 +337,8 @@ function activeTableResult(): SupabaseResult {
         session_name: 'Friday Game',
         session_date: '2026-07-15',
         session_created_at: '2026-07-15T20:00:00.000Z',
-        table_id: 'table-a',
-        table_name: 'Main Table',
+        table_id: overrides.tableId ?? 'table-a',
+        table_name: overrides.tableName ?? 'Main Table',
         table_number: 1,
         table_created_at: '2026-07-15T20:01:00.000Z'
       }
@@ -283,14 +347,14 @@ function activeTableResult(): SupabaseResult {
   };
 }
 
-function activeTable() {
+function activeTable(overrides: ActiveTableOverrides = {}) {
   return {
     sessionId: 'session-a',
     sessionName: 'Friday Game',
     sessionDate: '2026-07-15',
     sessionCreatedAt: '2026-07-15T20:00:00.000Z',
-    tableId: 'table-a',
-    tableName: 'Main Table',
+    tableId: overrides.tableId ?? 'table-a',
+    tableName: overrides.tableName ?? 'Main Table',
     tableNumber: 1,
     tableCreatedAt: '2026-07-15T20:01:00.000Z'
   };

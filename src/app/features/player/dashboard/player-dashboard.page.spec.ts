@@ -393,6 +393,78 @@ describe('PlayerDashboardPage', () => {
     expect(compiled.querySelector('.player-feature-card-active')).not.toBeNull();
   });
 
+  it('renders every seated active table as a detailed card', () => {
+    sessions.set([
+      makeSession({
+        id: 'session-new',
+        name: 'Newest Seated Game',
+        players: [
+          makePlayer({
+            id: 'seat-new',
+            tableId: 'table-new',
+            joinedAt: '2026-07-08T03:00:00.000Z'
+          })
+        ]
+      }),
+      makeSession({
+        id: 'session-old',
+        name: 'Older Seated Game',
+        players: [
+          makePlayer({
+            id: 'seat-old',
+            tableId: 'table-old',
+            joinedAt: '2026-07-08T02:00:00.000Z'
+          })
+        ]
+      })
+    ]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    const cardTitles = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+        '.player-feature-card-active h2'
+      )
+    ).map((heading) => heading.textContent?.trim());
+
+    expect(cardTitles).toEqual(['Newest Seated Game', 'Older Seated Game']);
+  });
+
+  it('renders seated detailed cards before every unseated active-table card', () => {
+    sessions.set([
+      makeSession({
+        id: 'session-seated',
+        name: 'Seated Game',
+        players: [makePlayer({ tableId: 'table-seated' })]
+      })
+    ]);
+    playerActiveTables.set([
+      makeActiveTable({ tableId: 'table-unseated-1', tableName: 'Unseated One' }),
+      makeActiveTable({ tableId: 'table-seated', tableName: 'Seated Table' }),
+      makeActiveTable({
+        tableId: 'table-unseated-2',
+        tableName: 'Unseated Two',
+        tableNumber: 2
+      })
+    ]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    const liveCards = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+        '.player-feature-card-active, .player-active-table-card'
+      )
+    );
+
+    expect(liveCards.map((card) => card.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      jasmine.stringContaining('Seated Game'),
+      jasmine.stringContaining('Unseated One'),
+      jasmine.stringContaining('Unseated Two')
+    ]);
+  });
+
   it('keeps active game details with players before the timeline', () => {
     sessions.set([makeSession({ players: [makePlayer()] })]);
 

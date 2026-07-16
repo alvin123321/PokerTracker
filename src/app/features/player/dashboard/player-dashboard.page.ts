@@ -165,11 +165,7 @@ const playerCallTimeSyncIntervalMs = 1000;
         @switch (activeTab()) {
           @case ('overview') {
             <section class="player-view player-view-overview">
-              @for (table of unseatedActiveTables(); track table.tableId) {
-                <app-player-active-table-card [table]="table" />
-              }
-
-              @if (featuredEntry(); as entry) {
+              @for (entry of overviewEntries(); track entry.session.id + entry.player.id) {
                 <article
                   class="player-feature-card player-feature-card-open"
                   [class.player-feature-card-active]="entry.player.status === 'ACTIVE'"
@@ -388,7 +384,13 @@ const playerCallTimeSyncIntervalMs = 1000;
                     </div>
                   </div>
                 </article>
-              } @else if (!hasLiveTables()) {
+              }
+
+              @for (table of unseatedActiveTables(); track table.tableId) {
+                <app-player-active-table-card [table]="table" />
+              }
+
+              @if (!hasLiveTables() && overviewEntries().length === 0) {
                 <article class="player-empty-card">
                   <h2>No sessions yet</h2>
                   <p>Ask the host to add your login before play starts.</p>
@@ -1475,9 +1477,19 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
   protected readonly hasLiveTables = computed(
     () => this.activeEntries().length > 0 || this.unseatedActiveTables().length > 0
   );
-  protected readonly featuredEntry = computed(
-    () => this.activeEntries()[0] ?? (this.hasLiveTables() ? null : this.entries()[0] ?? null)
-  );
+  protected readonly overviewEntries = computed(() => {
+    const activeEntries = this.activeEntries();
+    if (activeEntries.length > 0) {
+      return activeEntries;
+    }
+
+    if (this.unseatedActiveTables().length > 0) {
+      return [];
+    }
+
+    const completedEntry = this.entries()[0];
+    return completedEntry ? [completedEntry] : [];
+  });
   async ngOnInit(): Promise<void> {
     this.routeTabSubscription = this.route.queryParamMap.subscribe((queryParams) => {
       this.applyRouteTab(queryParams.get('tab'));

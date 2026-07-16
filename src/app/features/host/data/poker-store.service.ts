@@ -328,6 +328,9 @@ export class PokerStoreService implements OnDestroy {
   private realtimeUserKey: string | null = null;
   private loadedSupabaseUserId: string | null = null;
   private loadedSupabaseRole: string | null = null;
+  private playerActiveTablesUserId =
+    this.authState.role() === 'PLAYER' ? (this.authState.user()?.id ?? null) : null;
+  private playerActiveTablesRequestVersion = 0;
   private serverTimeOffsetMs = 0;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
   private localSharedPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -361,8 +364,11 @@ export class PokerStoreService implements OnDestroy {
       const user = this.authState.user();
       const role = this.authState.role();
       const userId = user?.id ?? null;
+      const playerActiveTablesUserId = role === 'PLAYER' ? userId : null;
 
-      if (!userId || role !== 'PLAYER') {
+      if (playerActiveTablesUserId !== this.playerActiveTablesUserId) {
+        this.playerActiveTablesUserId = playerActiveTablesUserId;
+        this.playerActiveTablesRequestVersion += 1;
         this.playerActiveTablesSignal.set([]);
       }
 
@@ -1120,6 +1126,7 @@ export class PokerStoreService implements OnDestroy {
 
   private async refreshPlayerActiveTables(): Promise<void> {
     const requestingUserId = this.authState.user()?.id ?? null;
+    const requestVersion = ++this.playerActiveTablesRequestVersion;
 
     if (!requestingUserId || this.authState.role() !== 'PLAYER' || !this.shouldUseSupabase()) {
       this.playerActiveTablesSignal.set([]);
@@ -1129,6 +1136,7 @@ export class PokerStoreService implements OnDestroy {
     const { data, error } = await this.supabaseService.requireClient().rpc('player_active_tables');
 
     if (
+      requestVersion !== this.playerActiveTablesRequestVersion ||
       this.authState.user()?.id !== requestingUserId ||
       this.authState.role() !== 'PLAYER' ||
       !this.shouldUseSupabase()

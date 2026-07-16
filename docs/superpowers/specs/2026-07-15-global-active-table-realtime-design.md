@@ -19,13 +19,15 @@ The player dashboard loads the active-table directory when the authenticated pla
 
 An unseated player sees the table identity with a neutral waiting state. A seated player continues to see the existing detailed active-game card with their personal buy-in, transactions, table roster, and call-time controls.
 
-If multiple tables are active, the dashboard lists all of them in stable session-date, session-created, and table-number order. A seated table is presented before unseated tables. Completed tables never appear in the active directory.
+If multiple tables are active, the dashboard lists all of them in stable session-date, session-created, and table-number order. Every seated active entry is presented as a detailed card before any unseated table cards. Completed tables never appear in the active directory.
 
 When the final active table closes, the live section disappears and the dashboard returns to the existing latest-completed-game presentation. The existing History tab remains unchanged.
 
 ## Public-Safe Active Table Directory
 
 A new authenticated database RPC returns the current active-table directory. The function validates that the caller is a registered `PLAYER` account and returns only the public fields listed above.
+
+The directory is intentionally application-global, not scoped to the player's host relationships. Every registered `PLAYER` account can see the public-safe identity of every active table across all hosts. `HOST`, `MANAGER`, roleless authenticated, and anonymous callers cannot execute the directory RPC.
 
 The RPC runs with a fixed search path and explicit execute grants. Anonymous callers, host-only administrative data, and completed-session metadata are excluded. Existing source-table RLS remains restrictive; the implementation does not grant every player direct read access to all `sessions` or `session_tables` rows.
 
@@ -48,7 +50,7 @@ Host and manager session synchronization remains on the existing source-table su
 
 ## Client State and Rendering
 
-`PokerStoreService` owns a typed `playerActiveTables` signal. It clears that state when the authenticated role is not `PLAYER`, when the user signs out, or when the RPC reports no active tables.
+`PokerStoreService` owns a typed `playerActiveTables` signal. It clears and invalidates that state whenever the authenticated user identity changes, when the authenticated role is not `PLAYER`, when the user signs out, or when the RPC reports no active tables. Overlapping reads are latest-request-wins for the same account, so an older response cannot replace a newer confirmed directory. An ordinary same-account refresh failure preserves the last confirmed directory while surfacing the store error.
 
 The player dashboard derives two live groups:
 
@@ -66,7 +68,7 @@ The migration will:
 - create the public-safe active-table RPC;
 - create the singleton revision table with RLS enabled;
 - grant only the minimum select and execute permissions;
-- create idempotent trigger functions and triggers;
+- create or replace the trigger function and create its statement triggers once as migration-managed DDL;
 - add the revision table to `supabase_realtime` only when it is not already published; and
 - notify PostgREST to reload its schema cache.
 
@@ -76,11 +78,12 @@ The trigger function performs only one singleton-row update per statement. It do
 
 Database tests will verify that:
 
-- registered players can list every currently active table even when unseated;
-- anonymous callers cannot use the directory;
+- a registered player can list currently active tables owned by multiple hosts even when unseated;
+- host, manager, roleless authenticated, and anonymous callers cannot use the directory;
 - completed sessions and closed tables are excluded;
 - financial and roster fields are absent from the RPC result;
-- creating and closing a table increments the revision; and
+- session and table create, activate, complete/close, and delete paths increment the revision;
+- registered players can read the revision while anonymous clients cannot and authenticated clients cannot write it; and
 - the revision table belongs to the `supabase_realtime` publication.
 
 Angular tests will verify that:
@@ -88,7 +91,7 @@ Angular tests will verify that:
 - the store loads and refreshes the public active-table directory for players;
 - Realtime invalidation uses the existing coalesced refresh path;
 - all unseated registered players receive active-table state;
-- seated tables are not duplicated;
+- every seated active entry remains visible before all unseated active tables, without duplication;
 - active tables take precedence over completed-game fallback content; and
 - completed history remains unchanged when no active table exists.
 
