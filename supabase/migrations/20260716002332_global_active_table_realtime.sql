@@ -35,7 +35,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if public.current_user_role()::text <> 'PLAYER' then
+  if public.current_user_role() is distinct from 'PLAYER'::public.user_role then
     raise exception 'Player access required.';
   end if;
 

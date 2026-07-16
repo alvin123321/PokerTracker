@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(13);
 
 select has_table('public', 'active_table_revisions', 'active-table revision table exists');
 select has_function('public', 'player_active_tables', array[]::text[], 'player directory RPC exists');
@@ -37,6 +37,14 @@ values
     'authenticated', 'authenticated', 'active-table-player@example.test', '', now(),
     '{"provider":"email","providers":["email"]}',
     '{"username":"active-table-player","display_name":"Active Table Player","role":"PLAYER"}',
+    now(), now()
+  ),
+  (
+    '45000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated', 'active-table-roleless@example.test', '', now(),
+    '{"provider":"email","providers":["email"]}',
+    '{"username":"active-table-roleless","display_name":"Active Table Roleless"}',
     now(), now()
   );
 
@@ -184,6 +192,19 @@ select throws_ok(
   'P0001',
   'Player access required.',
   'host account cannot call the player directory'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"45000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+
+select throws_ok(
+  $$select * from public.player_active_tables()$$,
+  'P0001',
+  'Player access required.',
+  'authenticated account without a profile cannot call the player directory'
 );
 
 reset role;
