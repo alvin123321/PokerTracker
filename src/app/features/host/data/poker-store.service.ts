@@ -12,7 +12,7 @@ import {
   localPlayerSlug as buildLocalPlayerSlug,
   usernameFromDisplayName as buildUsernameFromDisplayName
 } from './username.logic';
-import { shouldReconnectRealtimeChannel } from './realtime.logic';
+import { sessionRealtimeTables, shouldReconnectRealtimeChannel } from './realtime.logic';
 import {
   CALL_TIME_DURATION_SECONDS,
   CALL_TIME_LIMIT,
@@ -137,6 +137,17 @@ export interface PlayerPublicTableRosterEntry {
   status: PokerPlayerStatus;
 }
 
+export interface PlayerActiveTable {
+  sessionId: string;
+  sessionName: string;
+  sessionDate: string;
+  sessionCreatedAt: string;
+  tableId: string;
+  tableName: string;
+  tableNumber: number;
+  tableCreatedAt: string;
+}
+
 export interface RegisteredPlayerOption {
   id: string;
   username: string;
@@ -190,6 +201,17 @@ interface PlayerPublicTableRosterRow {
   table_id: string | null;
   player_name: string;
   status: PokerPlayerStatus;
+}
+
+interface PlayerActiveTableRow {
+  session_id: string;
+  session_name: string;
+  session_date: string;
+  session_created_at: string;
+  table_id: string;
+  table_name: string;
+  table_number: number;
+  table_created_at: string;
 }
 
 interface TransactionRow {
@@ -288,6 +310,7 @@ export class PokerStoreService implements OnDestroy {
   private readonly sessionsSignal = signal<PokerSession[]>(this.loadSessions());
   private readonly playerPublicTableSummariesSignal = signal<PlayerPublicTableSummary[]>([]);
   private readonly playerPublicTableRosterSignal = signal<PlayerPublicTableRosterEntry[]>([]);
+  private readonly playerActiveTablesSignal = signal<PlayerActiveTable[]>([]);
   private readonly localRegisteredPlayersSignal = signal<RegisteredPlayerOption[]>(
     this.loadLocalRegisteredPlayers()
   );
@@ -304,6 +327,10 @@ export class PokerStoreService implements OnDestroy {
   private realtimeChannel: RealtimeChannel | null = null;
   private realtimeUserKey: string | null = null;
   private loadedSupabaseUserId: string | null = null;
+  private loadedSupabaseRole: string | null = null;
+  private playerActiveTablesUserId =
+    this.authState.role() === 'PLAYER' ? (this.authState.user()?.id ?? null) : null;
+  private playerActiveTablesRequestVersion = 0;
   private serverTimeOffsetMs = 0;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
   private localSharedPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -313,6 +340,7 @@ export class PokerStoreService implements OnDestroy {
   readonly sessions = this.sessionsSignal.asReadonly();
   readonly playerPublicTableSummaries = this.playerPublicTableSummariesSignal.asReadonly();
   readonly playerPublicTableRoster = this.playerPublicTableRosterSignal.asReadonly();
+  readonly playerActiveTables = this.playerActiveTablesSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
   readonly sessionsLoaded = this.sessionsLoadedSignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
@@ -336,11 +364,20 @@ export class PokerStoreService implements OnDestroy {
       const user = this.authState.user();
       const role = this.authState.role();
       const userId = user?.id ?? null;
+      const playerActiveTablesUserId = role === 'PLAYER' ? userId : null;
+
+      if (playerActiveTablesUserId !== this.playerActiveTablesUserId) {
+        this.playerActiveTablesUserId = playerActiveTablesUserId;
+        this.playerActiveTablesRequestVersion += 1;
+        this.playerActiveTablesSignal.set([]);
+      }
+
       const loadAction = sessionLoadEffectAction({
         initialized,
         userId,
         usesSupabase: this.shouldUseSupabaseForUser(userId),
-        loadedSupabaseUserId: this.loadedSupabaseUserId
+        loadedSupabaseUserId:
+          this.loadedSupabaseRole === role ? this.loadedSupabaseUserId : null
       });
 
       if (loadAction === 'WAIT_FOR_AUTH') {
@@ -351,6 +388,7 @@ export class PokerStoreService implements OnDestroy {
       if (loadAction === 'LOAD_LOCAL_SESSIONS') {
         this.teardownRealtimeChannel();
         this.loadedSupabaseUserId = null;
+        this.loadedSupabaseRole = null;
         void this.refreshHostSessions({ showLoading: false });
         return;
       }
@@ -362,6 +400,7 @@ export class PokerStoreService implements OnDestroy {
       }
 
       this.loadedSupabaseUserId = userId;
+      this.loadedSupabaseRole = role;
       void this.refreshSessions();
     });
 
@@ -414,12 +453,14 @@ export class PokerStoreService implements OnDestroy {
 
     if (this.shouldUseLocalSharedData()) {
       await this.loadLocalSharedState();
+      this.playerActiveTablesSignal.set([]);
       this.markSessionsLoaded();
       return;
     }
 
     if (!this.shouldUseSupabase()) {
       await this.refreshDevelopmentProductionSnapshot({ showLoading });
+      this.playerActiveTablesSignal.set([]);
       this.markSessionsLoaded();
       return;
     }
@@ -444,6 +485,8 @@ export class PokerStoreService implements OnDestroy {
 
       const sessions = (sessionRows ?? []) as SessionRow[];
       const sessionIds = sessions.map((session) => session.id);
+
+      await this.refreshPlayerActiveTables();
 
       if (sessionIds.length === 0) {
         this.sessionsSignal.set([]);
@@ -1079,6 +1122,44 @@ export class PokerStoreService implements OnDestroy {
     );
 
     await this.refreshPlayerPublicTableRoster(sessionIds);
+  }
+
+  private async refreshPlayerActiveTables(): Promise<void> {
+    const requestingUserId = this.authState.user()?.id ?? null;
+    const requestVersion = ++this.playerActiveTablesRequestVersion;
+
+    if (!requestingUserId || this.authState.role() !== 'PLAYER' || !this.shouldUseSupabase()) {
+      this.playerActiveTablesSignal.set([]);
+      return;
+    }
+
+    const { data, error } = await this.supabaseService.requireClient().rpc('player_active_tables');
+
+    if (
+      requestVersion !== this.playerActiveTablesRequestVersion ||
+      this.authState.user()?.id !== requestingUserId ||
+      this.authState.role() !== 'PLAYER' ||
+      !this.shouldUseSupabase()
+    ) {
+      return;
+    }
+
+    if (error) {
+      throw error;
+    }
+
+    this.playerActiveTablesSignal.set(
+      ((data ?? []) as PlayerActiveTableRow[]).map((row) => ({
+        sessionId: row.session_id,
+        sessionName: row.session_name,
+        sessionDate: row.session_date,
+        sessionCreatedAt: row.session_created_at,
+        tableId: row.table_id,
+        tableName: row.table_name,
+        tableNumber: this.toNumber(row.table_number),
+        tableCreatedAt: row.table_created_at
+      }))
+    );
   }
 
   private async refreshPlayerPublicTableRoster(sessionIds: string[]): Promise<void> {
@@ -1901,14 +1982,7 @@ export class PokerStoreService implements OnDestroy {
       this.queueRealtimeRefresh();
     };
 
-    for (const table of [
-      'sessions',
-      'session_tables',
-      'players',
-      'session_players',
-      'transactions',
-      'time_calls'
-    ]) {
+    for (const table of sessionRealtimeTables()) {
       channel.on(
         'postgres_changes',
         {

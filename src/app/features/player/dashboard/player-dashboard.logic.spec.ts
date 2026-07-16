@@ -10,18 +10,55 @@ import {
   playerPublicTableStats,
   shouldPollPlayerCallTime,
   totalActivePlayerChips,
-  totalActivePlayers
+  totalActivePlayers,
+  unseatedPlayerActiveTables
 } from './player-dashboard.logic';
 
 import type { MiniGameSnapshot } from '../../mini-game/mini-game.models';
 
 import type {
+  PlayerActiveTable,
   PokerSession,
   PokerTransaction,
   PokerTransactionType,
   SessionPlayer,
   TimeCall
 } from '../../host/data/poker-store.service';
+
+describe('unseatedPlayerActiveTables', () => {
+  it('removes seated tables and orders remaining tables by session date and table number', () => {
+    const tableB2 = makeActiveTable({ tableId: 'table-b-2', tableNumber: 2 });
+    const tableA1 = makeActiveTable({
+      tableId: 'table-a-1',
+      sessionDate: '2026-07-08',
+      tableNumber: 1
+    });
+    const tableB1 = makeActiveTable({ tableId: 'table-b-1', tableNumber: 1 });
+
+    expect(
+      unseatedPlayerActiveTables(
+        [tableB2, tableA1, tableB1],
+        new Set(['table-a-1'])
+      ).map((table) => table.tableId)
+    ).toEqual(['table-b-1', 'table-b-2']);
+  });
+
+  it('does not mutate the active-table directory input', () => {
+    const activeTables = [
+      makeActiveTable({ tableId: 'table-b-2', tableNumber: 2 }),
+      makeActiveTable({ tableId: 'table-b-1', tableNumber: 1 })
+    ];
+    const originalOrder = [...activeTables];
+
+    unseatedPlayerActiveTables(activeTables, new Set());
+
+    expect(activeTables).toEqual(originalOrder);
+  });
+
+  it('returns an empty list for an empty directory', () => {
+    expect(unseatedPlayerActiveTables([], new Set())).toEqual([]);
+  });
+});
 
 describe('player dashboard call-time display', () => {
   it('shows the shared countdown clock when another active player has called time', () => {
@@ -376,6 +413,20 @@ function makeSession(overrides: Partial<PokerSession> = {}): PokerSession {
     players: [],
     transactions: [],
     timeCalls: [],
+    ...overrides
+  };
+}
+
+function makeActiveTable(overrides: Partial<PlayerActiveTable> = {}): PlayerActiveTable {
+  return {
+    sessionId: 'session-a',
+    sessionName: 'July 8 Game',
+    sessionDate: '2026-07-09',
+    sessionCreatedAt: '2026-07-09T01:00:00.000Z',
+    tableId: 'table-a-1',
+    tableName: 'Table 1',
+    tableNumber: 1,
+    tableCreatedAt: '2026-07-09T01:00:00.000Z',
     ...overrides
   };
 }

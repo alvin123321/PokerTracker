@@ -15,7 +15,11 @@ import {
   type MiniGameHistoryLoadResult,
   MiniGameService
 } from '../../mini-game/mini-game.service';
-import type { PokerSession, SessionPlayer } from '../../host/data/poker-store.service';
+import type {
+  PlayerActiveTable,
+  PokerSession,
+  SessionPlayer
+} from '../../host/data/poker-store.service';
 import { PokerStoreService } from '../../host/data/poker-store.service';
 import { PlayerDashboardPage } from './player-dashboard.page';
 
@@ -68,6 +72,7 @@ describe('PlayerDashboardPage', () => {
   let fixture: ComponentFixture<PlayerDashboardPage>;
   let queryParamMap: BehaviorSubject<ParamMap>;
   let sessions: WritableSignal<PokerSession[]>;
+  let playerActiveTables: WritableSignal<PlayerActiveTable[]>;
   let miniGameHistory: WritableSignal<MiniGameSnapshot[]>;
   let miniGameHistoryLoading: WritableSignal<boolean>;
   let miniGameError: WritableSignal<string | null>;
@@ -81,6 +86,7 @@ describe('PlayerDashboardPage', () => {
       user: signal({ id: 'player-1' })
     };
     sessions = signal<PokerSession[]>([]);
+    playerActiveTables = signal<PlayerActiveTable[]>([]);
     miniGameHistory = signal<MiniGameSnapshot[]>([]);
     miniGameHistoryLoading = signal(false);
     miniGameError = signal<string | null>(null);
@@ -96,6 +102,7 @@ describe('PlayerDashboardPage', () => {
       .and.callFake(() => miniGameLoadHistory());
     const store = {
       sessions: sessions.asReadonly(),
+      playerActiveTables: playerActiveTables.asReadonly(),
       error: signal<string | null>(null),
       refreshSessions: jasmine.createSpy('refreshSessions').and.resolveTo(),
       activeTimeCallForSession: () => undefined,
@@ -358,6 +365,106 @@ describe('PlayerDashboardPage', () => {
     expect(detailSectionOrder(fixture)).toEqual(['timeline', 'players']);
   });
 
+  it('shows unseated active tables before completed history and restores history when the directory clears', () => {
+    playerActiveTables.set([makeActiveTable()]);
+    sessions.set([makeSession({ status: 'COMPLETED', players: [makePlayer({ status: 'COMPLETED' })] })]);
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.player-active-table-card')).not.toBeNull();
+    expect(compiled.querySelector('.player-active-table-name')?.textContent).toContain('Main Table');
+    expect(compiled.querySelector('.player-feature-card-completed')).toBeNull();
+
+    playerActiveTables.set([]);
+    fixture.detectChanges();
+
+    expect(compiled.querySelector('.player-feature-card-completed')).not.toBeNull();
+
+    playerActiveTables.set([makeActiveTable()]);
+    sessions.set([
+      makeSession({
+        players: [makePlayer({ tableId: 'table-a' })]
+      })
+    ]);
+    fixture.detectChanges();
+
+    expect(compiled.querySelector('.player-active-table-card')).toBeNull();
+    expect(compiled.querySelector('.player-feature-card-active')).not.toBeNull();
+  });
+
+  it('renders every seated active table as a detailed card', () => {
+    sessions.set([
+      makeSession({
+        id: 'session-new',
+        name: 'Newest Seated Game',
+        players: [
+          makePlayer({
+            id: 'seat-new',
+            tableId: 'table-new',
+            joinedAt: '2026-07-08T03:00:00.000Z'
+          })
+        ]
+      }),
+      makeSession({
+        id: 'session-old',
+        name: 'Older Seated Game',
+        players: [
+          makePlayer({
+            id: 'seat-old',
+            tableId: 'table-old',
+            joinedAt: '2026-07-08T02:00:00.000Z'
+          })
+        ]
+      })
+    ]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    const cardTitles = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+        '.player-feature-card-active h2'
+      )
+    ).map((heading) => heading.textContent?.trim());
+
+    expect(cardTitles).toEqual(['Newest Seated Game', 'Older Seated Game']);
+  });
+
+  it('renders seated detailed cards before every unseated active-table card', () => {
+    sessions.set([
+      makeSession({
+        id: 'session-seated',
+        name: 'Seated Game',
+        players: [makePlayer({ tableId: 'table-seated' })]
+      })
+    ]);
+    playerActiveTables.set([
+      makeActiveTable({ tableId: 'table-unseated-1', tableName: 'Unseated One' }),
+      makeActiveTable({ tableId: 'table-seated', tableName: 'Seated Table' }),
+      makeActiveTable({
+        tableId: 'table-unseated-2',
+        tableName: 'Unseated Two',
+        tableNumber: 2
+      })
+    ]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    const liveCards = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+        '.player-feature-card-active, .player-active-table-card'
+      )
+    );
+
+    expect(liveCards.map((card) => card.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      jasmine.stringContaining('Seated Game'),
+      jasmine.stringContaining('Unseated One'),
+      jasmine.stringContaining('Unseated Two')
+    ]);
+  });
+
   it('keeps active game details with players before the timeline', () => {
     sessions.set([makeSession({ players: [makePlayer()] })]);
 
@@ -464,6 +571,20 @@ function makePlayer(overrides: Partial<SessionPlayer> = {}): SessionPlayer {
     net: 0,
     joinedAt: '2026-07-08T01:00:00.000Z',
     completedAt: null,
+    ...overrides
+  };
+}
+
+function makeActiveTable(overrides: Partial<PlayerActiveTable> = {}): PlayerActiveTable {
+  return {
+    sessionId: 'session-a',
+    sessionName: 'July 8 Game',
+    sessionDate: '2026-07-08',
+    sessionCreatedAt: '2026-07-08T01:00:00.000Z',
+    tableId: 'table-a',
+    tableName: 'Main Table',
+    tableNumber: 1,
+    tableCreatedAt: '2026-07-08T01:00:00.000Z',
     ...overrides
   };
 }
