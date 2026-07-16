@@ -2,6 +2,7 @@ import { gameTimelineTransactions } from '../../host/data/session-timeline.logic
 import type { MiniGameSnapshot } from '../../mini-game/mini-game.models';
 
 import type {
+  PlayerActiveTable,
   PlayerPublicTableRosterEntry,
   PlayerPublicTableSummary,
   PokerSession,
@@ -23,6 +24,21 @@ export interface PlayerCallTimePollingInput {
 
 export function joinedMiniGameHistory(games: MiniGameSnapshot[]): MiniGameSnapshot[] {
   return games.filter((game) => game.viewerParticipantId !== null);
+}
+
+export function unseatedPlayerActiveTables(
+  activeTables: PlayerActiveTable[],
+  seatedTableIds: ReadonlySet<string>
+): PlayerActiveTable[] {
+  return activeTables
+    .filter((table) => !seatedTableIds.has(table.tableId))
+    .sort(
+      (left, right) =>
+        right.sessionDate.localeCompare(left.sessionDate) ||
+        left.sessionCreatedAt.localeCompare(right.sessionCreatedAt) ||
+        left.tableNumber - right.tableNumber ||
+        left.tableId.localeCompare(right.tableId)
+    );
 }
 
 export function playerGameDetailSections(
