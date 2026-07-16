@@ -327,6 +327,7 @@ export class PokerStoreService implements OnDestroy {
   private realtimeChannel: RealtimeChannel | null = null;
   private realtimeUserKey: string | null = null;
   private loadedSupabaseUserId: string | null = null;
+  private loadedSupabaseRole: string | null = null;
   private serverTimeOffsetMs = 0;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
   private localSharedPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -369,7 +370,8 @@ export class PokerStoreService implements OnDestroy {
         initialized,
         userId,
         usesSupabase: this.shouldUseSupabaseForUser(userId),
-        loadedSupabaseUserId: this.loadedSupabaseUserId
+        loadedSupabaseUserId:
+          this.loadedSupabaseRole === role ? this.loadedSupabaseUserId : null
       });
 
       if (loadAction === 'WAIT_FOR_AUTH') {
@@ -380,6 +382,7 @@ export class PokerStoreService implements OnDestroy {
       if (loadAction === 'LOAD_LOCAL_SESSIONS') {
         this.teardownRealtimeChannel();
         this.loadedSupabaseUserId = null;
+        this.loadedSupabaseRole = null;
         void this.refreshHostSessions({ showLoading: false });
         return;
       }
@@ -391,6 +394,7 @@ export class PokerStoreService implements OnDestroy {
       }
 
       this.loadedSupabaseUserId = userId;
+      this.loadedSupabaseRole = role;
       void this.refreshSessions();
     });
 
@@ -1115,12 +1119,23 @@ export class PokerStoreService implements OnDestroy {
   }
 
   private async refreshPlayerActiveTables(): Promise<void> {
-    if (this.authState.role() !== 'PLAYER' || !this.shouldUseSupabase()) {
+    const requestingUserId = this.authState.user()?.id ?? null;
+
+    if (!requestingUserId || this.authState.role() !== 'PLAYER' || !this.shouldUseSupabase()) {
       this.playerActiveTablesSignal.set([]);
       return;
     }
 
     const { data, error } = await this.supabaseService.requireClient().rpc('player_active_tables');
+
+    if (
+      this.authState.user()?.id !== requestingUserId ||
+      this.authState.role() !== 'PLAYER' ||
+      !this.shouldUseSupabase()
+    ) {
+      return;
+    }
+
     if (error) {
       throw error;
     }
