@@ -1,4 +1,4 @@
-import { shouldReconnectRealtimeChannel } from './realtime.logic';
+import { sessionRealtimeTables, shouldReconnectRealtimeChannel } from './realtime.logic';
 
 describe('realtime connection logic', () => {
   it('reconnects on stale or failed channel statuses', () => {
@@ -9,5 +9,10 @@ describe('realtime connection logic', () => {
 
   it('does not reconnect for a healthy subscription status', () => {
     expect(shouldReconnectRealtimeChannel('SUBSCRIBED')).toBeFalse();
+  });
+
+  it('includes session tables and active table revisions in the refresh subscription', () => {
+    expect(sessionRealtimeTables()).toContain('active_table_revisions');
+    expect(sessionRealtimeTables()).toContain('session_tables');
   });
 });
