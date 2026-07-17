@@ -4,6 +4,7 @@ import {
   isMiniGameEquityFresh,
   mapMiniGameSnapshot,
   miniGameBoardSlots,
+  miniGameEquityPercentage,
   miniGameHistoryViewFromQuery,
   normalizeMiniGamePercentages,
   shouldApplyMiniGameSnapshotResponse,
@@ -163,6 +164,53 @@ describe('mini-game permissions and freshness', () => {
 });
 
 describe('mini-game presentation logic', () => {
+  it('displays normalized equity instead of deriving a pure win rate', () => {
+    const snapshot = mapMiniGameSnapshot(
+      makeSnapshot({
+        participants: [
+          makeParticipant({
+            equity: makeEquity({
+              share: 2,
+              percentage: 50,
+              wins: 0,
+              ties: 4,
+              totalOutcomes: 4,
+            }),
+          }),
+        ],
+      }),
+    )!;
+
+    expect(
+      miniGameEquityPercentage(
+        snapshot.participants[0].equity,
+        snapshot.stateVersion,
+        true,
+      ),
+    ).toBe(50);
+  });
+
+  it('hides equity while the calculation is pending or stale', () => {
+    const snapshot = mapMiniGameSnapshot(
+      makeSnapshot({ participants: [makeParticipant()] }),
+    )!;
+
+    expect(
+      miniGameEquityPercentage(
+        snapshot.participants[0].equity,
+        snapshot.stateVersion,
+        false,
+      ),
+    ).toBeNull();
+    expect(
+      miniGameEquityPercentage(
+        snapshot.participants[0].equity,
+        snapshot.stateVersion + 1,
+        true,
+      ),
+    ).toBeNull();
+  });
+
   it('allocates one-decimal percentages with a stable largest remainder', () => {
     expect(normalizeMiniGamePercentages([1 / 3, 1 / 3, 1 / 3])).toEqual([33.4, 33.3, 33.3]);
     expect(normalizeMiniGamePercentages([0.6, 0.4])).toEqual([60, 40]);

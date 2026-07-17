@@ -11,7 +11,6 @@ import {
   LucideHouse,
   LucideMessageCircle,
   LucideAlarmClock,
-  LucideReceiptText,
   LucideUsersRound
 } from '@lucide/angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -86,7 +85,6 @@ const playerCallTimeSyncIntervalMs = 1000;
     LucideHouse,
     LucideMessageCircle,
     LucideAlarmClock,
-    LucideReceiptText,
     LucideUsersRound,
     RouterLink,
     MiniGameDashboardSectionComponent,
@@ -179,34 +177,21 @@ const playerCallTimeSyncIntervalMs = 1000;
                   @let callTimeState = callTimeDisplayState(entry, activeCall);
                   @let statMode = gameStatMode(entry);
                   <div class="feature-heading">
-                    <div>
-                      <div class="feature-title-row">
-                        <h2>{{ entry.session.name }}</h2>
-                        <span
-                          class="game-status-pill"
-                          [class.game-status-pill-active]="gameStatusKind(entry) === 'ACTIVE'"
-                          [class.game-status-pill-completed]="gameStatusKind(entry) === 'COMPLETED'"
-                        >
-                          @if (gameStatusKind(entry) === 'ACTIVE') {
-                            <span class="status-live-dot" aria-hidden="true"></span>
-                          } @else {
-                            <svg lucideBadgeCheck [strokeWidth]="2.6" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                          }
-                          {{ gameStatusKind(entry) === 'ACTIVE' ? 'Active' : 'Complete' }}
-                        </span>
-                      </div>
+                    <div class="feature-title-row min-w-0">
+                      <h2>{{ entry.session.name }}</h2>
                     </div>
-                    <div class="feature-heading-actions">
-                      <a
-                        [routerLink]="['/player/sessions', entry.session.id]"
-                        class="feature-toggle-label"
-                        aria-label="View game detail"
-                        title="View game detail"
-                        (click)="preparePlayerRouteTransition('forward'); $event.stopPropagation()"
-                      >
-                        <svg lucideReceiptText [strokeWidth]="1.9" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
-                      </a>
-                    </div>
+                    <span
+                      class="game-status-pill"
+                      [class.game-status-pill-active]="gameStatusKind(entry) === 'ACTIVE'"
+                      [class.game-status-pill-completed]="gameStatusKind(entry) === 'COMPLETED'"
+                    >
+                      @if (gameStatusKind(entry) === 'ACTIVE') {
+                        <span class="status-live-dot" aria-hidden="true"></span>
+                      } @else {
+                        <svg lucideBadgeCheck [strokeWidth]="2.6" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                      }
+                      {{ gameStatusKind(entry) === 'ACTIVE' ? 'Active' : 'Complete' }}
+                    </span>
                   </div>
 
                   @if (callTimeState !== 'NONE') {
@@ -359,7 +344,7 @@ const playerCallTimeSyncIntervalMs = 1000;
                           @case ('timeline') {
                             <div class="feature-detail-section" data-detail-section="timeline">
                               <div class="feature-detail-heading">
-                                <span>Game timeline</span>
+                                <span>Buy-in timeline</span>
                               </div>
                               <div class="feature-buyin-list">
                                 @for (transaction of gameTimelineRows(entry); track transaction.id) {
@@ -779,13 +764,6 @@ const playerCallTimeSyncIntervalMs = 1000;
 
       .feature-heading {
         align-items: flex-end;
-      }
-
-      .feature-heading-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.55rem;
-        flex: 0 0 auto;
       }
 
       .player-clock-warning {
@@ -1522,6 +1500,11 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
 
   protected selectTab(tab: PlayerDashboardTab): void {
     this.activeTab.set(tab);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: tab === 'sessions' ? 'history' : tab },
+      queryParamsHandling: 'merge'
+    });
 
     if (tab === 'sessions') {
       void this.loadMiniGameHistory();

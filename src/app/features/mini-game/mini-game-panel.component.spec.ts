@@ -12,7 +12,7 @@ describe('MiniGamePanelComponent', () => {
     }).compileComponents();
   });
 
-  it('uses one four-option overflow menu for creator controls', () => {
+  it('uses one three-option overflow menu for creator controls', () => {
     const fixture = render(makeSnapshot(), true);
     const compiled = fixture.nativeElement as HTMLElement;
     const trigger = compiled.querySelector<HTMLButtonElement>('.mini-overflow-button');
@@ -25,7 +25,7 @@ describe('MiniGamePanelComponent', () => {
       document.querySelectorAll<HTMLElement>('.mini-game-menu [mat-menu-item]'),
     ).map((item) => item.textContent?.trim().replace(/\s+/g, ' '));
 
-    expect(menuLabels).toEqual(['Open game', 'Edit game', 'Reshuffle cards', 'Delete game']);
+    expect(menuLabels).toEqual(['Edit game', 'Reshuffle cards', 'Delete game']);
     expect(fixture.nativeElement.querySelector('.mini-tool-row')).toBeNull();
 
     const item = document.querySelector<HTMLElement>('.mini-game-menu .mat-mdc-menu-item');
@@ -37,7 +37,7 @@ describe('MiniGamePanelComponent', () => {
     expect(contentStyles.alignItems).toBe('center');
   });
 
-  it('shows pure win percentage from exact outcome counts', () => {
+  it('shows stored normalized equity instead of deriving a pure win rate', () => {
     const fixture = render(makeSnapshot());
     const compiled = fixture.nativeElement as HTMLElement;
     const winRate = compiled.querySelector<HTMLElement>('.participant-win-rate');
@@ -45,8 +45,66 @@ describe('MiniGamePanelComponent', () => {
     expect(compiled.querySelector('.participant-position')).toBeNull();
     expect(compiled.textContent).not.toContain('Seat 1');
     expect(winRate?.textContent).not.toContain('Win');
-    expect(winRate?.textContent).toContain('75.0%');
-    expect(compiled.textContent).not.toContain('100.0%');
+    expect(winRate?.textContent).toContain('100.0%');
+    expect(winRate?.getAttribute('aria-label')).toBe('Equity percentage 100.0%');
+  });
+
+  it('splits tied equity equally and keeps the displayed total at 100.0%', () => {
+    const snapshot = makeSnapshot();
+    const first = snapshot.participants[0];
+    snapshot.participants = [
+      {
+        ...first,
+        equity: { ...first.equity!, share: 2, percentage: 50, wins: 0, ties: 4 },
+      },
+      {
+        ...first,
+        id: 'participant-b',
+        userId: 'user-b',
+        displayName: 'Ben',
+        joinPosition: 2,
+        equity: { ...first.equity!, share: 2, percentage: 50, wins: 0, ties: 4 },
+      },
+    ];
+
+    const fixture = render(snapshot);
+    const displayed = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+        '.participant-win-rate strong',
+      ),
+    ).map((element) => Number.parseFloat(element.textContent ?? ''));
+
+    expect(displayed).toEqual([50, 50]);
+    expect(displayed.reduce((total, percentage) => total + percentage, 0)).toBe(100);
+  });
+
+  it('sorts players from highest to lowest stored equity', () => {
+    const snapshot = makeSnapshot();
+    const first = snapshot.participants[0];
+    snapshot.participants = [
+      {
+        ...first,
+        displayName: 'Ada',
+        equity: { ...first.equity!, percentage: 35, wins: 3, totalOutcomes: 4 },
+      },
+      {
+        ...first,
+        id: 'participant-b',
+        userId: 'user-b',
+        displayName: 'Ben',
+        joinPosition: 2,
+        equity: { ...first.equity!, percentage: 65, wins: 1, totalOutcomes: 4 },
+      },
+    ];
+
+    const fixture = render(snapshot);
+    const names = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+        '.participant-name-line strong',
+      ),
+    ).map((element) => element.textContent?.trim());
+
+    expect(names).toEqual(['Ben', 'Ada']);
   });
 
   it('does not show a percentage from a stale calculation', () => {
@@ -64,8 +122,71 @@ describe('MiniGamePanelComponent', () => {
     );
 
     expect(winRate?.textContent).toContain('--');
-    expect(winRate?.textContent).not.toContain('75.0%');
+    expect(winRate?.textContent).not.toContain('100.0%');
   });
+
+  it('does not show a percentage while the calculation is pending', () => {
+    const fixture = render(makeSnapshot({ equityStatus: 'PENDING' }));
+    const winRate = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '.participant-win-rate',
+    );
+
+    expect(winRate?.textContent).toContain('--');
+    expect(winRate?.textContent).not.toContain('100.0%');
+  });
+
+  for (const stage of [
+    { status: 'OPEN', board: [] },
+    { status: 'FLOP', board: ['As', 'Ks', 'Qs'] },
+    { status: 'TURN', board: ['As', 'Ks', 'Qs', 'Js'] },
+    { status: 'COMPLETE', board: ['As', 'Ks', 'Qs', 'Js', 'Ts'] },
+  ] as const) {
+    it(`shows equity at the ${stage.status.toLowerCase()} stage`, () => {
+      const snapshot = makeSnapshot({
+        status: stage.status,
+        board: stage.board.map((code, index) => ({ position: index + 1, code })),
+      });
+      const first = snapshot.participants[0];
+      snapshot.participants = [
+        {
+          ...first,
+          equity: {
+            ...first.equity!,
+            share: 1.5,
+            percentage: 75,
+            wins: 1,
+            ties: 1,
+            totalOutcomes: 2,
+          },
+        },
+        {
+          ...first,
+          id: 'participant-b',
+          userId: 'user-b',
+          displayName: 'Ben',
+          joinPosition: 2,
+          equity: {
+            ...first.equity!,
+            share: 0.5,
+            percentage: 25,
+            wins: 0,
+            ties: 1,
+            totalOutcomes: 2,
+          },
+        },
+      ];
+
+      const fixture = render(snapshot);
+      const displayed = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+          '.participant-win-rate strong',
+        ),
+      ).map((element) => Number.parseFloat(element.textContent ?? ''));
+
+      expect(displayed).toEqual([75, 25]);
+      expect(displayed.reduce((total, percentage) => total + percentage, 0)).toBe(100);
+    });
+  }
 
   it('marks the final winner and offers a complete mini-game action to the creator', () => {
     const fixture = render(

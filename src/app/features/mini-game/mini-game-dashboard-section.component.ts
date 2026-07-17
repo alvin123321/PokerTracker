@@ -208,7 +208,7 @@ export class MiniGameDashboardSectionComponent implements OnDestroy {
   }
 
   protected create(): void {
-    this.openSettings({ mode: 'create', minPlayers: 2, maxPlayers: 10 }, async (settings) => {
+    this.openSettings({ mode: 'create', minPlayers: 1, maxPlayers: 10 }, async (settings) => {
       const result = await this.miniGame.create(
         settings.name,
         settings.minPlayers,

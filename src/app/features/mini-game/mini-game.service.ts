@@ -447,11 +447,14 @@ export class MiniGameService implements OnDestroy {
       }
       this.warningSignal.set(result.warning ?? null);
 
-      if (request.action === 'delete' || request.action === 'archive') {
+      if (
+        request.action === 'archive' ||
+        (request.action === 'delete' && this.currentSignal()?.id === request.gameId)
+      ) {
         this.applyCurrentSnapshot(null, operationOrder);
       } else if (result.snapshot !== undefined) {
         this.applyCurrentSnapshot(result.snapshot ?? null, operationOrder);
-      } else {
+      } else if (request.action !== 'delete') {
         await this.loadCurrent();
       }
 

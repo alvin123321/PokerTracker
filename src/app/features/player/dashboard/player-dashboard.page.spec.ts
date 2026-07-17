@@ -1,7 +1,7 @@
 import { Component, input, signal, WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { ActivatedRoute, convertToParamMap, ParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { BehaviorSubject } from 'rxjs';
@@ -170,6 +170,25 @@ describe('PlayerDashboardPage', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.player-dashboard-chat-active')).toBeNull();
     expect(compiled.querySelector('.player-tabs')).not.toBeNull();
+  });
+
+  it('writes the Chat selection to the URL so the shell back link can return Home', () => {
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    const navigate = spyOn(router, 'navigate').and.resolveTo(true);
+    const chatButton = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.player-tab')
+    ).find((button) => button.textContent?.includes('Chat'));
+
+    chatButton?.click();
+
+    expect(chatButton).toBeDefined();
+    expect(navigate).toHaveBeenCalledWith([], {
+      relativeTo: TestBed.inject(ActivatedRoute),
+      queryParams: { tab: 'chat' },
+      queryParamsHandling: 'merge'
+    });
   });
 
   it('hides the player bottom tabs while mobile chat is active', () => {
@@ -472,6 +491,18 @@ describe('PlayerDashboardPage', () => {
     fixture.detectChanges();
 
     expect(detailSectionOrder(fixture)).toEqual(['players', 'timeline']);
+  });
+
+  it('places the active status at the far right of the live-card heading', () => {
+    sessions.set([makeSession({ players: [makePlayer()] })]);
+    queryParamMap.next(convertToParamMap({ tab: 'overview' }));
+    fixture.detectChanges();
+
+    const heading = (fixture.nativeElement as HTMLElement).querySelector(
+      '.player-feature-card-active .feature-heading'
+    );
+
+    expect(heading?.querySelector(':scope > .game-status-pill')).not.toBeNull();
   });
 
   it('uses the shared detail-section wrapper and actual adjacency for section spacing', () => {

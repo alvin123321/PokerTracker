@@ -27,15 +27,19 @@
 - Use planning workflows for ambiguous, multi-step, or high-risk work, not as default ceremony for tiny tasks.
 - Use branch-finishing and verification skills when completing, merging, or publishing substantial work.
 - Avoid invoking multiple overlapping skills when they do not improve the outcome.
+- Never use `subagent-driven-development` unless the user explicitly requests multi-agent execution after being shown the expected number of agents, review stages, and likely time cost.
+- Default to one implementation pass and one final reviewer. Do not dispatch a separate reviewer after every implementation task.
+- Do not create or commit design documents or detailed implementation-plan documents for a clearly defined feature unless the user explicitly requests them. A concise in-chat plan is sufficient when planning is still useful.
 
 ## Speed and Scope Control
 
 - Start with `git status`, the current branch, and targeted `rg` searches for the smallest likely file set.
 - Read focused files and diffs before scanning the full repository.
 - Avoid dumping large logs, generated files, DOM snapshots, screenshots, or full diffs unless they are needed to diagnose or verify the task.
-- Run the narrowest meaningful test first. Save broader tests and builds for completion or higher-risk changes.
+- Run focused tests while developing, then run the appropriate full verification once before completion. Do not repeatedly run the full suite after every task or edit.
 - Do not repeat the same failed command without changing the approach or learning something new.
 - For long tasks, give concise progress updates and keep a short record of decisions, tests, blockers, and the next step.
+- If execution exceeds 30 minutes, report exactly what is consuming the time before starting another review, fix, or full-verification cycle.
 - Report any development server or other long-running process that remains active.
 
 ## UI and Mobile Work
