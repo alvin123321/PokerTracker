@@ -67,6 +67,24 @@ export function sortRegisteredPlayerOptions<T extends RegisteredPlayerIdentity>(
   );
 }
 
+export function filterRegisteredPlayerOptions<T extends RegisteredPlayerIdentity>(
+  players: readonly T[],
+  search: string,
+  sessionMemberUserIds: readonly string[],
+  sessionMemberNames: readonly string[] = []
+): T[] {
+  const normalizedSearch = normalizePlayerName(search);
+  const matchingPlayers = normalizedSearch
+    ? players.filter((player) =>
+        [player.displayName, player.username]
+          .filter((label): label is string => Boolean(label?.trim()))
+          .some((label) => normalizePlayerName(label).startsWith(normalizedSearch))
+      )
+    : [...players];
+
+  return sortRegisteredPlayerOptions(matchingPlayers, sessionMemberUserIds, sessionMemberNames);
+}
+
 function normalizePlayerName(name: string): string {
   return name.trim().toLocaleLowerCase();
 }

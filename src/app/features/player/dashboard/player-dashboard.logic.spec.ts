@@ -7,6 +7,7 @@ import {
   playerGameStatusKind,
   playerGameStatMode,
   playerPublicTableRoster,
+  playerTableDetailRoster,
   playerPublicTableStats,
   shouldPollPlayerCallTime,
   totalActivePlayerChips,
@@ -280,6 +281,83 @@ describe('player public table stats', () => {
 });
 
 describe('player public table roster', () => {
+  it('identifies one unique local net leader for a completed table', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin', net: 50 });
+    const session = makeSession({
+      status: 'COMPLETED',
+      players: [
+        player,
+        makePlayer({ id: 'seat-b', tableId: 'table-a', name: 'Gene', net: 120 }),
+        makePlayer({ id: 'seat-c', tableId: 'table-b', name: 'Sarah', net: 300 })
+      ]
+    });
+
+    const roster = playerTableDetailRoster(session, player, []);
+
+    expect(roster.map((entry) => `${entry.name}:${entry.isNetLeader}`)).toEqual([
+      'Alvin:false',
+      'Gene:true'
+    ]);
+  });
+
+  it('does not identify a net leader while the session is active', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin', net: 50 });
+    const session = makeSession({
+      players: [
+        player,
+        makePlayer({ id: 'seat-b', tableId: 'table-a', name: 'Gene', net: 120 })
+      ]
+    });
+
+    expect(
+      playerTableDetailRoster(session, player, []).map(
+        (entry) => `${entry.name}:${entry.isNetLeader}`
+      )
+    ).toEqual(['Alvin:false', 'Gene:false']);
+  });
+
+  it('does not identify a net leader when completed-table leaders are tied', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin', net: 100 });
+    const session = makeSession({
+      status: 'COMPLETED',
+      players: [
+        player,
+        makePlayer({ id: 'seat-b', tableId: 'table-a', name: 'Gene', net: 100 })
+      ]
+    });
+
+    expect(
+      playerTableDetailRoster(session, player, []).map(
+        (entry) => `${entry.name}:${entry.isNetLeader}`
+      )
+    ).toEqual(['Alvin:false', 'Gene:false']);
+  });
+
+  it('rejects multiple public leader flags for the same completed table', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
+    const session = makeSession({ status: 'COMPLETED', players: [player] });
+    const roster = playerTableDetailRoster(session, player, [
+      {
+        sessionPlayerId: 'seat-a',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Alvin',
+        status: 'COMPLETED',
+        isNetLeader: true
+      },
+      {
+        sessionPlayerId: 'seat-b',
+        sessionId: session.id,
+        tableId: 'table-a',
+        name: 'Gene',
+        status: 'COMPLETED',
+        isNetLeader: true
+      }
+    ]);
+
+    expect(roster.map((entry) => entry.isNetLeader)).toEqual([false, false]);
+  });
+
   it('uses public roster entries for the whole active game, including cashed-out players', () => {
     const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
     const session = makeSession({ players: [player] });

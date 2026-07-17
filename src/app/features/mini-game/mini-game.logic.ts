@@ -157,21 +157,23 @@ export function normalizeMiniGamePercentages(shares: number[]): number[] {
   return tenths.map((value) => value / 10);
 }
 
-export function miniGameWinPercentage(
+export function miniGameEquityPercentage(
   equity: MiniGameEquity | null,
   stateVersion: number,
+  equityFresh: boolean,
 ): number | null {
   if (
+    !equityFresh ||
     !equity ||
     equity.stateVersion !== stateVersion ||
-    equity.totalOutcomes <= 0 ||
-    equity.wins < 0 ||
-    equity.wins > equity.totalOutcomes
+    !Number.isFinite(equity.percentage) ||
+    equity.percentage < 0 ||
+    equity.percentage > 100
   ) {
     return null;
   }
 
-  return (equity.wins / equity.totalOutcomes) * 100;
+  return equity.percentage;
 }
 
 export function miniGameHistoryViewFromQuery(value: string | null): MiniGameHistoryView {

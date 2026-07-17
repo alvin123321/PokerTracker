@@ -448,11 +448,14 @@ export class MiniGameLocalStore {
     if (
       !Number.isInteger(minPlayers) ||
       !Number.isInteger(maxPlayers) ||
-      minPlayers < 2 ||
+      minPlayers < 1 ||
+      maxPlayers < 2 ||
       maxPlayers > 10 ||
       minPlayers > maxPlayers
     ) {
-      throw new Error('Player limits must be between 2 and 10.');
+      throw new Error(
+        'Minimum players must be between 1 and 10; maximum players must be between 2 and 10.',
+      );
     }
   }
 

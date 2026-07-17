@@ -1,18 +1,25 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { MiniGameHistoryListComponent } from '../../mini-game/mini-game-history-list.component';
 import { MiniGameHistoryToggleComponent } from '../../mini-game/mini-game-history-toggle.component';
 import { miniGameHistoryViewFromQuery } from '../../mini-game/mini-game.logic';
-import { MiniGameHistoryView } from '../../mini-game/mini-game.models';
+import { MiniGameHistoryView, MiniGameSnapshot } from '../../mini-game/mini-game.models';
 import { MiniGameService } from '../../mini-game/mini-game.service';
 import { PokerSession, PokerStoreService } from '../data/poker-store.service';
+import { ActionFeedbackToastComponent } from '../shared/action-feedback-toast.component';
+import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData,
+} from '../shared/confirmation-dialog.component';
 
 @Component({
   selector: 'app-session-history-page',
   imports: [
+    ActionFeedbackToastComponent,
     CurrencyPipe,
     DatePipe,
     MiniGameHistoryListComponent,
@@ -20,6 +27,10 @@ import { PokerSession, PokerStoreService } from '../data/poker-store.service';
     RouterLink,
   ],
   template: `
+    @if (actionFeedback(); as message) {
+      <app-action-feedback-toast [message]="message" />
+    }
+
     <section class="space-y-5 sm:space-y-6">
       <div class="flex items-end justify-between gap-4">
         <div>
@@ -41,7 +52,9 @@ import { PokerSession, PokerStoreService } from '../data/poker-store.service';
         <app-mini-game-history-list
           [games]="miniGame.history()"
           [loading]="miniGame.historyLoading()"
+          [canDelete]="true"
           detailBasePath="/host/mini-games"
+          (deleteGame)="confirmDeleteMiniGame($event)"
         />
       } @else {
         @if (store.error()) {
@@ -149,11 +162,14 @@ import { PokerSession, PokerStoreService } from '../data/poker-store.service';
   ],
 })
 export class SessionHistoryPage implements OnInit, OnDestroy {
+  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly store = inject(PokerStoreService);
   protected readonly miniGame = inject(MiniGameService);
+  protected readonly actionFeedback = signal<string | null>(null);
   protected readonly historyView = signal<MiniGameHistoryView>('tables');
+  private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private viewSubscription: Subscription | null = null;
   protected readonly sortedSessions = computed(() =>
     [...this.store.sessions()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -172,6 +188,35 @@ export class SessionHistoryPage implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.viewSubscription?.unsubscribe();
+
+    if (this.feedbackTimer) {
+      clearTimeout(this.feedbackTimer);
+    }
+  }
+
+  protected confirmDeleteMiniGame(game: MiniGameSnapshot): void {
+    this.dialog
+      .open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(
+        ConfirmationDialogComponent,
+        {
+          autoFocus: false,
+          data: {
+            title: 'Delete completed mini-game?',
+            message: 'This permanently removes this mini-game from history.',
+            cancelLabel: 'No',
+            confirmLabel: 'Yes, delete',
+            tone: 'danger',
+            details: [game.name],
+          },
+          panelClass: 'pokertrack-dialog-panel',
+        },
+      )
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          void this.deleteMiniGame(game);
+        }
+      });
   }
 
   protected selectHistoryView(view: MiniGameHistoryView): void {
@@ -189,5 +234,24 @@ export class SessionHistoryPage implements OnInit, OnDestroy {
 
   protected isNetPending(session: PokerSession): boolean {
     return this.store.totalsFor(session).activePlayers > 0;
+  }
+
+  private async deleteMiniGame(game: MiniGameSnapshot): Promise<void> {
+    try {
+      await this.miniGame.delete(game.id);
+      await this.miniGame.loadHistory();
+      this.showFeedback('Mini-game deleted.');
+    } catch {
+      // MiniGameService exposes the actionable error through miniGame.error().
+    }
+  }
+
+  private showFeedback(message: string): void {
+    if (this.feedbackTimer) {
+      clearTimeout(this.feedbackTimer);
+    }
+
+    this.actionFeedback.set(message);
+    this.feedbackTimer = setTimeout(() => this.actionFeedback.set(null), 3000);
   }
 }

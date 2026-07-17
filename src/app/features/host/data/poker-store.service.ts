@@ -135,6 +135,7 @@ export interface PlayerPublicTableRosterEntry {
   tableId: string | null;
   name: string;
   status: PokerPlayerStatus;
+  isNetLeader?: boolean;
 }
 
 export interface PlayerActiveTable {
@@ -201,6 +202,7 @@ interface PlayerPublicTableRosterRow {
   table_id: string | null;
   player_name: string;
   status: PokerPlayerStatus;
+  is_net_leader?: boolean;
 }
 
 interface PlayerActiveTableRow {
@@ -1184,7 +1186,8 @@ export class PokerStoreService implements OnDestroy {
         sessionId: row.session_id,
         tableId: row.table_id ?? null,
         name: this.titleCaseName(row.player_name || 'Unknown player'),
-        status: row.status
+        status: row.status,
+        isNetLeader: row.is_net_leader === true
       }))
     );
   }

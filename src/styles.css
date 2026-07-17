@@ -2073,6 +2073,12 @@ h3 {
   margin-top: 0.58rem;
 }
 
+@media (min-width: 451px) and (max-width: 515px) {
+  .feature-player-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .feature-player-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

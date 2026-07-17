@@ -1,7 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { LucideTrophy, LucideUserMinus } from '@lucide/angular';
 
-import { miniGameWinPercentage } from './mini-game.logic';
+import { miniGameEquityPercentage } from './mini-game.logic';
 import { MiniGameParticipant } from './mini-game.models';
 import { PlayingCardComponent } from './playing-card.component';
 
@@ -38,9 +38,9 @@ import { PlayingCardComponent } from './playing-card.component';
 
       <div
         class="participant-win-rate"
-        [attr.aria-label]="'Win percentage ' + winPercentageLabel()"
+        [attr.aria-label]="'Equity percentage ' + equityPercentageLabel()"
       >
-        <strong>{{ winPercentageLabel() }}</strong>
+        <strong>{{ equityPercentageLabel() }}</strong>
       </div>
 
       @if (removable()) {
@@ -226,6 +226,7 @@ import { PlayingCardComponent } from './playing-card.component';
 export class MiniGameParticipantRowComponent {
   readonly participant = input.required<MiniGameParticipant>();
   readonly stateVersion = input.required<number>();
+  readonly equityFresh = input.required<boolean>();
   readonly winner = input(false);
   readonly viewer = input(false);
   readonly removable = input(false);
@@ -239,8 +240,12 @@ export class MiniGameParticipantRowComponent {
       .map((part) => part.slice(0, 1).toUpperCase())
       .join(''),
   );
-  protected readonly winPercentageLabel = computed(() => {
-    const percentage = miniGameWinPercentage(this.participant().equity, this.stateVersion());
+  protected readonly equityPercentageLabel = computed(() => {
+    const percentage = miniGameEquityPercentage(
+      this.participant().equity,
+      this.stateVersion(),
+      this.equityFresh(),
+    );
     return percentage === null ? '--' : `${percentage.toFixed(1)}%`;
   });
 }

@@ -5,9 +5,9 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { RegisteredPlayerOption } from '../data/poker-store.service';
 import {
+  filterRegisteredPlayerOptions,
   isRegisteredPlayerInSession,
-  resolveAddPlayerSearch,
-  sortRegisteredPlayerOptions
+  resolveAddPlayerSearch
 } from './add-player-dialog.logic';
 
 export interface AddPlayerDialogData {
@@ -39,6 +39,7 @@ export interface AddPlayerDialogResult {
 
       <div class="add-player-body">
         @let searchState = searchResult();
+        @let playerOptions = filteredRegisteredPlayers();
         <label class="block text-sm font-medium text-neutral-200" for="playerSearch">Player</label>
         <input
           id="playerSearch"
@@ -50,9 +51,11 @@ export interface AddPlayerDialogResult {
           <div
             id="registeredPlayer"
             class="registered-player-list h-32 space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-neutral-900 p-2 sm:h-auto"
-            [class.registered-player-list-hidden]="searchState.kind === 'new'"
+            [class.registered-player-list-hidden]="
+              searchState.kind === 'new' && playerOptions.length === 0
+            "
           >
-            @for (player of filteredRegisteredPlayers(); track player.id) {
+            @for (player of playerOptions; track player.id) {
               <button
                 type="button"
                 class="member-option flex w-full items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-neutral-100 transition hover:border-emerald-300/60 hover:bg-emerald-300/10 disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/[0.015] disabled:text-neutral-600"
@@ -77,8 +80,10 @@ export interface AddPlayerDialogResult {
           </div>
           <p
             class="new-signup-notice"
-            [class.new-signup-notice-visible]="searchState.kind === 'new'"
-            [attr.aria-hidden]="searchState.kind !== 'new'"
+            [class.new-signup-notice-visible]="
+              searchState.kind === 'new' && playerOptions.length === 0
+            "
+            [attr.aria-hidden]="searchState.kind !== 'new' || playerOptions.length > 0"
           >
             <strong>New signup: {{ newSignupName() }}</strong>
             <span>Click Add Player to add this player.</span>
@@ -362,20 +367,9 @@ export class AddPlayerDialogComponent {
   }
 
   protected filteredRegisteredPlayers(): RegisteredPlayerOption[] {
-    const search = this.searchControl.value.trim().toLocaleLowerCase();
-
-    if (!search) {
-      return sortRegisteredPlayerOptions(
-        this.registeredPlayers,
-        this.data.sessionMemberUserIds,
-        this.data.sessionMemberNames
-      );
-    }
-
-    return sortRegisteredPlayerOptions(
-      this.registeredPlayers.filter((player) =>
-        this.playerLabel(player).toLocaleLowerCase().includes(search)
-      ),
+    return filterRegisteredPlayerOptions(
+      this.registeredPlayers,
+      this.searchControl.value,
       this.data.sessionMemberUserIds,
       this.data.sessionMemberNames
     );

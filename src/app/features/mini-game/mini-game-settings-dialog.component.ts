@@ -274,7 +274,7 @@ export class MiniGameSettingsDialogComponent {
   );
   protected readonly data = inject<MiniGameSettingsDialogData>(MAT_DIALOG_DATA);
   protected readonly name = signal(this.data.name ?? '');
-  protected readonly minPlayers = signal(this.data.minPlayers ?? 2);
+  protected readonly minPlayers = signal(this.data.minPlayers ?? 1);
   protected readonly maxPlayers = signal(this.data.maxPlayers ?? 10);
   protected readonly validationMessage = computed(() => {
     const nameLength = this.name().trim().length;
@@ -293,13 +293,15 @@ export class MiniGameSettingsDialogComponent {
     () =>
       this.name().trim().length >= 2 &&
       this.name().trim().length <= 40 &&
-      this.minPlayers() >= 2 &&
+      this.minPlayers() >= 1 &&
+      this.minPlayers() <= 10 &&
+      this.maxPlayers() >= 2 &&
       this.maxPlayers() <= 10 &&
       this.minPlayers() <= this.maxPlayers(),
   );
 
   protected changeMinimum(delta: number): void {
-    this.minPlayers.update((value) => Math.min(10, Math.max(2, value + delta)));
+    this.minPlayers.update((value) => Math.min(10, Math.max(1, value + delta)));
   }
 
   protected changeMaximum(delta: number): void {

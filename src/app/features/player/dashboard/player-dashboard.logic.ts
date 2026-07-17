@@ -131,18 +131,38 @@ export function playerPublicTableRoster(
   rosterEntries: PlayerPublicTableRosterEntry[]
 ): PlayerPublicTableRosterEntry[] {
   const publicRoster = rosterEntries.filter((entry) => entry.sessionId === session.id);
+  const netLeaderByTable = new Map<string | null, { highestNet: number; leaderCount: number }>();
+
+  for (const sessionPlayer of session.players) {
+    const currentLeader = netLeaderByTable.get(sessionPlayer.tableId);
+
+    if (!currentLeader || sessionPlayer.net > currentLeader.highestNet) {
+      netLeaderByTable.set(sessionPlayer.tableId, {
+        highestNet: sessionPlayer.net,
+        leaderCount: 1
+      });
+    } else if (sessionPlayer.net === currentLeader.highestNet) {
+      netLeaderByTable.set(sessionPlayer.tableId, {
+        highestNet: currentLeader.highestNet,
+        leaderCount: currentLeader.leaderCount + 1
+      });
+    }
+  }
 
   const roster =
     publicRoster.length > 0
       ? publicRoster
-      : session.players
-          .map((sessionPlayer) => ({
-            sessionPlayerId: sessionPlayer.id,
-            sessionId: session.id,
-            tableId: sessionPlayer.tableId,
-            name: sessionPlayer.name,
-            status: sessionPlayer.status
-          }));
+      : session.players.map((sessionPlayer) => ({
+          sessionPlayerId: sessionPlayer.id,
+          sessionId: session.id,
+          tableId: sessionPlayer.tableId,
+          name: sessionPlayer.name,
+          status: sessionPlayer.status,
+          isNetLeader:
+            session.status === 'COMPLETED' &&
+            sessionPlayer.net === netLeaderByTable.get(sessionPlayer.tableId)?.highestNet &&
+            netLeaderByTable.get(sessionPlayer.tableId)?.leaderCount === 1
+        }));
 
   return [...roster].sort((a, b) => {
     if (a.status !== b.status) {
@@ -160,6 +180,26 @@ export function playerPublicTableRoster(
 
     return a.sessionPlayerId.localeCompare(b.sessionPlayerId);
   });
+}
+
+export function playerTableDetailRoster(
+  session: PokerSession,
+  player: SessionPlayer,
+  rosterEntries: PlayerPublicTableRosterEntry[]
+): PlayerPublicTableRosterEntry[] {
+  const tableRoster = playerPublicTableRoster(session, player, rosterEntries).filter(
+    (entry) => entry.tableId === player.tableId
+  );
+  const flaggedLeaders = tableRoster.filter((entry) => entry.isNetLeader === true);
+  const leaderId =
+    session.status === 'COMPLETED' && flaggedLeaders.length === 1
+      ? flaggedLeaders[0].sessionPlayerId
+      : null;
+
+  return tableRoster.map((entry) => ({
+    ...entry,
+    isNetLeader: entry.sessionPlayerId === leaderId
+  }));
 }
 
 export function shouldPollPlayerCallTime(input: PlayerCallTimePollingInput): boolean {

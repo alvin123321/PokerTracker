@@ -202,7 +202,7 @@ select throws_ok(
 select throws_ok(
   $$select public.create_mini_game('Bad Limits', 5::smallint, 4::smallint)$$,
   'P0001',
-  'Mini-game player limits must be between 2 and 10 with minimum not above maximum.',
+  'Mini-game minimum players must be between 1 and 10, maximum players between 2 and 10, and minimum cannot exceed maximum.',
   'invalid player limits are rejected'
 );
 select lives_ok(

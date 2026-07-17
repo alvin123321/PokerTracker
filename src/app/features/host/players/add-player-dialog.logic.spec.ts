@@ -1,4 +1,35 @@
-import { resolveAddPlayerSearch, sortRegisteredPlayerOptions } from './add-player-dialog.logic';
+import {
+  filterRegisteredPlayerOptions,
+  resolveAddPlayerSearch,
+  sortRegisteredPlayerOptions
+} from './add-player-dialog.logic';
+
+describe('add player dialog registered player search', () => {
+  const players = [
+    { id: 'alvin', username: 'alvin88', displayName: 'Alvin' },
+    { id: 'alan', username: 'alanpoker', displayName: 'Alan' },
+    { id: 'alex', username: 'riverking', displayName: 'Alex' },
+    { id: 'vincent', username: 'vinny', displayName: 'Vincent' }
+  ];
+
+  it('matches display names only from the beginning', () => {
+    const filtered = filterRegisteredPlayerOptions(players, 'al', [], []);
+
+    expect(filtered.map((player) => player.id)).toEqual(['alvin', 'alan', 'alex']);
+  });
+
+  it('matches usernames from the beginning independently of display names', () => {
+    const filtered = filterRegisteredPlayerOptions(players, 'river', [], []);
+
+    expect(filtered.map((player) => player.id)).toEqual(['alex']);
+  });
+
+  it('does not match text from the middle of a name', () => {
+    const filtered = filterRegisteredPlayerOptions(players, 'lvi', [], []);
+
+    expect(filtered).toEqual([]);
+  });
+});
 
 describe('add player dialog registered player ordering', () => {
   it('moves players already in the session below selectable players', () => {

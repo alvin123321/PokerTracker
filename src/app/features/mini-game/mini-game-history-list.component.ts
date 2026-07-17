@@ -1,7 +1,15 @@
 import { DatePipe } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
+import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
-import { LucideChevronRight, LucideSpade, LucideTrophy, LucideUsersRound } from '@lucide/angular';
+import {
+  LucideChevronRight,
+  LucideEllipsis,
+  LucideSpade,
+  LucideTrash2,
+  LucideTrophy,
+  LucideUsersRound,
+} from '@lucide/angular';
 
 import { miniGameWinnerParticipants } from './mini-game.logic';
 import { MiniGameSnapshot } from './mini-game.models';
@@ -12,9 +20,12 @@ import { PlayingCardComponent } from './playing-card.component';
   imports: [
     DatePipe,
     LucideChevronRight,
+    LucideEllipsis,
     LucideSpade,
+    LucideTrash2,
     LucideTrophy,
     LucideUsersRound,
+    MatMenuModule,
     PlayingCardComponent,
     RouterLink,
   ],
@@ -30,32 +41,62 @@ import { PlayingCardComponent } from './playing-card.component';
     } @else {
       <div class="mini-history-list">
         @for (game of games(); track game.id) {
-          <a [routerLink]="detailBasePath() + '/' + game.id" class="mini-history-card">
-            <div class="mini-history-topline">
-              <div>
-                <h2>{{ game.name }}</h2>
-                <span>{{ game.completedAt ?? game.updatedAt | date: 'MMM d, y' }}</span>
+          <article
+            class="mini-history-card"
+            [class.mini-history-card-admin]="canDelete()"
+          >
+            <a [routerLink]="detailBasePath() + '/' + game.id" class="mini-history-card-link">
+              <div class="mini-history-topline">
+                <div>
+                  <h2>{{ game.name }}</h2>
+                  <span>{{ game.completedAt ?? game.updatedAt | date: 'MMM d, y' }}</span>
+                </div>
+                @if (!canDelete()) {
+                  <svg lucideChevronRight [strokeWidth]="2.1" aria-hidden="true"></svg>
+                }
               </div>
-              <svg lucideChevronRight [strokeWidth]="2.1" aria-hidden="true"></svg>
-            </div>
 
-            <div class="mini-history-board" aria-label="Final board">
-              @for (card of game.board; track card.position) {
-                <app-playing-card [card]="card" size="hole" />
-              }
-            </div>
+              <div class="mini-history-board" aria-label="Final board">
+                @for (card of game.board; track card.position) {
+                  <app-playing-card [card]="card" size="hole" />
+                }
+              </div>
 
-            <div class="mini-history-result">
-              <span class="mini-history-winner">
-                <svg lucideTrophy [strokeWidth]="2" aria-hidden="true"></svg>
-                <strong>{{ winnerNames(game) }}</strong>
-              </span>
-              <span class="mini-history-count">
-                <svg lucideUsersRound [strokeWidth]="2" aria-hidden="true"></svg>
-                {{ game.activePlayerCount }}
-              </span>
-            </div>
-          </a>
+              <div class="mini-history-result">
+                <span class="mini-history-winner">
+                  <svg lucideTrophy [strokeWidth]="2" aria-hidden="true"></svg>
+                  <strong>{{ winnerNames(game) }}</strong>
+                </span>
+                <span class="mini-history-count">
+                  <svg lucideUsersRound [strokeWidth]="2" aria-hidden="true"></svg>
+                  {{ game.activePlayerCount }}
+                </span>
+              </div>
+            </a>
+
+            @if (canDelete()) {
+              <button
+                type="button"
+                class="mini-history-menu-button"
+                [matMenuTriggerFor]="historyMenu"
+                aria-label="Open actions for {{ game.name }}"
+                title="Mini-game actions"
+              >
+                <svg lucideEllipsis [strokeWidth]="2.2" aria-hidden="true"></svg>
+              </button>
+              <mat-menu #historyMenu="matMenu" class="mini-game-menu" xPosition="before">
+                <button
+                  type="button"
+                  mat-menu-item
+                  class="mini-menu-danger"
+                  (click)="deleteGame.emit(game)"
+                >
+                  <svg lucideTrash2 [strokeWidth]="2" aria-hidden="true"></svg>
+                  <span>Delete mini-game</span>
+                </button>
+              </mat-menu>
+            }
+          </article>
         }
       </div>
     }
@@ -73,24 +114,53 @@ import { PlayingCardComponent } from './playing-card.component';
       }
 
       .mini-history-card {
-        display: grid;
+        position: relative;
         min-width: 0;
-        gap: 0.7rem;
         border: 1px solid rgb(255 255 255 / 0.09);
         border-left: 2px solid rgb(251 191 36 / 0.7);
         border-radius: 0.48rem;
         background: rgb(255 255 255 / 0.035);
-        padding: 0.8rem;
-        color: inherit;
-        text-decoration: none;
         transition:
           border-color 160ms ease,
           background-color 160ms ease;
       }
 
+      .mini-history-card-link {
+        display: grid;
+        min-width: 0;
+        gap: 0.7rem;
+        padding: 0.8rem;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .mini-history-card-admin .mini-history-card-link {
+        padding-right: 3rem;
+      }
+
       .mini-history-card:hover {
         border-color: rgb(251 191 36 / 0.36);
         background: rgb(255 255 255 / 0.055);
+      }
+
+      .mini-history-menu-button {
+        position: absolute;
+        z-index: 1;
+        top: 0.65rem;
+        right: 0.65rem;
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        place-items: center;
+        border: 1px solid rgb(255 255 255 / 0.1);
+        border-radius: 0.38rem;
+        background: rgb(255 255 255 / 0.04);
+        color: rgb(161 161 170);
+      }
+
+      .mini-history-menu-button svg {
+        width: 1rem;
+        height: 1rem;
       }
 
       .mini-history-topline,
@@ -217,6 +287,8 @@ export class MiniGameHistoryListComponent {
   readonly games = input.required<MiniGameSnapshot[]>();
   readonly detailBasePath = input.required<string>();
   readonly loading = input(false);
+  readonly canDelete = input(false);
+  readonly deleteGame = output<MiniGameSnapshot>();
 
   protected winnerNames(game: MiniGameSnapshot): string {
     const names = miniGameWinnerParticipants(game).map((participant) => participant.displayName);

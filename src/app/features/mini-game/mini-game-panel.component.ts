@@ -15,7 +15,7 @@ import {
 } from '@lucide/angular';
 
 import { MiniGameBoardComponent } from './mini-game-board.component';
-import { miniGameWinPercentage } from './mini-game.logic';
+import { isMiniGameEquityFresh, miniGameEquityPercentage } from './mini-game.logic';
 import { MiniGameParticipantRowComponent } from './mini-game-participant-row.component';
 import { MiniGameActionName, MiniGameParticipant, MiniGameSnapshot } from './mini-game.models';
 
@@ -64,15 +64,6 @@ import { MiniGameActionName, MiniGameParticipant, MiniGameSnapshot } from './min
               <button
                 type="button"
                 mat-menu-item
-                [disabled]="!showDetailButton()"
-                (click)="openDetail.emit()"
-              >
-                <svg lucideEye [strokeWidth]="2" aria-hidden="true"></svg>
-                <span>Open game</span>
-              </button>
-              <button
-                type="button"
-                mat-menu-item
                 [disabled]="snapshot().status !== 'OPEN' || busy()"
                 (click)="edit.emit()"
               >
@@ -91,12 +82,19 @@ import { MiniGameActionName, MiniGameParticipant, MiniGameSnapshot } from './min
               <button
                 type="button"
                 mat-menu-item
-                class="mini-menu-danger"
+                [class.mini-menu-danger]="snapshot().status !== 'COMPLETE'"
                 [disabled]="!deletable() || busy()"
-                (click)="deleteGame.emit()"
+                (click)="
+                  snapshot().status === 'COMPLETE' ? completeGame.emit() : deleteGame.emit()
+                "
               >
-                <svg lucideTrash2 [strokeWidth]="2" aria-hidden="true"></svg>
-                <span>Delete game</span>
+                @if (snapshot().status === 'COMPLETE') {
+                  <svg lucideCircleCheck [strokeWidth]="2" aria-hidden="true"></svg>
+                  <span>Close mini game</span>
+                } @else {
+                  <svg lucideTrash2 [strokeWidth]="2" aria-hidden="true"></svg>
+                  <span>Delete game</span>
+                }
               </button>
             </mat-menu>
           } @else if (showDetailButton()) {
@@ -248,6 +246,7 @@ import { MiniGameActionName, MiniGameParticipant, MiniGameSnapshot } from './min
           <app-mini-game-participant-row
             [participant]="participant"
             [stateVersion]="snapshot().stateVersion"
+            [equityFresh]="equityFresh()"
             [winner]="isWinner(participant)"
             [viewer]="participant.id === snapshot().viewerParticipantId"
             [removable]="canManage() && snapshot().status === 'OPEN' && !readOnly()"
@@ -554,12 +553,22 @@ export class MiniGamePanelComponent {
   readonly removePlayer = output<MiniGameParticipant>();
   readonly openDetail = output<void>();
   protected readonly busy = computed(() => this.activeAction() !== null);
+  protected readonly equityFresh = computed(() => isMiniGameEquityFresh(this.snapshot()));
   protected readonly sortedParticipants = computed(() => {
     const snapshot = this.snapshot();
+    const equityFresh = this.equityFresh();
 
     return [...snapshot.participants].sort((left, right) => {
-      const leftPercentage = miniGameWinPercentage(left.equity, snapshot.stateVersion);
-      const rightPercentage = miniGameWinPercentage(right.equity, snapshot.stateVersion);
+      const leftPercentage = miniGameEquityPercentage(
+        left.equity,
+        snapshot.stateVersion,
+        equityFresh,
+      );
+      const rightPercentage = miniGameEquityPercentage(
+        right.equity,
+        snapshot.stateVersion,
+        equityFresh,
+      );
 
       if (leftPercentage === null && rightPercentage === null) {
         return left.joinPosition - right.joinPosition;
