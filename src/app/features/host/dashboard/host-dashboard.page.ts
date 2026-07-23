@@ -127,11 +127,8 @@ class TableNameDialogComponent {
     RouterLink,
   ],
   template: `
+    <h1 class="sr-only">Dashboard</h1>
     <section class="space-y-6 sm:space-y-8">
-      <div>
-        <h1 class="sr-only">Dashboard</h1>
-      </div>
-
       @if (pendingAction()) {
         <div class="pokertrack-sync-overlay fixed inset-0 z-40 grid place-items-center bg-neutral-950/50 px-6 backdrop-blur-sm">
           <div class="rounded-xl border border-emerald-300/20 bg-neutral-950/90 px-6 py-5 text-center shadow-2xl shadow-black/50">
