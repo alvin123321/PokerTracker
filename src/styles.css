@@ -953,12 +953,21 @@ a {
     padding-bottom: calc(5.85rem + env(safe-area-inset-bottom, 0px));
   }
 
+  app-player-shell > main {
+    padding-bottom: calc(5.85rem + env(safe-area-inset-bottom, 0px));
+  }
+
   app-host-shell > main:has(app-global-chat-page.global-chat-route) {
     padding-bottom: 0;
   }
 
+  app-player-shell > main:has(app-global-chat-page.global-chat-route) {
+    padding-bottom: 0;
+  }
+
   app-host-shell > main:has(app-global-chat-page.global-chat-route) .host-mobile-tabs,
-  app-player-dashboard-page .player-dashboard-chat-active .player-tabs {
+  app-player-dashboard-page .player-dashboard-chat-active .player-tabs,
+  app-player-shell > main:has(app-global-chat-page.global-chat-route) .player-shell-tabs {
     display: none;
   }
 
@@ -981,7 +990,8 @@ a {
 
   :is(app-host-shell, app-player-shell)
     > main:has(app-global-chat-page.global-chat-route)
-    .chat-shell-back {
+    .chat-shell-back,
+  app-player-shell .chat-shell-back.player-session-back {
     position: absolute;
     z-index: 2;
     top: 50%;
@@ -1001,13 +1011,15 @@ a {
 
   :is(app-host-shell, app-player-shell)
     > main:has(app-global-chat-page.global-chat-route)
-    .chat-shell-back:active {
+    .chat-shell-back:active,
+  app-player-shell .chat-shell-back.player-session-back:active {
     transform: translateY(-50%) scale(0.96);
   }
 
   :is(app-host-shell, app-player-shell)
     > main:has(app-global-chat-page.global-chat-route)
-    .chat-shell-back:focus-visible {
+    .chat-shell-back:focus-visible,
+  app-player-shell .chat-shell-back.player-session-back:focus-visible {
     outline: 2px solid rgb(110 231 183);
     outline-offset: 2px;
   }
@@ -1015,7 +1027,8 @@ a {
   :is(app-host-shell, app-player-shell)
     > main:has(app-global-chat-page.global-chat-route)
     .chat-shell-back
-    svg {
+    svg,
+  app-player-shell .chat-shell-back.player-session-back svg {
     width: 1.2rem;
     height: 1.2rem;
   }

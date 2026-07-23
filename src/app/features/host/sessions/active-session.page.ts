@@ -590,7 +590,7 @@ interface SessionActionReceipt {
                       </div>
                       <div class="player-detail-toolbar-actions">
                         <p class="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-xs font-semibold text-emerald-100 lg:hidden">
-                          Total re-buys {{ activeBuyInCount(player.id) }}
+                          Total re-buys {{ rebuyCount(player.id) }}
                         </p>
                       </div>
                     </div>
@@ -1584,24 +1584,16 @@ export class ActiveSessionPage implements OnDestroy {
       this.session()?.transactions.filter(
         (transaction) =>
           transaction.playerId === playerId &&
-          (transaction.type === 'BUYIN' || transaction.type === 'REBUY') &&
+          transaction.type === 'REBUY' &&
           !transaction.deletedAt,
       ).length ?? 0
     );
-  }
-
-  protected buyInTransactions(playerId: string): PokerTransaction[] {
-    return this.store.buyInTransactionsForPlayer(this.session(), playerId);
   }
 
   protected timelineTransactions(playerId: string): PokerTransaction[] {
     return gameTimelineTransactions(
       (this.session()?.transactions ?? []).filter((transaction) => transaction.playerId === playerId)
     );
-  }
-
-  protected activeBuyInCount(playerId: string): number {
-    return this.buyInTransactions(playerId).filter((transaction) => !transaction.deletedAt).length;
   }
 
   protected signedMoney(amount: number): string {

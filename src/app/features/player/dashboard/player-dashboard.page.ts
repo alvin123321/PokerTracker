@@ -517,7 +517,7 @@ const playerCallTimeSyncIntervalMs = 1000;
       .player-dashboard {
         display: grid;
         gap: 1rem;
-        padding-bottom: calc(5.85rem + env(safe-area-inset-bottom, 0px));
+        padding-bottom: 0;
         font-family:
           'Aptos Display', Aptos, Inter, ui-sans-serif, system-ui, -apple-system,
           BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -540,7 +540,7 @@ const playerCallTimeSyncIntervalMs = 1000;
       }
 
       .player-tabs {
-        display: grid;
+        display: none;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 0.6rem;
         position: fixed;
@@ -605,6 +605,7 @@ const playerCallTimeSyncIntervalMs = 1000;
         }
 
         .player-tabs {
+          display: grid;
           position: static;
           justify-self: center;
           max-width: 25rem;

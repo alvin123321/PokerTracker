@@ -63,6 +63,39 @@ describe('PlayerShellComponent', () => {
     expect(backLink?.getAttribute('aria-label')).toBe('Back to Home');
   });
 
+  it('routes the top back control to History from a player session detail', () => {
+    const router = TestBed.inject(Router);
+    spyOnProperty(router, 'url', 'get').and.returnValue('/player/sessions/session-a');
+    const fixture = TestBed.createComponent(PlayerShellComponent);
+    fixture.detectChanges();
+    const backLink = (fixture.nativeElement as HTMLElement).querySelector<HTMLAnchorElement>(
+      '.chat-shell-back'
+    );
+
+    expect(backLink?.getAttribute('href')).toBe('/player/dashboard?tab=history');
+    expect(backLink?.getAttribute('aria-label')).toBe('Back');
+    expect(backLink?.classList).toContain('player-session-back');
+  });
+
+  it('owns the persistent player bottom navigation', () => {
+    const fixture = TestBed.createComponent(PlayerShellComponent);
+    fixture.detectChanges();
+    const navigation = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      'nav[aria-label="Player dashboard"]'
+    );
+    const destinations = Array.from(
+      navigation?.querySelectorAll<HTMLAnchorElement>('a') ?? []
+    ).map((link) => link.getAttribute('href'));
+
+    expect(navigation?.classList).toContain('player-shell-tabs');
+    expect(destinations).toEqual([
+      '/player/dashboard?tab=calculator',
+      '/player/dashboard?tab=overview',
+      '/player/dashboard?tab=chat',
+      '/player/dashboard?tab=history'
+    ]);
+  });
+
   it('navigates to profile and signs out after confirmation', async () => {
     const fixture = TestBed.createComponent(PlayerShellComponent);
     fixture.detectChanges();

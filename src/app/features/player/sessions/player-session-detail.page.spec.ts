@@ -95,6 +95,16 @@ describe('PlayerSessionDetailPage', () => {
     expect(heading?.lastElementChild).toBe(activeSign);
     expect(activeSign?.classList).toContain('player-status-sign--detail');
   });
+
+  it('leaves persistent bottom navigation to the player shell', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    const navigation = compiled.querySelector<HTMLElement>(
+      'nav[aria-label="Player dashboard"]'
+    );
+
+    expect(navigation).toBeNull();
+    expect(compiled.textContent).not.toContain('Back to history');
+  });
 });
 
 function makeSession(overrides: Partial<PokerSession> = {}): PokerSession {

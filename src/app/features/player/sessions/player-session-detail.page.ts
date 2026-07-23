@@ -9,11 +9,17 @@ import { playerTableDetailRoster } from '../dashboard/player-dashboard.logic';
 
 @Component({
   selector: 'app-player-session-detail-page',
-  imports: [CurrencyPipe, DatePipe, LucideChevronDown, LucideCrown, RouterLink],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    LucideChevronDown,
+    LucideCrown,
+    RouterLink
+  ],
   template: `
     @if (player(); as currentPlayer) {
       @if (session(); as currentSession) {
-        <section class="space-y-5 pb-24 sm:space-y-6 sm:pb-0">
+        <section class="space-y-5 sm:space-y-6">
           <div class="player-session-heading flex items-start justify-between gap-3">
             <div class="min-w-0">
               <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ currentSession.name }}</h1>
@@ -188,27 +194,6 @@ import { playerTableDetailRoster } from '../dashboard/player-dashboard.logic';
             </div>
           </section>
 
-          <div class="hidden sm:flex">
-            <a
-              routerLink="/player/dashboard"
-              [queryParams]="{ tab: 'history' }"
-              class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-neutral-100 transition duration-200 ease-out hover:border-emerald-300/40 hover:bg-emerald-300/10 hover:text-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300/50"
-              (click)="preparePlayerRouteTransition('back')"
-            >
-              Back to history
-            </a>
-          </div>
-
-          <div class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-neutral-950/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-18px_40px_rgba(0,0,0,0.45)] backdrop-blur sm:hidden">
-            <a
-              routerLink="/player/dashboard"
-              [queryParams]="{ tab: 'history' }"
-              class="flex min-h-12 w-full items-center justify-center rounded-2xl border border-emerald-300/35 bg-emerald-300/10 text-base font-semibold text-emerald-100 transition duration-200 ease-out active:scale-[0.98] active:bg-emerald-300/20"
-              (click)="preparePlayerRouteTransition('back')"
-            >
-              Back to history
-            </a>
-          </div>
         </section>
       }
     } @else if (store.loading()) {
