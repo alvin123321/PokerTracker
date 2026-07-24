@@ -10,9 +10,11 @@ import { PlayerShellComponent } from './player-shell.component';
 
 describe('PlayerShellComponent', () => {
   let signOutSpy: jasmine.Spy;
+  let role: ReturnType<typeof signal<'PLAYER' | 'MANAGER'>>;
 
   beforeEach(async () => {
     signOutSpy = jasmine.createSpy('signOut').and.resolveTo();
+    role = signal<'PLAYER' | 'MANAGER'>('PLAYER');
     await TestBed.configureTestingModule({
       imports: [PlayerShellComponent],
       providers: [
@@ -21,11 +23,26 @@ describe('PlayerShellComponent', () => {
           provide: AuthStateService,
           useValue: {
             profile: signal({ displayName: 'Jamie Player' }),
+            role,
             signOut: signOutSpy
           }
         }
       ]
     }).compileComponents();
+  });
+
+  it('offers managers a Manage Tables switch', () => {
+    role.set('MANAGER');
+    const fixture = TestBed.createComponent(PlayerShellComponent);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    compiled.querySelector<HTMLButtonElement>('.host-account-menu-toggle')!.click();
+    fixture.detectChanges();
+
+    expect(
+      compiled.querySelector<HTMLAnchorElement>('a[href="/host/dashboard"]')?.textContent
+    ).toContain('Manage Tables');
   });
 
   it('opens an avatar menu with profile and sign out actions only', () => {

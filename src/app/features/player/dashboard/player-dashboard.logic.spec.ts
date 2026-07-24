@@ -6,6 +6,7 @@ import {
   playerGameTimeline,
   playerGameStatusKind,
   playerGameStatMode,
+  managerSessionTipTotal,
   playerPublicTableRoster,
   playerTableDetailRoster,
   playerPublicTableStats,
@@ -195,6 +196,23 @@ describe('player game status display', () => {
     expect(totalActivePlayerChips(session)).toBe(350);
   });
 
+  it('excludes soft-removed players from active counts and chips', () => {
+    const session = makeSession({
+      players: [
+        makePlayer({
+          id: 'seat-a',
+          status: 'ACTIVE',
+          totalBuyIn: 100,
+          removedAt: '2026-07-23T12:00:00Z'
+        }),
+        makePlayer({ id: 'seat-b', status: 'ACTIVE', totalBuyIn: 250 })
+      ]
+    });
+
+    expect(totalActivePlayers(session)).toBe(1);
+    expect(totalActivePlayerChips(session)).toBe(250);
+  });
+
   it('uses completed cash-out and net stats after the player is completed', () => {
     const session = makeSession({ status: 'COMPLETED' });
     const player = makePlayer({ status: 'COMPLETED', cashOut: 500, net: 200 });
@@ -217,6 +235,34 @@ describe('player mini-game history', () => {
   it('puts timeline first only for completed table games', () => {
     expect(playerGameDetailSections('ACTIVE_GAME')).toEqual(['players', 'timeline']);
     expect(playerGameDetailSections('COMPLETED_GAME')).toEqual(['timeline', 'players']);
+  });
+});
+
+describe('manager session tips', () => {
+  it('totals only active tips assigned to the current manager', () => {
+    const session = makeSession({
+      financialEntries: [
+        makeFinancialEntry({ id: 'tip-a', amount: 200 }),
+        makeFinancialEntry({ id: 'tip-b', amount: 150 }),
+        makeFinancialEntry({
+          id: 'other-manager-tip',
+          amount: 500,
+          managerUserId: 'manager-b'
+        }),
+        makeFinancialEntry({
+          id: 'deleted-tip',
+          amount: 100,
+          deletedAt: '2026-07-08T03:00:00.000Z'
+        }),
+        makeFinancialEntry({ id: 'rake', entryType: 'RAKE', managerUserId: null, amount: 300 })
+      ]
+    });
+
+    expect(managerSessionTipTotal(session, 'manager-a')).toBe(350);
+  });
+
+  it('returns zero when the user has no assigned tips', () => {
+    expect(managerSessionTipTotal(makeSession(), 'manager-a')).toBe(0);
   });
 });
 
@@ -449,6 +495,25 @@ describe('player public table roster', () => {
     ]);
   });
 
+  it('excludes soft-removed players from the fallback roster', () => {
+    const player = makePlayer({ id: 'seat-a', tableId: 'table-a', name: 'Alvin' });
+    const session = makeSession({
+      players: [
+        player,
+        makePlayer({
+          id: 'seat-b',
+          tableId: 'table-a',
+          name: 'Removed',
+          removedAt: '2026-07-23T12:00:00Z'
+        })
+      ]
+    });
+
+    expect(playerPublicTableRoster(session, player, []).map((entry) => entry.name)).toEqual([
+      'Alvin'
+    ]);
+  });
+
   it('includes unassigned players from the active game when the public roster exposes them', () => {
     const player = makePlayer({ id: 'seat-a', tableId: null, name: 'Alvin' });
     const session = makeSession({
@@ -550,6 +615,27 @@ function makeTransaction(overrides: Partial<PokerTransaction> = {}): PokerTransa
     type,
     amount: 100,
     createdAt: '2026-07-08T01:00:00.000Z',
+    ...overrides
+  };
+}
+
+function makeFinancialEntry(
+  overrides: Partial<NonNullable<PokerSession['financialEntries']>[number]> = {}
+): NonNullable<PokerSession['financialEntries']>[number] {
+  return {
+    id: 'tip-a',
+    sessionId: 'session-a',
+    entryType: 'TIP',
+    amount: 100,
+    managerUserId: 'manager-a',
+    managerName: 'Manager A',
+    createdAt: '2026-07-08T01:00:00.000Z',
+    createdBy: 'host-a',
+    createdByName: 'Admin',
+    updatedAt: '2026-07-08T01:00:00.000Z',
+    updatedBy: 'host-a',
+    updatedByName: 'Admin',
+    revisions: [],
     ...overrides
   };
 }

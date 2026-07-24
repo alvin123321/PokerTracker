@@ -5,7 +5,10 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { PokerStoreService, SessionPlayer } from '../../host/data/poker-store.service';
-import { playerTableDetailRoster } from '../dashboard/player-dashboard.logic';
+import {
+  managerSessionTipTotal,
+  playerTableDetailRoster
+} from '../dashboard/player-dashboard.logic';
 
 @Component({
   selector: 'app-player-session-detail-page',
@@ -82,6 +85,14 @@ import { playerTableDetailRoster } from '../dashboard/player-dashboard.logic';
                 }
               </p>
             </div>
+            @if (managerTipTotal() > 0) {
+              <div class="player-session-stat player-session-stat--tips col-span-2 rounded-lg p-3 sm:p-5">
+                <p class="player-session-stat-label text-sm">My tips</p>
+                <p class="mt-1 text-2xl font-semibold text-emerald-200 sm:mt-2 sm:text-3xl">
+                  {{ managerTipTotal() | currency: 'USD' : 'symbol' : '1.0-0' }}
+                </p>
+              </div>
+            }
           </div>
 
           <div class="player-detail-section player-detail-section--timeline overflow-hidden rounded-lg">
@@ -312,6 +323,19 @@ import { playerTableDetailRoster } from '../dashboard/player-dashboard.logic';
         background: rgba(212, 212, 216, 0.48);
       }
 
+      .player-session-stat--tips {
+        border-color: rgba(74, 222, 128, 0.24);
+        background: rgba(34, 197, 94, 0.065);
+      }
+
+      .player-session-stat--tips::before {
+        background: rgba(74, 222, 128, 0.82);
+      }
+
+      .player-session-stat--tips .player-session-stat-label {
+        color: #bbf7d0;
+      }
+
       .player-detail-section {
         border: 1px solid rgba(110, 231, 183, 0.2);
         background: rgba(255, 255, 255, 0.035);
@@ -429,6 +453,13 @@ export class PlayerSessionDetailPage implements OnInit {
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
   protected readonly playerName = computed(() => this.authState.profile()?.displayName ?? 'Player');
+  protected readonly managerTipTotal = computed(() => {
+    const session = this.session();
+
+    return session
+      ? managerSessionTipTotal(session, this.authState.user()?.id ?? null)
+      : 0;
+  });
   protected readonly player = computed(() => {
     const userId = this.authState.user()?.id ?? null;
     const targetName = this.playerName().trim().toLowerCase();

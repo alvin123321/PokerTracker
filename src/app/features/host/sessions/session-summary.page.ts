@@ -21,6 +21,7 @@ import {
   ActionFeedbackToastComponent,
   ActionFeedbackToastTone,
 } from '../shared/action-feedback-toast.component';
+import { SessionAccountingComponent } from './session-accounting.component';
 
 interface SessionTableGroup {
   tableId: string | null;
@@ -44,6 +45,7 @@ interface SessionSummaryFeedback {
     MatDialogModule,
     MatMenuModule,
     RouterLink,
+    SessionAccountingComponent,
   ],
   template: `
     @if (actionToast(); as toast) {
@@ -158,7 +160,9 @@ interface SessionSummaryFeedback {
           </div>
         }
 
-        <div class="space-y-3">
+        <app-session-accounting [session]="currentSession" />
+
+        <div class="space-y-3 pt-4 sm:pt-5">
             @for (tableGroup of tableGroups(); track tableGroup.tableId) {
               <section class="overflow-hidden rounded-xl border border-emerald-300/15 bg-neutral-950/80">
                 <div class="flex items-center justify-between border-b border-white/10 bg-emerald-300/[0.04] px-3 py-2 sm:px-4">

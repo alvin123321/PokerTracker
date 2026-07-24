@@ -52,7 +52,7 @@ export const playerGuard: CanMatchFn = async (_route, segments) => {
     return redirectToLogin(router, segments);
   }
 
-  if (authState.role() === 'PLAYER') {
+  if (authState.role() === 'PLAYER' || authState.role() === 'MANAGER') {
     return true;
   }
 

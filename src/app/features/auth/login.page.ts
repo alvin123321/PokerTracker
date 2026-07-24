@@ -633,7 +633,10 @@ export class LoginPage {
       return returnUrl;
     }
 
-    if (profile.role === 'PLAYER' && returnUrl.startsWith('/player')) {
+    if (
+      (profile.role === 'PLAYER' || profile.role === 'MANAGER') &&
+      returnUrl.startsWith('/player')
+    ) {
       return returnUrl;
     }
 

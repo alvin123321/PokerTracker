@@ -12,13 +12,18 @@ import { ConfirmationDialogComponent } from '../shared/confirmation-dialog.compo
 import { SessionSummaryPage } from './session-summary.page';
 
 describe('SessionSummaryPage', () => {
-  let authState: { isHostAdmin: jasmine.Spy<() => boolean> };
+  let authState: {
+    isHostAdmin: jasmine.Spy<() => boolean>;
+    role: jasmine.Spy<() => 'HOST'>;
+    user: jasmine.Spy<() => { id: string }>;
+  };
   let router: Router;
   let sessionState: WritableSignal<PokerSession | undefined>;
   let store: {
     deleteSession: jasmine.Spy;
     error: ReturnType<typeof signal<string | null>>;
     getSession: jasmine.Spy;
+    listRegisteredPlayers: jasmine.Spy;
     playersForTable: jasmine.Spy;
     totalsFor: jasmine.Spy;
   };
@@ -26,12 +31,15 @@ describe('SessionSummaryPage', () => {
   beforeEach(async () => {
     authState = {
       isHostAdmin: jasmine.createSpy('isHostAdmin').and.returnValue(true),
+      role: jasmine.createSpy('role').and.returnValue('HOST'),
+      user: jasmine.createSpy('user').and.returnValue({ id: 'host-user' }),
     };
     sessionState = signal<PokerSession | undefined>(undefined);
     store = {
       deleteSession: jasmine.createSpy('deleteSession').and.resolveTo(),
       error: signal<string | null>(null),
       getSession: jasmine.createSpy('getSession').and.callFake(() => sessionState()),
+      listRegisteredPlayers: jasmine.createSpy('listRegisteredPlayers').and.resolveTo([]),
       playersForTable: jasmine.createSpy('playersForTable').and.callFake(
         (session: PokerSession | undefined, tableId: string | null) =>
           session?.players.filter((player) => player.tableId === tableId) ?? [],

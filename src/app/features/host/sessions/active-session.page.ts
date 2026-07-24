@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, NgTemplateOutlet } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { LucideEllipsis } from '@lucide/angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -30,6 +30,7 @@ import {
 import {
   CashOutDialogComponent,
   CashOutDialogData,
+  CashOutDialogResult,
 } from '../transactions/cash-out-dialog.component';
 import {
   EditBuyInDialogComponent,
@@ -46,8 +47,13 @@ import {
   netResultTone,
   NetResultTone,
 } from '../shared/session-player-display.logic';
-import { gameTimelineTransactions } from '../data/session-timeline.logic';
-import { allPlayersCashedOut, initialExpandedTableIds } from './active-session-display.logic';
+import { GameTimelineEntry, gameTimelineEntries } from '../data/session-timeline.logic';
+import {
+  allPlayersCashedOut,
+  canModifyActiveSessionRecords,
+  initialExpandedTableIds
+} from './active-session-display.logic';
+import { SessionAccountingComponent } from './session-accounting.component';
 
 interface SessionActionReceipt {
   message: string;
@@ -64,6 +70,7 @@ interface SessionActionReceipt {
     MatDialogModule,
     NgTemplateOutlet,
     RouterLink,
+    SessionAccountingComponent,
   ],
   template: `
     @if (session(); as currentSession) {
@@ -95,7 +102,7 @@ interface SessionActionReceipt {
               <span class="rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold text-neutral-950">
                 {{ currentSession.status }}
               </span>
-              @if (canDelete()) {
+              @if (canAdministerSession()) {
                 <div class="session-action-menu-wrap">
                   <button
                     type="button"
@@ -134,32 +141,36 @@ interface SessionActionReceipt {
 
           <div class="session-primary-actions">
             @if (!isHistoryView && currentSession.status === 'ACTIVE') {
-              <button
-                type="button"
-                [disabled]="isBusy()"
-                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                (click)="createTable()"
-              >
-                @if (isPending('add-table')) {
-                  <span class="action-spinner" aria-hidden="true"></span>
-                  Creating...
-                } @else {
-                  + Table
-                }
-              </button>
-              <button
-                type="button"
-                [disabled]="isBusy() || !selectedTable()"
-                class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-                (click)="openAddPlayerDialog()"
-              >
-                @if (isPending('add-player')) {
-                  <span class="action-spinner" aria-hidden="true"></span>
-                  Adding...
-                } @else {
-                  Add Player
-                }
-              </button>
+              @if (canAdministerSession()) {
+                <button
+                  type="button"
+                  [disabled]="isBusy()"
+                  class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300/30 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  (click)="createTable()"
+                >
+                  @if (isPending('add-table')) {
+                    <span class="action-spinner" aria-hidden="true"></span>
+                    Creating...
+                  } @else {
+                    + Table
+                  }
+                </button>
+              }
+              @if (canModifyTableRecords(currentSession)) {
+                <button
+                  type="button"
+                  [disabled]="isBusy() || !selectedTable()"
+                  class="session-action-button inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                  (click)="openAddPlayerDialog()"
+                >
+                  @if (isPending('add-player')) {
+                    <span class="action-spinner" aria-hidden="true"></span>
+                    Adding...
+                  } @else {
+                    Add Player
+                  }
+                </button>
+              }
             }
           </div>
         </div>
@@ -185,7 +196,7 @@ interface SessionActionReceipt {
           </div>
         </div>
 
-        @if (canDelete() && canCloseSession(currentSession)) {
+        @if (canAdministerSession() && canCloseSession(currentSession)) {
           <button
             type="button"
             [disabled]="isBusy()"
@@ -202,7 +213,7 @@ interface SessionActionReceipt {
         }
 
         <section class="space-y-3">
-          @if (!isHistoryView && currentSession.status === 'ACTIVE') {
+          @if (!isHistoryView && currentSession.status === 'ACTIVE' && canAdministerSession()) {
           <div class="flex justify-end">
               <button
                 type="button"
@@ -223,7 +234,7 @@ interface SessionActionReceipt {
               <p class="mt-2 text-sm text-neutral-400">
                 {{ isHistoryView ? 'Tables added during the session will appear here.' : 'A session can contain multiple tables. Add a table before adding players.' }}
               </p>
-              @if (!isHistoryView && currentSession.status === 'ACTIVE') {
+              @if (!isHistoryView && currentSession.status === 'ACTIVE' && canAdministerSession()) {
                 <button
                   type="button"
                   [disabled]="isBusy()"
@@ -243,7 +254,7 @@ interface SessionActionReceipt {
                   [class.border-emerald-300]="isTableExpanded(table.id)"
                   [class.bg-emerald-300/10]="isTableExpanded(table.id)"
                 >
-                @if (canDelete() && currentSession.status === 'ACTIVE') {
+                @if (canAdministerSession() && currentSession.status === 'ACTIVE') {
                   <button
                     type="button"
                     [disabled]="isBusy()"
@@ -301,7 +312,7 @@ interface SessionActionReceipt {
                     @if (playersForTable(currentSession, table.id).length === 0) {
                       <div class="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-6 text-center sm:p-8">
                         <p class="text-lg font-semibold text-white">No players at {{ table.name }}</p>
-                        @if (!isHistoryView && currentSession.status === 'ACTIVE') {
+                        @if (!isHistoryView && canModifyTableRecords(currentSession)) {
                           <button
                             type="button"
                             class="mt-5 rounded-lg bg-emerald-400 px-5 py-3 text-sm font-semibold text-neutral-950"
@@ -333,12 +344,53 @@ interface SessionActionReceipt {
                         }
                       </div>
                     }
+                    @if (removedPlayersForTable(currentSession, table.id); as removedPlayers) {
+                      @if (removedPlayers.length > 0) {
+                        <div class="mt-3 overflow-hidden rounded-lg border border-white/10 bg-neutral-950/45">
+                          <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-neutral-300"
+                            [attr.aria-expanded]="isRemovedPlayersExpanded(table.id)"
+                            (click)="toggleRemovedPlayers(table.id)"
+                          >
+                            <span>Removed players ({{ removedPlayers.length }})</span>
+                            <span aria-hidden="true">
+                              {{ isRemovedPlayersExpanded(table.id) ? 'v' : '>' }}
+                            </span>
+                          </button>
+                          <div
+                            class="removed-player-panel"
+                            [class.removed-player-panel-open]="isRemovedPlayersExpanded(table.id)"
+                            [attr.inert]="isRemovedPlayersExpanded(table.id) ? null : ''"
+                          >
+                            <div class="removed-player-panel-inner divide-y divide-white/10 border-t border-white/10">
+                              @for (removedPlayer of removedPlayers; track removedPlayer.id) {
+                                <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 text-neutral-500">
+                                  <div class="min-w-0">
+                                    <p class="truncate font-semibold line-through">{{ removedPlayer.name }}</p>
+                                    <p class="mt-1 text-xs">
+                                      Removed by {{ removedPlayer.removedByName ?? 'Unknown' }}
+                                      @if (removedPlayer.removedAt) {
+                                        · {{ removedPlayer.removedAt | date: 'short' }}
+                                      }
+                                    </p>
+                                  </div>
+                                  <p class="font-semibold line-through">
+                                    {{ removedPlayer.totalBuyIn | currency: 'USD' : 'symbol' : '1.0-0' }}
+                                  </p>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    }
                     </div>
                   </div>
                 </article>
               }
             </div>
-            @if (!isHistoryView && currentSession.status === 'ACTIVE') {
+            @if (!isHistoryView && currentSession.status === 'ACTIVE' && canAdministerSession()) {
               <div class="pt-1 text-center">
                 <button
                   type="button"
@@ -352,6 +404,8 @@ interface SessionActionReceipt {
             }
           }
         </section>
+
+        <app-session-accounting [session]="currentSession" />
 
         <ng-template #playerRow let-player let-playerIndex="index">
               <div
@@ -585,7 +639,7 @@ interface SessionActionReceipt {
                       <div class="min-w-0">
                         <p class="text-sm font-semibold text-white">Game timeline</p>
                         <p class="hidden text-xs text-neutral-500 lg:block">
-                          {{ canDelete() ? 'Host can edit cash-outs and delete buy-ins' : 'Managers can edit cash-outs and buy-ins' }}
+                          Changes remain visible with the person and time recorded.
                         </p>
                       </div>
                       <div class="player-detail-toolbar-actions">
@@ -596,79 +650,89 @@ interface SessionActionReceipt {
                     </div>
 
                     <div class="space-y-2">
-                      @if (timelineTransactions(player.id).length === 0) {
+                      @if (timelineEntries(player.id).length === 0) {
                         <div class="rounded-lg border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-neutral-500">
                           No transactions recorded for this player.
                         </div>
                       } @else {
-                        @for (transaction of timelineTransactions(player.id); track transaction.id) {
+                        @for (transaction of timelineEntries(player.id); track transaction.id) {
                           <div
                             class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1 rounded-lg border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-[0.75fr_0.9fr_0.7fr_1.2fr_auto] sm:gap-3"
-                            [class.transaction-row-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
-                            [class.transaction-row-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
-                            [class.border-yellow-300/35]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
-                            [class.border-neutral-800]="transaction.deletedAt"
-                            [class.opacity-60]="transaction.deletedAt"
+                            [class.transaction-row-buyin]="transaction.type === 'BUYIN' && transaction.state === 'ACTIVE'"
+                            [class.transaction-row-rebuy]="transaction.type === 'REBUY' && transaction.state === 'ACTIVE'"
+                            [class.border-yellow-300/35]="transaction.type === 'CASHOUT' && transaction.state === 'ACTIVE'"
+                            [class.border-neutral-800]="transaction.state !== 'ACTIVE'"
+                            [class.opacity-60]="transaction.state !== 'ACTIVE'"
                           >
                             <span
                               class="text-xs font-semibold uppercase text-emerald-300"
-                              [class.transaction-label-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
-                              [class.transaction-label-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
-                              [class.text-yellow-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
-                              [class.line-through]="transaction.deletedAt"
-                              [class.text-neutral-500]="transaction.deletedAt"
+                              [class.transaction-label-buyin]="transaction.type === 'BUYIN' && transaction.state === 'ACTIVE'"
+                              [class.transaction-label-rebuy]="transaction.type === 'REBUY' && transaction.state === 'ACTIVE'"
+                              [class.text-yellow-200]="transaction.type === 'CASHOUT' && transaction.state === 'ACTIVE'"
+                              [class.line-through]="transaction.state !== 'ACTIVE'"
+                              [class.text-neutral-500]="transaction.state !== 'ACTIVE'"
                             >
                               {{ transaction.type }}
-                              @if (transaction.deletedAt) {
+                              @if (transaction.state !== 'ACTIVE') {
                                 <span class="ml-2 rounded-full border border-white/10 px-2 py-0.5 text-[0.65rem] text-neutral-500 no-underline">
-                                  Deleted
+                                  {{ transaction.state === 'DELETED' ? 'Deleted' : 'Previous' }}
                                 </span>
                               }
                             </span>
                             <span
                               class="col-start-1 row-start-2 text-sm text-neutral-300 sm:col-auto sm:row-auto"
-                              [class.line-through]="transaction.deletedAt"
-                              [class.text-neutral-500]="transaction.deletedAt"
+                              [class.line-through]="transaction.state !== 'ACTIVE'"
+                              [class.text-neutral-500]="transaction.state !== 'ACTIVE'"
                             >
                               {{ transaction.createdAt | date: 'shortTime' }}
                             </span>
                             <span
                               class="col-start-2 row-start-1 self-center text-right text-lg font-semibold text-white sm:col-auto sm:row-auto sm:self-auto sm:text-left sm:text-base"
-                              [class.transaction-amount-buyin]="transaction.type === 'BUYIN' && !transaction.deletedAt"
-                              [class.transaction-amount-rebuy]="transaction.type === 'REBUY' && !transaction.deletedAt"
-                              [class.text-yellow-200]="transaction.type === 'CASHOUT' && !transaction.deletedAt"
-                              [class.line-through]="transaction.deletedAt"
-                              [class.text-neutral-500]="transaction.deletedAt"
+                              [class.transaction-amount-buyin]="transaction.type === 'BUYIN' && transaction.state === 'ACTIVE'"
+                              [class.transaction-amount-rebuy]="transaction.type === 'REBUY' && transaction.state === 'ACTIVE'"
+                              [class.text-yellow-200]="transaction.type === 'CASHOUT' && transaction.state === 'ACTIVE'"
+                              [class.line-through]="transaction.state !== 'ACTIVE'"
+                              [class.text-neutral-500]="transaction.state !== 'ACTIVE'"
                             >
                               {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
                             </span>
-                            @if (transaction.comment) {
+                            @if (transaction.state !== 'ACTIVE') {
+                              <span class="col-span-3 text-xs text-neutral-500 sm:col-auto">
+                                {{ transaction.state === 'DELETED' ? 'Deleted' : 'Edited' }}
+                                by {{ transaction.actionByName ?? 'Unknown' }}
+                                @if (transaction.actionAt) {
+                                  · {{ transaction.actionAt | date: 'short' }}
+                                }
+                              </span>
+                            } @else if (transaction.comment) {
                               <span
                                 class="col-span-3 text-sm text-neutral-400 sm:col-auto"
-                                [class.line-through]="transaction.deletedAt"
-                                [class.text-neutral-500]="transaction.deletedAt"
                               >
                                 {{ transaction.comment }}
                               </span>
                             } @else {
                               <span class="hidden sm:block"></span>
                             }
-                            <button
-                              type="button"
-                              [disabled]="isBusy()"
-                              class="col-start-3 row-start-1 inline-flex h-8 items-center justify-center gap-2 self-center rounded-lg border border-white/10 px-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:col-auto sm:row-auto sm:h-auto sm:px-3 sm:py-2"
-                              (click)="transaction.type === 'CASHOUT' ? openCashOutDialog(player) : openEditBuyInDialog(player, transaction)"
-                            >
-                              @if (
-                                (transaction.type !== 'CASHOUT' && isPending(transactionAction('edit-buy-in', transaction.id))) ||
-                                isPending(transactionAction('delete-buy-in', transaction.id))
-                              ) {
-                                <span class="action-spinner" aria-hidden="true"></span>
-                                Saving...
-                              } @else {
-                                Edit
-                              }
-                            </button>
+                            @if (transaction.state === 'ACTIVE' && canModifyTableRecords(currentSession)) {
+                              <button
+                                type="button"
+                                [disabled]="isBusy()"
+                                class="col-start-3 row-start-1 inline-flex h-8 items-center justify-center gap-2 self-center rounded-lg border border-white/10 px-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:col-auto sm:row-auto sm:h-auto sm:px-3 sm:py-2"
+                                (click)="editTimelineEntry(player, transaction)"
+                              >
+                                @if (
+                                  (transaction.type !== 'CASHOUT' && isPending(transactionAction('edit-buy-in', transaction.transactionId))) ||
+                                  isPending(transactionAction('delete-buy-in', transaction.transactionId))
+                                ) {
+                                  <span class="action-spinner" aria-hidden="true"></span>
+                                  Saving...
+                                } @else {
+                                  Edit
+                                }
+                              </button>
+                            } @else {
+                              <span></span>
+                            }
                           </div>
                         }
                       }
@@ -861,6 +925,26 @@ interface SessionActionReceipt {
         border-width: 0;
         padding-top: 0;
         padding-bottom: 0;
+      }
+
+      .removed-player-panel {
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        opacity: 0;
+        transition:
+          grid-template-rows 240ms ease,
+          opacity 180ms ease;
+      }
+
+      .removed-player-panel-open {
+        grid-template-rows: 1fr;
+        opacity: 1;
+      }
+
+      .removed-player-panel-inner {
+        min-height: 0;
+        overflow: hidden;
       }
 
       @media (max-width: 639px) {
@@ -1281,8 +1365,16 @@ export class ActiveSessionPage implements OnDestroy {
   protected readonly selectedTableId = signal<string | null>(null);
   protected readonly expandedTableIds = signal<string[]>([]);
   private readonly collapsedTableIds = signal<string[]>([]);
+  private readonly expandedRemovedTableIds = signal<string[]>([]);
 
   protected readonly session = computed(() => this.store.getSession(this.sessionId));
+  private readonly redirectManagerCompletedSession = effect(() => {
+    const currentSession = this.session();
+
+    if (this.authState.role() === 'MANAGER' && currentSession?.status === 'COMPLETED') {
+      void this.router.navigate(['/player/sessions', currentSession.id], { replaceUrl: true });
+    }
+  });
   protected readonly selectedTable = computed(() => {
     const currentSession = this.session();
     const tables = currentSession?.tables ?? [];
@@ -1382,8 +1474,27 @@ export class ActiveSessionPage implements OnDestroy {
     });
   }
 
+  protected removedPlayersForTable(
+    currentSession: PokerSession | undefined,
+    tableId: string
+  ): SessionPlayer[] {
+    return this.store.removedPlayersForTable(currentSession, tableId);
+  }
+
+  protected toggleRemovedPlayers(tableId: string): void {
+    this.expandedRemovedTableIds.update((tableIds) =>
+      tableIds.includes(tableId)
+        ? tableIds.filter((currentTableId) => currentTableId !== tableId)
+        : [...tableIds, tableId]
+    );
+  }
+
+  protected isRemovedPlayersExpanded(tableId: string): boolean {
+    return this.expandedRemovedTableIds().includes(tableId);
+  }
+
   protected async createTable(): Promise<void> {
-    if (this.isBusy()) {
+    if (this.isBusy() || !this.canAdministerSession()) {
       return;
     }
 
@@ -1420,6 +1531,9 @@ export class ActiveSessionPage implements OnDestroy {
       return;
     }
 
+    const activeSessionPlayers = (this.session()?.players ?? []).filter(
+      (player) => !player.removedAt
+    );
     const dialogRef = this.dialog.open<
       AddPlayerDialogComponent,
       AddPlayerDialogData,
@@ -1428,10 +1542,10 @@ export class ActiveSessionPage implements OnDestroy {
       autoFocus: 'first-tabbable',
       data: {
         registeredPlayers,
-        sessionMemberUserIds: (this.session()?.players ?? [])
+        sessionMemberUserIds: activeSessionPlayers
           .map((player) => player.userId)
           .filter((userId): userId is string => Boolean(userId)),
-        sessionMemberNames: (this.session()?.players ?? []).map((player) => player.name),
+        sessionMemberNames: activeSessionPlayers.map((player) => player.name),
       },
       panelClass: 'pokertrack-dialog-panel',
     });
@@ -1487,19 +1601,36 @@ export class ActiveSessionPage implements OnDestroy {
       return;
     }
 
-    const dialogRef = this.dialog.open<CashOutDialogComponent, CashOutDialogData, number>(
+    const dialogRef = this.dialog.open<
+      CashOutDialogComponent,
+      CashOutDialogData,
+      CashOutDialogResult
+    >(
       CashOutDialogComponent,
       {
         autoFocus: 'first-tabbable',
-        data: { player, mode: player.status === 'COMPLETED' ? 'edit' : 'record' },
+        data: {
+          player,
+          mode: player.status === 'COMPLETED' ? 'edit' : 'record',
+          canDelete: player.status === 'COMPLETED' && this.canModifyTableRecords(this.session())
+        },
         panelClass: 'pokertrack-dialog-panel',
       },
     );
 
-    dialogRef.afterClosed().subscribe(async (amount?: number) => {
-      if (amount !== undefined && amount >= 0) {
+    dialogRef.afterClosed().subscribe(async (result?: CashOutDialogResult) => {
+      if (!result) {
+        return;
+      }
+
+      if (result.action === 'delete') {
+        this.confirmDeleteCashOut(player);
+        return;
+      }
+
+      if (result.amount >= 0) {
         await this.runAction(this.playerAction('cash-out', player.id), () =>
-          this.store.recordCashOut(this.sessionId, player.id, amount),
+          this.store.recordCashOut(this.sessionId, player.id, result.amount),
         );
       }
     });
@@ -1519,7 +1650,7 @@ export class ActiveSessionPage implements OnDestroy {
       data: {
         playerName: player.name,
         transaction,
-        canDelete: this.canDelete(),
+        canDelete: this.canModifyTableRecords(this.session()),
       },
       panelClass: 'pokertrack-dialog-panel',
     });
@@ -1579,6 +1710,33 @@ export class ActiveSessionPage implements OnDestroy {
     });
   }
 
+  private confirmDeleteCashOut(player: SessionPlayer): void {
+    const dialogRef = this.dialog.open<
+      ConfirmationDialogComponent,
+      ConfirmationDialogData,
+      boolean
+    >(ConfirmationDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Delete cash out?',
+        message:
+          'This reopens the player, removes the cash-out amount from totals, and keeps the deleted record in the timeline.',
+        confirmLabel: 'Delete cash out',
+        tone: 'danger',
+        details: [player.name, this.formatMoney(player.cashOut)],
+      },
+      panelClass: 'pokertrack-dialog-panel',
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (confirmed) {
+        await this.runAction(this.playerAction('cash-out', player.id), () =>
+          this.store.deleteCashOut(this.sessionId, player.id),
+        );
+      }
+    });
+  }
+
   protected rebuyCount(playerId: string): number {
     return (
       this.session()?.transactions.filter(
@@ -1590,10 +1748,25 @@ export class ActiveSessionPage implements OnDestroy {
     );
   }
 
-  protected timelineTransactions(playerId: string): PokerTransaction[] {
-    return gameTimelineTransactions(
+  protected timelineEntries(playerId: string): GameTimelineEntry[] {
+    return gameTimelineEntries(
       (this.session()?.transactions ?? []).filter((transaction) => transaction.playerId === playerId)
     );
+  }
+
+  protected editTimelineEntry(player: SessionPlayer, entry: GameTimelineEntry): void {
+    if (entry.type === 'CASHOUT') {
+      this.openCashOutDialog(player);
+      return;
+    }
+
+    const transaction = this.session()?.transactions.find(
+      (currentTransaction) => currentTransaction.id === entry.transactionId
+    );
+
+    if (transaction) {
+      this.openEditBuyInDialog(player, transaction);
+    }
   }
 
   protected signedMoney(amount: number): string {
@@ -1618,8 +1791,14 @@ export class ActiveSessionPage implements OnDestroy {
     return Boolean(this.pendingAction() || this.store.loading());
   }
 
-  protected canDelete(): boolean {
+  protected canAdministerSession(): boolean {
     return this.authState.isHostAdmin();
+  }
+
+  protected canModifyTableRecords(session: PokerSession | undefined): boolean {
+    return session
+      ? canModifyActiveSessionRecords(session.status, this.authState.isTableOperator())
+      : false;
   }
 
   protected canCloseSession(session: PokerSession): boolean {
@@ -1627,7 +1806,7 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected canRemovePlayer(session: PokerSession, _player: SessionPlayer): boolean {
-    return session.status === 'ACTIVE' && this.canDelete();
+    return this.canModifyTableRecords(session);
   }
 
   protected isPending(action: string): boolean {
@@ -1655,7 +1834,7 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected closeSession(): void {
-    if (this.isBusy() || !this.canDelete()) {
+    if (this.isBusy() || !this.canAdministerSession()) {
       return;
     }
 
@@ -1666,7 +1845,9 @@ export class ActiveSessionPage implements OnDestroy {
     }
 
     const totals = this.store.totalsFor(currentSession);
-    const pendingPlayers = currentSession.players.filter((player) => player.status === 'ACTIVE');
+    const pendingPlayers = currentSession.players.filter(
+      (player) => player.status === 'ACTIVE' && !player.removedAt
+    );
 
     if (!this.canCloseSession(currentSession)) {
       this.showActionReceipt('Cash out all players before closing this session.', 'error');
@@ -1715,7 +1896,7 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected deleteSession(): void {
-    if (this.isBusy() || !this.canDelete()) {
+    if (this.isBusy() || !this.canAdministerSession()) {
       return;
     }
 
@@ -1764,7 +1945,7 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected confirmDeleteTable(table: PokerTable): void {
-    if (this.isBusy() || !this.canDelete()) {
+    if (this.isBusy() || !this.canAdministerSession()) {
       return;
     }
 
@@ -1816,7 +1997,7 @@ export class ActiveSessionPage implements OnDestroy {
   }
 
   protected confirmRemoveSessionPlayer(player: SessionPlayer): void {
-    if (this.isBusy() || !this.canDelete()) {
+    if (this.isBusy() || !this.canModifyTableRecords(this.session())) {
       return;
     }
 

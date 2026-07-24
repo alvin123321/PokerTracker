@@ -493,6 +493,46 @@ describe('PlayerDashboardPage', () => {
     expect(detailSectionOrder(fixture)).toEqual(['players', 'timeline']);
   });
 
+  it('shows a completed tip-only session to a manager without linking to player details', () => {
+    sessions.set([
+      makeSession({
+        status: 'COMPLETED',
+        players: [],
+        financialEntries: [makeFinancialEntry({ amount: 350 })]
+      })
+    ]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'history' }));
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const tipCard = compiled.querySelector<HTMLElement>('.manager-tip-session-tile');
+
+    expect(tipCard).not.toBeNull();
+    expect(tipCard?.textContent).toContain('My tips');
+    expect(tipCard?.textContent).toContain('$350');
+    expect(tipCard?.closest('a')).toBeNull();
+  });
+
+  it('adds the manager tip amount to a normal played-session history card', () => {
+    sessions.set([
+      makeSession({
+        status: 'COMPLETED',
+        players: [makePlayer({ status: 'COMPLETED' })],
+        financialEntries: [makeFinancialEntry({ amount: 125 })]
+      })
+    ]);
+
+    queryParamMap.next(convertToParamMap({ tab: 'history' }));
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const gameCard = compiled.querySelector<HTMLElement>('a.session-tile');
+
+    expect(gameCard?.textContent).toContain('My tips');
+    expect(gameCard?.textContent).toContain('$125');
+  });
+
   it('places the active status at the far right of the live-card heading', () => {
     sessions.set([makeSession({ players: [makePlayer()] })]);
     queryParamMap.next(convertToParamMap({ tab: 'overview' }));
@@ -616,6 +656,27 @@ function makeActiveTable(overrides: Partial<PlayerActiveTable> = {}): PlayerActi
     tableName: 'Main Table',
     tableNumber: 1,
     tableCreatedAt: '2026-07-08T01:00:00.000Z',
+    ...overrides
+  };
+}
+
+function makeFinancialEntry(
+  overrides: Partial<NonNullable<PokerSession['financialEntries']>[number]> = {}
+): NonNullable<PokerSession['financialEntries']>[number] {
+  return {
+    id: 'tip-a',
+    sessionId: 'session-a',
+    entryType: 'TIP',
+    amount: 100,
+    managerUserId: 'player-1',
+    managerName: 'Player',
+    createdAt: '2026-07-08T01:00:00.000Z',
+    createdBy: 'host-a',
+    createdByName: 'Admin',
+    updatedAt: '2026-07-08T01:00:00.000Z',
+    updatedBy: 'host-a',
+    updatedByName: 'Admin',
+    revisions: [],
     ...overrides
   };
 }

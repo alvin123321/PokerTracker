@@ -7,6 +7,8 @@ export function sessionRealtimeTables(): readonly string[] {
     'players',
     'session_players',
     'transactions',
+    'transaction_revisions',
+    'session_financial_entries',
     'time_calls',
     'active_table_revisions'
   ];

@@ -26,6 +26,24 @@ export function joinedMiniGameHistory(games: MiniGameSnapshot[]): MiniGameSnapsh
   return games.filter((game) => game.viewerParticipantId !== null);
 }
 
+export function managerSessionTipTotal(
+  session: PokerSession,
+  managerUserId: string | null
+): number {
+  if (!managerUserId) {
+    return 0;
+  }
+
+  return (session.financialEntries ?? [])
+    .filter(
+      (entry) =>
+        entry.entryType === 'TIP' &&
+        entry.managerUserId === managerUserId &&
+        !entry.deletedAt
+    )
+    .reduce((total, entry) => total + entry.amount, 0);
+}
+
 export function unseatedPlayerActiveTables(
   activeTables: PlayerActiveTable[],
   seatedTableIds: ReadonlySet<string>
@@ -87,12 +105,14 @@ export function playerGameStatMode(session: PokerSession, player: SessionPlayer)
 }
 
 export function totalActivePlayers(session: PokerSession): number {
-  return session.players.filter((player) => player.status === 'ACTIVE').length;
+  return session.players.filter(
+    (player) => player.status === 'ACTIVE' && !player.removedAt
+  ).length;
 }
 
 export function totalActivePlayerChips(session: PokerSession): number {
   return session.players
-    .filter((player) => player.status === 'ACTIVE')
+    .filter((player) => player.status === 'ACTIVE' && !player.removedAt)
     .reduce((total, player) => total + player.totalBuyIn, 0);
 }
 
@@ -113,7 +133,7 @@ export function playerPublicTableStats(
   }
 
   const activePlayers = session.players.filter(
-    (sessionPlayer) => sessionPlayer.status === 'ACTIVE'
+    (sessionPlayer) => sessionPlayer.status === 'ACTIVE' && !sessionPlayer.removedAt
   );
 
   return {
@@ -133,7 +153,11 @@ export function playerPublicTableRoster(
   const publicRoster = rosterEntries.filter((entry) => entry.sessionId === session.id);
   const netLeaderByTable = new Map<string | null, { highestNet: number; leaderCount: number }>();
 
-  for (const sessionPlayer of session.players) {
+  const visibleSessionPlayers = session.players.filter(
+    (sessionPlayer) => !sessionPlayer.removedAt
+  );
+
+  for (const sessionPlayer of visibleSessionPlayers) {
     const currentLeader = netLeaderByTable.get(sessionPlayer.tableId);
 
     if (!currentLeader || sessionPlayer.net > currentLeader.highestNet) {
@@ -152,7 +176,7 @@ export function playerPublicTableRoster(
   const roster =
     publicRoster.length > 0
       ? publicRoster
-      : session.players.map((sessionPlayer) => ({
+      : visibleSessionPlayers.map((sessionPlayer) => ({
           sessionPlayerId: sessionPlayer.id,
           sessionId: session.id,
           tableId: sessionPlayer.tableId,

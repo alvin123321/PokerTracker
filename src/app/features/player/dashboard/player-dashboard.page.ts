@@ -42,6 +42,7 @@ import {
 } from '../../host/data/poker-store.service';
 import {
   joinedMiniGameHistory,
+  managerSessionTipTotal,
   playerCallTimeDisplayState,
   playerGameDetailSections,
   playerHasSharedCallTimeClock,
@@ -65,6 +66,13 @@ interface PlayerSessionEntry {
   player: SessionPlayer;
   transactions: PokerTransaction[];
   rebuyCount: number;
+  tipTotal: number;
+  lastActivityAt: string;
+}
+
+interface ManagerTipSessionEntry {
+  session: PokerSession;
+  tipTotal: number;
   lastActivityAt: string;
 }
 
@@ -307,6 +315,14 @@ const playerCallTimeSyncIntervalMs = 1000;
                       </strong>
                     </div>
                   </div>
+                  @if (entry.tipTotal > 0) {
+                    <div class="flex items-center justify-between gap-4 border-t border-emerald-300/15 pt-2 text-[0.82rem] font-semibold text-emerald-200">
+                      <span>My tips</span>
+                      <strong class="text-lg text-emerald-300">
+                        {{ entry.tipTotal | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </strong>
+                    </div>
+                  }
 
                   <div class="feature-detail-panel" aria-hidden="false">
                     <div class="feature-detail-panel-inner">
@@ -408,7 +424,8 @@ const playerCallTimeSyncIntervalMs = 1000;
                 />
               } @else {
                 <div class="player-session-grid">
-                  @for (entry of entries(); track entry.session.id + entry.player.id) {
+                  @if (hasHistoryEntries()) {
+                    @for (entry of entries(); track entry.session.id + entry.player.id) {
                     <a
                   [routerLink]="['/player/sessions', entry.session.id]"
                   class="session-tile"
@@ -485,8 +502,45 @@ const playerCallTimeSyncIntervalMs = 1000;
                       </strong>
                     </div>
                   </div>
-                    </a>
-                  } @empty {
+                  @if (entry.tipTotal > 0) {
+                    <div class="flex items-center justify-between gap-4 border-t border-emerald-300/15 pt-2 text-[0.82rem] font-semibold text-emerald-200">
+                      <span>My tips</span>
+                      <strong class="text-lg text-emerald-300">
+                        {{ entry.tipTotal | currency: 'USD' : 'symbol' : '1.0-0' }}
+                      </strong>
+                    </div>
+                  }
+                  </a>
+                    }
+                    @for (tipEntry of managerTipOnlyEntries(); track tipEntry.session.id) {
+                      <article class="session-tile manager-tip-session-tile">
+                        <div class="session-tile-top">
+                          <div>
+                            <h2>{{ tipEntry.session.name }}</h2>
+                            <p>{{ tipEntry.session.sessionDate | date: 'MMM d' }}</p>
+                          </div>
+                          <span
+                            class="game-status-pill"
+                            [class.game-status-pill-active]="tipEntry.session.status === 'ACTIVE'"
+                            [class.game-status-pill-completed]="tipEntry.session.status === 'COMPLETED'"
+                          >
+                            @if (tipEntry.session.status === 'ACTIVE') {
+                              <span class="status-live-dot" aria-hidden="true"></span>
+                            } @else {
+                              <svg lucideBadgeCheck [strokeWidth]="2.5" [absoluteStrokeWidth]="true" aria-hidden="true"></svg>
+                            }
+                            {{ tipEntry.session.status === 'ACTIVE' ? 'Active' : 'Complete' }}
+                          </span>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 border-t border-emerald-300/15 pt-2 text-[0.82rem] font-semibold text-emerald-200">
+                          <span>My tips</span>
+                          <strong class="text-lg text-emerald-300">
+                            {{ tipEntry.tipTotal | currency: 'USD' : 'symbol' : '1.0-0' }}
+                          </strong>
+                        </div>
+                      </article>
+                    }
+                  } @else {
                     <article class="player-empty-card">
                       <h2>No sessions yet</h2>
                       <p>Nothing to show.</p>
@@ -1423,7 +1477,10 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
       .sessions()
       .flatMap((session) =>
         session.players
-          .filter((player) => this.playerMatchesLogin(player, userId, targetName))
+          .filter(
+            (player) =>
+              !player.removedAt && this.playerMatchesLogin(player, userId, targetName)
+          )
           .map((player) => {
             const transactions = session.transactions
               .filter((transaction) => transaction.playerId === player.id)
@@ -1438,12 +1495,47 @@ export class PlayerDashboardPage implements OnInit, OnDestroy {
               rebuyCount: transactions.filter(
                 (transaction) => transaction.type === 'REBUY' && !transaction.deletedAt
               ).length,
+              tipTotal: managerSessionTipTotal(session, userId),
               lastActivityAt
             };
           })
       )
       .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
   });
+  protected readonly managerTipOnlyEntries = computed<ManagerTipSessionEntry[]>(() => {
+    const userId = this.authState.user()?.id ?? null;
+    const playedSessionIds = new Set(this.entries().map((entry) => entry.session.id));
+
+    return this.store
+      .sessions()
+      .filter((session) => !playedSessionIds.has(session.id))
+      .map((session) => {
+        const tipTotal = managerSessionTipTotal(session, userId);
+        const lastActivityAt = (session.financialEntries ?? [])
+          .filter(
+            (entry) =>
+              entry.entryType === 'TIP' &&
+              entry.managerUserId === userId &&
+              !entry.deletedAt
+          )
+          .reduce(
+            (latest, entry) =>
+              entry.updatedAt.localeCompare(latest) > 0 ? entry.updatedAt : latest,
+            session.createdAt
+          );
+
+        return {
+          session,
+          tipTotal,
+          lastActivityAt
+        };
+      })
+      .filter((entry) => entry.tipTotal > 0)
+      .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
+  });
+  protected readonly hasHistoryEntries = computed(
+    () => this.entries().length > 0 || this.managerTipOnlyEntries().length > 0
+  );
   protected readonly activeEntries = computed(() =>
     this.entries().filter((entry) => entry.player.status === 'ACTIVE')
   );
