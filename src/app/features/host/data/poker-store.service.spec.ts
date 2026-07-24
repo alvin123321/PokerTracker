@@ -3,7 +3,20 @@ import { TestBed } from '@angular/core/testing';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { SupabaseService } from '../../../core/supabase/supabase.service';
-import { PokerSession, PokerStoreService } from './poker-store.service';
+import {
+  PokerSession,
+  PokerStoreService,
+  roleUsesPlayerParticipationData
+} from './poker-store.service';
+
+describe('PokerStoreService role data access', () => {
+  it('uses player participation data for players and managers', () => {
+    expect(roleUsesPlayerParticipationData('PLAYER')).toBeTrue();
+    expect(roleUsesPlayerParticipationData('MANAGER')).toBeTrue();
+    expect(roleUsesPlayerParticipationData('HOST')).toBeFalse();
+    expect(roleUsesPlayerParticipationData(null)).toBeFalse();
+  });
+});
 
 describe('PokerStoreService player active tables', () => {
   let from: jasmine.Spy;

@@ -1,4 +1,8 @@
-import { allPlayersCashedOut, initialExpandedTableIds } from './active-session-display.logic';
+import {
+  allPlayersCashedOut,
+  canModifyActiveSessionRecords,
+  initialExpandedTableIds
+} from './active-session-display.logic';
 import { ActiveSessionPage } from './active-session.page';
 
 describe('active session table expansion', () => {
@@ -9,6 +13,18 @@ describe('active session table expansion', () => {
   it('only allows closing after every player has cashed out', () => {
     expect(allPlayersCashedOut([{ status: 'COMPLETED' }, { status: 'COMPLETED' }])).toBeTrue();
     expect(allPlayersCashedOut([{ status: 'COMPLETED' }, { status: 'ACTIVE' }])).toBeFalse();
+    expect(
+      allPlayersCashedOut([
+        { status: 'COMPLETED' },
+        { status: 'ACTIVE', removedAt: '2026-07-23T12:00:00Z' },
+      ]),
+    ).toBeTrue();
+  });
+
+  it('allows table operators to modify records only for active sessions', () => {
+    expect(canModifyActiveSessionRecords('ACTIVE', true)).toBeTrue();
+    expect(canModifyActiveSessionRecords('COMPLETED', true)).toBeFalse();
+    expect(canModifyActiveSessionRecords('ACTIVE', false)).toBeFalse();
   });
 });
 

@@ -2,6 +2,7 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
   LucideArrowLeft,
+  LucideArrowLeftRight,
   LucideCalculator,
   LucideHistory,
   LucideHouse,
@@ -23,6 +24,7 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
   selector: 'app-player-shell',
   imports: [
     LucideArrowLeft,
+    LucideArrowLeftRight,
     LucideCalculator,
     LucideHistory,
     LucideHouse,
@@ -84,6 +86,17 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
                   <svg lucideUserRound [strokeWidth]="2.2" aria-hidden="true"></svg>
                   <span>Profile</span>
                 </a>
+                @if (authState.role() === 'MANAGER') {
+                  <a
+                    routerLink="/host/dashboard"
+                    class="host-account-menu-item"
+                    role="menuitem"
+                    (click)="closeAccountMenu()"
+                  >
+                    <svg lucideArrowLeftRight [strokeWidth]="2.2" aria-hidden="true"></svg>
+                    <span>Manage Tables</span>
+                  </a>
+                }
                 <button
                   type="button"
                   class="host-account-menu-item host-account-signout"

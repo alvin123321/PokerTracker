@@ -76,6 +76,7 @@ export const routes: Routes = [
       },
       {
         path: 'sessions/:sessionId/summary',
+        canMatch: [hostAdminGuard],
         loadComponent: () =>
           import('./features/host/sessions/session-summary.page').then((m) => m.SessionSummaryPage),
       },

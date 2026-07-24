@@ -14,5 +14,7 @@ describe('realtime connection logic', () => {
   it('includes session tables and active table revisions in the refresh subscription', () => {
     expect(sessionRealtimeTables()).toContain('active_table_revisions');
     expect(sessionRealtimeTables()).toContain('session_tables');
+    expect(sessionRealtimeTables()).toContain('transaction_revisions');
+    expect(sessionRealtimeTables()).toContain('session_financial_entries');
   });
 });

@@ -10,9 +10,11 @@ import { HostShellComponent } from './host-shell.component';
 
 describe('HostShellComponent', () => {
   let signOutSpy: jasmine.Spy;
+  let role: ReturnType<typeof signal<'HOST' | 'MANAGER'>>;
 
   beforeEach(async () => {
     signOutSpy = jasmine.createSpy('signOut').and.resolveTo();
+    role = signal<'HOST' | 'MANAGER'>('HOST');
     await TestBed.configureTestingModule({
       imports: [HostShellComponent],
       providers: [
@@ -21,12 +23,28 @@ describe('HostShellComponent', () => {
           provide: AuthStateService,
           useValue: {
             profile: signal({ displayName: 'Alvin Host' }),
-            isHostAdmin: () => true,
+            role,
+            isHostAdmin: () => role() === 'HOST',
             signOut: signOutSpy
           }
         }
       ]
     }).compileComponents();
+  });
+
+  it('offers managers a My Games switch without admin account links', () => {
+    role.set('MANAGER');
+    const fixture = TestBed.createComponent(HostShellComponent);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    compiled.querySelector<HTMLButtonElement>('.host-account-menu-toggle')!.click();
+    fixture.detectChanges();
+
+    const menu = compiled.querySelector<HTMLElement>('.host-account-menu')!;
+    expect(menu.querySelector<HTMLAnchorElement>('a[href="/player/dashboard"]')?.textContent)
+      .toContain('My Games');
+    expect(menu.querySelector<HTMLAnchorElement>('a[href="/host/players"]')).toBeNull();
   });
 
   it('keeps five primary mobile tabs and moves account actions into the header menu', () => {

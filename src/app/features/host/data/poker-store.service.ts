@@ -37,8 +37,13 @@ export type PokerSessionStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTableStatus = 'ACTIVE' | 'CLOSED';
 export type PokerPlayerStatus = 'ACTIVE' | 'COMPLETED';
 export type PokerTransactionType = 'BUYIN' | 'REBUY' | 'CASHOUT';
+export type SessionFinancialEntryType = 'TIP' | 'RAKE';
 export type TimeCallStatus = 'RUNNING' | 'FINISHED' | 'EXPIRED' | 'CANCELLED';
 export type ResolvedTimeCallStatus = Exclude<TimeCallStatus, 'RUNNING'>;
+
+export function roleUsesPlayerParticipationData(role: string | null): boolean {
+  return role === 'PLAYER' || role === 'MANAGER';
+}
 
 export function defaultPokerTableName(tableNumber: number): string {
   if (tableNumber === 1) {
@@ -62,6 +67,48 @@ export interface PokerTransaction {
   createdAt: string;
   comment?: string;
   deletedAt?: string;
+  deletedByName?: string;
+  revisions?: PokerTransactionRevision[];
+}
+
+export interface PokerTransactionRevision {
+  id: string;
+  transactionId: string;
+  amount: number;
+  comment?: string;
+  originalCreatedAt: string;
+  actionAt: string;
+  actionBy: string;
+  actionByName: string;
+}
+
+export interface SessionFinancialEntryRevision {
+  id: string;
+  entryId: string;
+  amount: number;
+  originalCreatedAt: string;
+  actionAt: string;
+  actionBy: string;
+  actionByName: string;
+}
+
+export interface SessionFinancialEntry {
+  id: string;
+  sessionId: string;
+  entryType: SessionFinancialEntryType;
+  amount: number;
+  managerUserId: string | null;
+  managerName: string | null;
+  createdAt: string;
+  createdBy: string;
+  createdByName: string;
+  updatedAt: string;
+  updatedBy: string;
+  updatedByName: string;
+  deletedAt?: string;
+  deletedBy?: string;
+  deletedByName?: string;
+  revisions: SessionFinancialEntryRevision[];
 }
 
 export interface PokerTable {
@@ -97,6 +144,9 @@ export interface SessionPlayer {
   net: number;
   joinedAt: string;
   completedAt: string | null;
+  removedAt?: string;
+  removedBy?: string;
+  removedByName?: string;
 }
 
 export interface PokerSession {
@@ -109,6 +159,7 @@ export interface PokerSession {
   tables: PokerTable[];
   players: SessionPlayer[];
   transactions: PokerTransaction[];
+  financialEntries?: SessionFinancialEntry[];
   timeCalls: TimeCall[];
 }
 
@@ -186,6 +237,9 @@ interface SessionPlayerRow {
   net: number | string;
   joined_at: string;
   completed_at: string | null;
+  removed_at: string | null;
+  removed_by: string | null;
+  removed_by_name: string | null;
 }
 
 interface PlayerPublicTableSummaryRow {
@@ -227,6 +281,46 @@ interface TransactionRow {
   created_at: string;
   comment: string | null;
   deleted_at: string | null;
+  deleted_by_name: string | null;
+}
+
+interface TransactionRevisionRow {
+  id: string;
+  transaction_id: string;
+  amount: number | string;
+  comment: string | null;
+  original_created_at: string;
+  action_at: string;
+  action_by: string;
+  action_by_name: string;
+}
+
+interface SessionFinancialEntryRow {
+  id: string;
+  session_id: string;
+  entry_type: SessionFinancialEntryType;
+  amount: number | string;
+  manager_user_id: string | null;
+  manager_name: string | null;
+  created_at: string;
+  created_by: string;
+  created_by_name: string;
+  updated_at: string;
+  updated_by: string;
+  updated_by_name: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
+  deleted_by_name: string | null;
+}
+
+interface SessionFinancialEntryRevisionRow {
+  id: string;
+  entry_id: string;
+  amount: number | string;
+  original_created_at: string;
+  action_at: string;
+  action_by: string;
+  action_by_name: string;
 }
 
 interface SessionTableRow {
@@ -497,7 +591,15 @@ export class PokerStoreService implements OnDestroy {
         return;
       }
 
-      const [tablesResult, sessionPlayersResult, transactionsResult, timeCallsResult] = await Promise.all([
+      const [
+        tablesResult,
+        sessionPlayersResult,
+        transactionsResult,
+        transactionRevisionsResult,
+        financialEntriesResult,
+        financialEntryRevisionsResult,
+        timeCallsResult
+      ] = await Promise.all([
         client
           .from('session_tables')
           .select('id,session_id,name,status,table_number,created_at,closed_at')
@@ -506,15 +608,38 @@ export class PokerStoreService implements OnDestroy {
         client
           .from('session_players')
           .select(
-            'id,session_id,table_id,player_id,status,total_buy_in,cash_out,net,joined_at,completed_at'
+            'id,session_id,table_id,player_id,status,total_buy_in,cash_out,net,joined_at,completed_at,removed_at,removed_by,removed_by_name'
           )
           .in('session_id', sessionIds)
           .order('joined_at', { ascending: true }),
         client
           .from('transactions')
-          .select('id,session_id,table_id,player_id,session_player_id,type,amount,created_at,comment,deleted_at')
+          .select(
+            'id,session_id,table_id,player_id,session_player_id,type,amount,created_at,comment,deleted_at,deleted_by_name'
+          )
           .in('session_id', sessionIds)
           .order('created_at', { ascending: true }),
+        client
+          .from('transaction_revisions')
+          .select(
+            'id,transaction_id,amount,comment,original_created_at,action_at,action_by,action_by_name'
+          )
+          .in('session_id', sessionIds)
+          .order('action_at', { ascending: false }),
+        client
+          .from('session_financial_entries')
+          .select(
+            'id,session_id,entry_type,amount,manager_user_id,manager_name,created_at,created_by,created_by_name,updated_at,updated_by,updated_by_name,deleted_at,deleted_by,deleted_by_name'
+          )
+          .in('session_id', sessionIds)
+          .order('created_at', { ascending: true }),
+        client
+          .from('session_financial_entry_revisions')
+          .select(
+            'id,entry_id,amount,original_created_at,action_at,action_by,action_by_name'
+          )
+          .in('session_id', sessionIds)
+          .order('action_at', { ascending: false }),
         client
           .from('time_calls')
           .select('id,session_id,session_player_id,status,started_at,expires_at,resolved_at,resolved_by')
@@ -532,6 +657,18 @@ export class PokerStoreService implements OnDestroy {
 
       if (transactionsResult.error) {
         throw transactionsResult.error;
+      }
+
+      if (transactionRevisionsResult.error) {
+        throw transactionRevisionsResult.error;
+      }
+
+      if (financialEntriesResult.error) {
+        throw financialEntriesResult.error;
+      }
+
+      if (financialEntryRevisionsResult.error) {
+        throw financialEntryRevisionsResult.error;
       }
 
       let timeCalls: TimeCallRow[] = [];
@@ -552,10 +689,26 @@ export class PokerStoreService implements OnDestroy {
       const playersById = await this.loadPlayersById(playerIds);
       const tables = (tablesResult.data ?? []) as SessionTableRow[];
       const transactions = (transactionsResult.data ?? []) as TransactionRow[];
+      const transactionRevisions =
+        (transactionRevisionsResult.data ?? []) as TransactionRevisionRow[];
+      const financialEntries =
+        (financialEntriesResult.data ?? []) as SessionFinancialEntryRow[];
+      const financialEntryRevisions =
+        (financialEntryRevisionsResult.data ?? []) as SessionFinancialEntryRevisionRow[];
 
       this.sessionsSignal.set(
         sessions.map((session) =>
-          this.mapSession(session, tables, sessionPlayers, playersById, transactions, timeCalls)
+          this.mapSession(
+            session,
+            tables,
+            sessionPlayers,
+            playersById,
+            transactions,
+            timeCalls,
+            transactionRevisions,
+            financialEntries,
+            financialEntryRevisions
+          )
         )
       );
 
@@ -875,33 +1028,120 @@ export class PokerStoreService implements OnDestroy {
     const completedAt = new Date().toISOString();
     const cashOut = this.normalizeAmount(amount);
 
-    this.updateSession(sessionId, (session) => ({
-      ...session,
-      players: session.players.map((player) => {
-        if (player.id !== sessionPlayerId) {
-          return player;
-        }
+    this.updateSession(sessionId, (session) => {
+      const existingCashOut = session.transactions.find(
+        (transaction) =>
+          transaction.playerId === sessionPlayerId &&
+          transaction.type === 'CASHOUT' &&
+          !transaction.deletedAt
+      );
+      const transactions = existingCashOut
+        ? session.transactions.map((transaction) =>
+            transaction.id === existingCashOut.id
+              ? {
+                  ...transaction,
+                  amount: cashOut,
+                  revisions: [
+                    {
+                      id: this.createId('transaction-revision'),
+                      transactionId: transaction.id,
+                      amount: transaction.amount,
+                      ...(transaction.comment ? { comment: transaction.comment } : {}),
+                      originalCreatedAt: transaction.createdAt,
+                      actionAt: completedAt,
+                      actionBy: this.localActorId(),
+                      actionByName: this.localActorName()
+                    },
+                    ...(transaction.revisions ?? [])
+                  ]
+                }
+              : transaction
+          )
+        : [
+            ...session.transactions,
+            this.createTransaction(
+              session.id,
+              this.tableIdForPlayer(session, sessionPlayerId),
+              sessionPlayerId,
+              'CASHOUT',
+              cashOut,
+              completedAt
+            )
+          ];
 
-        return {
-          ...player,
-          status: 'COMPLETED',
-          cashOut,
-          net: cashOut - player.totalBuyIn,
-          completedAt: player.completedAt ?? completedAt
-        };
-      }),
-      transactions: [
-        ...session.transactions,
-        this.createTransaction(
-          session.id,
-          this.tableIdForPlayer(session, sessionPlayerId),
-          sessionPlayerId,
-          'CASHOUT',
-          cashOut,
-          completedAt
+      return {
+        ...session,
+        players: session.players.map((player) => {
+          if (player.id !== sessionPlayerId) {
+            return player;
+          }
+
+          return {
+            ...player,
+            status: 'COMPLETED',
+            cashOut,
+            net: cashOut - player.totalBuyIn,
+            completedAt: player.completedAt ?? completedAt
+          };
+        }),
+        transactions
+      };
+    });
+  }
+
+  async deleteCashOut(sessionId: string, sessionPlayerId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService.requireClient().rpc('delete_cashout', {
+        p_session_player_id: sessionPlayerId
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    const deletedAt = new Date().toISOString();
+    const deletedByName = this.localActorName();
+
+    this.updateSession(sessionId, (session) => {
+      const cashOut = session.transactions.find(
+        (transaction) =>
+          transaction.playerId === sessionPlayerId &&
+          transaction.type === 'CASHOUT' &&
+          !transaction.deletedAt
+      );
+
+      if (!cashOut) {
+        return session;
+      }
+
+      return {
+        ...session,
+        players: session.players.map((player) =>
+          player.id === sessionPlayerId
+            ? {
+                ...player,
+                status: 'ACTIVE',
+                cashOut: 0,
+                net: 0 - player.totalBuyIn,
+                completedAt: null
+              }
+            : player
+        ),
+        transactions: session.transactions.map((transaction) =>
+          transaction.id === cashOut.id
+            ? {
+                ...transaction,
+                deletedAt,
+                deletedByName
+              }
+            : transaction
         )
-      ]
-    }));
+      };
+    });
   }
 
   async updateBuyInTransaction(
@@ -939,7 +1179,24 @@ export class PokerStoreService implements OnDestroy {
 
       const transactions = session.transactions.map((item) =>
         item.id === transactionId
-          ? { ...item, amount: updatedAmount, comment: cleanComment || undefined }
+          ? {
+              ...item,
+              amount: updatedAmount,
+              comment: cleanComment || undefined,
+              revisions: [
+                {
+                  id: this.createId('transaction-revision'),
+                  transactionId: item.id,
+                  amount: item.amount,
+                  ...(item.comment ? { comment: item.comment } : {}),
+                  originalCreatedAt: item.createdAt,
+                  actionAt: new Date().toISOString(),
+                  actionBy: this.localActorId(),
+                  actionByName: this.localActorName()
+                },
+                ...(item.revisions ?? [])
+              ]
+            }
           : item
       );
 
@@ -968,6 +1225,7 @@ export class PokerStoreService implements OnDestroy {
     }
 
     const deletedAt = new Date().toISOString();
+    const deletedByName = this.localActorName();
 
     this.updateSession(sessionId, (session) => {
       const transaction = session.transactions.find((item) => item.id === transactionId);
@@ -977,7 +1235,7 @@ export class PokerStoreService implements OnDestroy {
       }
 
       const transactions = session.transactions.map((item) =>
-        item.id === transactionId ? { ...item, deletedAt } : item
+        item.id === transactionId ? { ...item, deletedAt, deletedByName } : item
       );
 
       return {
@@ -991,7 +1249,9 @@ export class PokerStoreService implements OnDestroy {
   async closeSession(sessionId: string): Promise<void> {
     const currentSession = this.getSession(sessionId);
 
-    if (currentSession?.players.some((player) => player.status === 'ACTIVE')) {
+    if (
+      currentSession?.players.some((player) => player.status === 'ACTIVE' && !player.removedAt)
+    ) {
       throw new Error('Cash out all players before closing this session.');
     }
 
@@ -1059,12 +1319,169 @@ export class PokerStoreService implements OnDestroy {
     }
 
     this.updateSession(sessionId, (session) =>
-      removeSessionPlayerFromSession(session, sessionPlayerId)
+      removeSessionPlayerFromSession(session, sessionPlayerId, {
+        removedAt: new Date().toISOString(),
+        removedBy: this.localActorId(),
+        removedByName: this.localActorName()
+      })
     );
   }
 
+  async recordSessionFinancialEntry(
+    sessionId: string,
+    entryType: SessionFinancialEntryType,
+    amount: number,
+    managerUserId: string | null = null
+  ): Promise<void> {
+    const normalizedAmount = this.normalizeAmount(amount);
+
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .rpc('record_session_financial_entry', {
+          p_session_id: sessionId,
+          p_entry_type: entryType,
+          p_amount: normalizedAmount,
+          p_manager_user_id: managerUserId
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    const createdAt = new Date().toISOString();
+    const actorId = this.localActorId();
+    const actorName = this.localActorName();
+    const targetManagerId =
+      entryType === 'TIP'
+        ? managerUserId ?? (this.authState.role() === 'MANAGER' ? actorId : null)
+        : null;
+    const targetManagerName =
+      targetManagerId === actorId
+        ? actorName
+        : this.localRegisteredPlayers().find((player) => player.id === targetManagerId)
+            ?.displayName ?? null;
+    const entry: SessionFinancialEntry = {
+      id: this.createId('session-financial-entry'),
+      sessionId,
+      entryType,
+      amount: normalizedAmount,
+      managerUserId: targetManagerId,
+      managerName: targetManagerName,
+      createdAt,
+      createdBy: actorId,
+      createdByName: actorName,
+      updatedAt: createdAt,
+      updatedBy: actorId,
+      updatedByName: actorName,
+      revisions: []
+    };
+
+    this.updateSession(sessionId, (session) => ({
+      ...session,
+      financialEntries: [...(session.financialEntries ?? []), entry]
+    }));
+  }
+
+  async updateSessionFinancialEntry(
+    sessionId: string,
+    entryId: string,
+    amount: number
+  ): Promise<void> {
+    const normalizedAmount = this.normalizeAmount(amount);
+
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .rpc('update_session_financial_entry', {
+          p_entry_id: entryId,
+          p_amount: normalizedAmount
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    const actionAt = new Date().toISOString();
+    const actorId = this.localActorId();
+    const actorName = this.localActorName();
+
+    this.updateSession(sessionId, (session) => ({
+      ...session,
+      financialEntries: (session.financialEntries ?? []).map((entry) =>
+        entry.id === entryId
+          ? {
+              ...entry,
+              amount: normalizedAmount,
+              updatedAt: actionAt,
+              updatedBy: actorId,
+              updatedByName: actorName,
+              revisions: [
+                {
+                  id: this.createId('session-financial-entry-revision'),
+                  entryId: entry.id,
+                  amount: entry.amount,
+                  originalCreatedAt: entry.createdAt,
+                  actionAt,
+                  actionBy: actorId,
+                  actionByName: actorName
+                },
+                ...entry.revisions
+              ]
+            }
+          : entry
+      )
+    }));
+  }
+
+  async deleteSessionFinancialEntry(sessionId: string, entryId: string): Promise<void> {
+    if (this.shouldUseSupabase()) {
+      const { error } = await this.supabaseService
+        .requireClient()
+        .rpc('delete_session_financial_entry', {
+          p_entry_id: entryId
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.refreshHostSessions();
+      return;
+    }
+
+    const actionAt = new Date().toISOString();
+    const actorId = this.localActorId();
+    const actorName = this.localActorName();
+
+    this.updateSession(sessionId, (session) => ({
+      ...session,
+      financialEntries: (session.financialEntries ?? []).map((entry) =>
+        entry.id === entryId
+          ? {
+              ...entry,
+              deletedAt: actionAt,
+              deletedBy: actorId,
+              deletedByName: actorName,
+              updatedAt: actionAt,
+              updatedBy: actorId,
+              updatedByName: actorName
+            }
+          : entry
+      )
+    }));
+  }
+
   totalsFor(session: PokerSession | undefined): SessionTotals {
-    const players = session?.players ?? [];
+    const players = (session?.players ?? []).filter((player) => !player.removedAt);
 
     return {
       totalPlayers: players.length,
@@ -1077,7 +1494,9 @@ export class PokerStoreService implements OnDestroy {
   }
 
   sortedPlayersByNet(session: PokerSession | undefined): SessionPlayer[] {
-    return [...(session?.players ?? [])].sort((a, b) => b.net - a.net);
+    return (session?.players ?? [])
+      .filter((player) => !player.removedAt)
+      .sort((a, b) => b.net - a.net);
   }
 
   totalsForTable(session: PokerSession | undefined, tableId: string | null): SessionTotals {
@@ -1088,11 +1507,22 @@ export class PokerStoreService implements OnDestroy {
   }
 
   playersForTable(session: PokerSession | undefined, tableId: string | null): SessionPlayer[] {
-    return (session?.players ?? []).filter((player) => player.tableId === tableId);
+    return (session?.players ?? []).filter(
+      (player) => player.tableId === tableId && !player.removedAt
+    );
+  }
+
+  removedPlayersForTable(
+    session: PokerSession | undefined,
+    tableId: string | null
+  ): SessionPlayer[] {
+    return (session?.players ?? [])
+      .filter((player) => player.tableId === tableId && Boolean(player.removedAt))
+      .sort((a, b) => (b.removedAt ?? '').localeCompare(a.removedAt ?? ''));
   }
 
   private async refreshPlayerPublicTableSummaries(sessionIds: string[]): Promise<void> {
-    if (this.authState.role() !== 'PLAYER') {
+    if (!roleUsesPlayerParticipationData(this.authState.role())) {
       this.playerPublicTableSummariesSignal.set([]);
       this.playerPublicTableRosterSignal.set([]);
       return;
@@ -1193,7 +1623,7 @@ export class PokerStoreService implements OnDestroy {
   }
 
   sortedPlayersForActiveSession(session: PokerSession | undefined): SessionPlayer[] {
-    return [...(session?.players ?? [])].sort((a, b) => {
+    return (session?.players ?? []).filter((player) => !player.removedAt).sort((a, b) => {
       if (a.status !== b.status) {
         return a.status === 'ACTIVE' ? -1 : 1;
       }
@@ -1712,7 +2142,10 @@ export class PokerStoreService implements OnDestroy {
     sessionPlayers: SessionPlayerRow[],
     playersById: Map<string, PlayerRow>,
     transactions: TransactionRow[],
-    timeCalls: TimeCallRow[] = []
+    timeCalls: TimeCallRow[] = [],
+    transactionRevisions: TransactionRevisionRow[] = [],
+    financialEntries: SessionFinancialEntryRow[] = [],
+    financialEntryRevisions: SessionFinancialEntryRevisionRow[] = []
   ): PokerSession {
     const currentSessionPlayers = sessionPlayers.filter((player) => player.session_id === session.id);
     const currentTables = tables.filter((table) => table.session_id === session.id);
@@ -1730,7 +2163,22 @@ export class PokerStoreService implements OnDestroy {
       ),
       transactions: transactions
         .filter((transaction) => transaction.session_id === session.id)
-        .map((transaction) => this.mapTransaction(transaction)),
+        .map((transaction) =>
+          this.mapTransaction(
+            transaction,
+            transactionRevisions.filter(
+              (revision) => revision.transaction_id === transaction.id
+            )
+          )
+        ),
+      financialEntries: financialEntries
+        .filter((entry) => entry.session_id === session.id)
+        .map((entry) =>
+          this.mapSessionFinancialEntry(
+            entry,
+            financialEntryRevisions.filter((revision) => revision.entry_id === entry.id)
+          )
+        ),
       timeCalls: timeCalls
         .filter((timeCall) => timeCall.session_id === session.id)
         .map((timeCall) => this.mapTimeCall(timeCall))
@@ -1752,11 +2200,19 @@ export class PokerStoreService implements OnDestroy {
       cashOut: this.toNumber(sessionPlayer.cash_out),
       net: this.toNumber(sessionPlayer.net),
       joinedAt: sessionPlayer.joined_at,
-      completedAt: sessionPlayer.completed_at
+      completedAt: sessionPlayer.completed_at,
+      ...(sessionPlayer.removed_at ? { removedAt: sessionPlayer.removed_at } : {}),
+      ...(sessionPlayer.removed_by ? { removedBy: sessionPlayer.removed_by } : {}),
+      ...(sessionPlayer.removed_by_name
+        ? { removedByName: sessionPlayer.removed_by_name }
+        : {})
     };
   }
 
-  private mapTransaction(transaction: TransactionRow): PokerTransaction {
+  private mapTransaction(
+    transaction: TransactionRow,
+    revisions: TransactionRevisionRow[] = []
+  ): PokerTransaction {
     return {
       id: transaction.id,
       sessionId: transaction.session_id,
@@ -1766,7 +2222,50 @@ export class PokerStoreService implements OnDestroy {
       amount: this.toNumber(transaction.amount),
       createdAt: transaction.created_at,
       ...(transaction.comment ? { comment: transaction.comment } : {}),
-      ...(transaction.deleted_at ? { deletedAt: transaction.deleted_at } : {})
+      ...(transaction.deleted_at ? { deletedAt: transaction.deleted_at } : {}),
+      ...(transaction.deleted_by_name ? { deletedByName: transaction.deleted_by_name } : {}),
+      revisions: revisions.map((revision) => ({
+        id: revision.id,
+        transactionId: revision.transaction_id,
+        amount: this.toNumber(revision.amount),
+        ...(revision.comment ? { comment: revision.comment } : {}),
+        originalCreatedAt: revision.original_created_at,
+        actionAt: revision.action_at,
+        actionBy: revision.action_by,
+        actionByName: revision.action_by_name
+      }))
+    };
+  }
+
+  private mapSessionFinancialEntry(
+    entry: SessionFinancialEntryRow,
+    revisions: SessionFinancialEntryRevisionRow[] = []
+  ): SessionFinancialEntry {
+    return {
+      id: entry.id,
+      sessionId: entry.session_id,
+      entryType: entry.entry_type,
+      amount: this.toNumber(entry.amount),
+      managerUserId: entry.manager_user_id,
+      managerName: entry.manager_name,
+      createdAt: entry.created_at,
+      createdBy: entry.created_by,
+      createdByName: entry.created_by_name,
+      updatedAt: entry.updated_at,
+      updatedBy: entry.updated_by,
+      updatedByName: entry.updated_by_name,
+      ...(entry.deleted_at ? { deletedAt: entry.deleted_at } : {}),
+      ...(entry.deleted_by ? { deletedBy: entry.deleted_by } : {}),
+      ...(entry.deleted_by_name ? { deletedByName: entry.deleted_by_name } : {}),
+      revisions: revisions.map((revision) => ({
+        id: revision.id,
+        entryId: revision.entry_id,
+        amount: this.toNumber(revision.amount),
+        originalCreatedAt: revision.original_created_at,
+        actionAt: revision.action_at,
+        actionBy: revision.action_by,
+        actionByName: revision.action_by_name
+      }))
     };
   }
 
@@ -1905,6 +2404,17 @@ export class PokerStoreService implements OnDestroy {
       createdAt,
       ...(cleanComment ? { comment: cleanComment } : {})
     };
+  }
+
+  private localActorId(): string {
+    return this.authState.user()?.id ?? this.authState.profile()?.id ?? 'local-user';
+  }
+
+  private localActorName(): string {
+    return (
+      this.authState.profile()?.displayName?.trim() ||
+      (this.authState.role() === 'MANAGER' ? 'Manager' : 'Admin')
+    );
   }
 
   private defaultTableId(sessionId: string): string | null {
@@ -2075,6 +2585,15 @@ export class PokerStoreService implements OnDestroy {
         .filter((player) => !deletedIds.has(player.id))
         .map((player) => [player.id, player])
     );
+
+    if (!environment.production && !deletedIds.has('dev-manager')) {
+      playersByKey.set('dev-manager', {
+        id: 'dev-manager',
+        username: 'manager',
+        displayName: 'Manager',
+        role: 'MANAGER'
+      });
+    }
 
     for (const session of this.sessionsSignal()) {
       for (const player of session.players) {

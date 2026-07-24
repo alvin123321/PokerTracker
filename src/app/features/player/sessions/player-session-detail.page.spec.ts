@@ -10,12 +10,15 @@ import { PlayerSessionDetailPage } from './player-session-detail.page';
 
 describe('PlayerSessionDetailPage', () => {
   let fixture: ComponentFixture<PlayerSessionDetailPage>;
+  let session: ReturnType<typeof makeSession>;
+  let sessionState: ReturnType<typeof signal<ReturnType<typeof makeSession>>>;
 
   beforeEach(async () => {
     const currentPlayer = makePlayer();
-    const session = makeSession({
+    session = makeSession({
       players: [currentPlayer, makePlayer({ id: 'leader', userId: null, name: 'Leader', net: 200 })]
     });
+    sessionState = signal(session);
 
     await TestBed.configureTestingModule({
       imports: [PlayerSessionDetailPage, RouterTestingModule],
@@ -40,7 +43,7 @@ describe('PlayerSessionDetailPage', () => {
           useValue: {
             error: signal<string | null>(null),
             loading: signal(false),
-            getSession: () => session,
+            getSession: () => sessionState(),
             playerPublicTableRoster: signal([]),
             refreshSessions: jasmine.createSpy('refreshSessions').and.resolveTo()
           }
@@ -105,6 +108,21 @@ describe('PlayerSessionDetailPage', () => {
     expect(navigation).toBeNull();
     expect(compiled.textContent).not.toContain('Back to history');
   });
+
+  it('shows assigned manager tips when the manager also played in the session', () => {
+    sessionState.set({
+      ...session,
+      financialEntries: [makeFinancialEntry({ amount: 275 })]
+    });
+    fixture.detectChanges();
+
+    const tipsStat = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '.player-session-stat--tips'
+    );
+
+    expect(tipsStat?.textContent).toContain('My tips');
+    expect(tipsStat?.textContent).toContain('$275');
+  });
 });
 
 function makeSession(overrides: Partial<PokerSession> = {}): PokerSession {
@@ -135,6 +153,27 @@ function makePlayer(overrides: Partial<SessionPlayer> = {}): SessionPlayer {
     net: -500,
     joinedAt: '2026-07-17T01:00:00.000Z',
     completedAt: null,
+    ...overrides
+  };
+}
+
+function makeFinancialEntry(
+  overrides: Partial<NonNullable<PokerSession['financialEntries']>[number]> = {}
+): NonNullable<PokerSession['financialEntries']>[number] {
+  return {
+    id: 'tip-a',
+    sessionId: 'session-a',
+    entryType: 'TIP',
+    amount: 100,
+    managerUserId: 'player-1',
+    managerName: 'Player',
+    createdAt: '2026-07-17T01:00:00.000Z',
+    createdBy: 'host-a',
+    createdByName: 'Admin',
+    updatedAt: '2026-07-17T01:00:00.000Z',
+    updatedBy: 'host-a',
+    updatedByName: 'Admin',
+    revisions: [],
     ...overrides
   };
 }

@@ -3,7 +3,7 @@ import { removeSessionPlayerFromSession } from './session-player-removal.logic';
 import type { PokerSession, SessionPlayer } from './poker-store.service';
 
 describe('session player removal logic', () => {
-  it('removes the session player and all of their transaction amounts from the session', () => {
+  it('soft-removes the session player while retaining their transaction history', () => {
     const session = makeSession({
       players: [
         makePlayer({ id: 'seat-a', name: 'Alvin', totalBuyIn: 600 }),
@@ -16,10 +16,20 @@ describe('session player removal logic', () => {
       ]
     });
 
-    const updatedSession = removeSessionPlayerFromSession(session, 'seat-a');
+    const updatedSession = removeSessionPlayerFromSession(session, 'seat-a', {
+      removedAt: '2026-07-23T03:00:00.000Z',
+      removedBy: 'manager-one',
+      removedByName: 'Manager One'
+    });
 
-    expect(updatedSession.players.map((player) => player.id)).toEqual(['seat-b']);
-    expect(updatedSession.transactions.map((transaction) => transaction.id)).toEqual(['tx-b-buyin']);
+    expect(updatedSession.players.map((player) => player.id)).toEqual(['seat-a', 'seat-b']);
+    expect(updatedSession.players[0].removedAt).toBe('2026-07-23T03:00:00.000Z');
+    expect(updatedSession.players[0].removedByName).toBe('Manager One');
+    expect(updatedSession.transactions.map((transaction) => transaction.id)).toEqual([
+      'tx-a-buyin',
+      'tx-a-rebuy',
+      'tx-b-buyin'
+    ]);
   });
 
   it('rejects removing players from completed sessions', () => {
@@ -28,9 +38,13 @@ describe('session player removal logic', () => {
       players: [makePlayer({ id: 'seat-a' })]
     });
 
-    expect(() => removeSessionPlayerFromSession(session, 'seat-a')).toThrowError(
-      'Cannot remove a player from a completed session.'
-    );
+    expect(() =>
+      removeSessionPlayerFromSession(session, 'seat-a', {
+        removedAt: '2026-07-23T03:00:00.000Z',
+        removedBy: 'manager-one',
+        removedByName: 'Manager One'
+      })
+    ).toThrowError('Cannot remove a player from a completed session.');
   });
 });
 

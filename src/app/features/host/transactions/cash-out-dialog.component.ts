@@ -8,7 +8,12 @@ import { SessionPlayer } from '../data/poker-store.service';
 export interface CashOutDialogData {
   player: SessionPlayer;
   mode?: 'record' | 'edit';
+  canDelete?: boolean;
 }
+
+export type CashOutDialogResult =
+  | { action: 'save'; amount: number }
+  | { action: 'delete' };
 
 @Component({
   selector: 'app-cash-out-dialog',
@@ -60,6 +65,15 @@ export interface CashOutDialogData {
           {{ data.mode === 'edit' ? 'Save' : 'Complete' }}
         </button>
       </div>
+      @if (data.mode === 'edit' && data.canDelete) {
+        <button
+          type="button"
+          class="w-full rounded-lg border border-red-300/30 px-4 py-3 font-semibold text-red-200 transition hover:bg-red-400/10"
+          (click)="deleteCashOut()"
+        >
+          Delete cash out
+        </button>
+      }
     </section>
   `
 })
@@ -92,7 +106,11 @@ export class CashOutDialogComponent {
 
   protected submit(): void {
     if (this.cashOut.valid && this.cashOut.value !== null) {
-      this.dialogRef.close(this.cashOut.value);
+      this.dialogRef.close({ action: 'save', amount: this.cashOut.value } satisfies CashOutDialogResult);
     }
+  }
+
+  protected deleteCashOut(): void {
+    this.dialogRef.close({ action: 'delete' } satisfies CashOutDialogResult);
   }
 }

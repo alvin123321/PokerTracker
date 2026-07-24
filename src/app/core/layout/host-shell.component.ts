@@ -3,6 +3,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import {
   LucideAlarmClock,
   LucideArrowLeft,
+  LucideArrowLeftRight,
   LucideCalculator,
   LucideHistory,
   LucideHouse,
@@ -26,6 +27,7 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
   imports: [
     LucideAlarmClock,
     LucideArrowLeft,
+    LucideArrowLeftRight,
     LucideCalculator,
     LucideHistory,
     LucideHouse,
@@ -96,6 +98,16 @@ import { displayNameInitials } from '../../features/profile/profile.logic';
                   >
                     <svg lucideUsersRound [strokeWidth]="2.2" aria-hidden="true"></svg>
                     <span>Members</span>
+                  </a>
+                } @else if (authState.role() === 'MANAGER') {
+                  <a
+                    routerLink="/player/dashboard"
+                    class="host-account-menu-item"
+                    role="menuitem"
+                    (click)="closeAccountMenu()"
+                  >
+                    <svg lucideArrowLeftRight [strokeWidth]="2.2" aria-hidden="true"></svg>
+                    <span>My Games</span>
                   </a>
                 }
                 <button

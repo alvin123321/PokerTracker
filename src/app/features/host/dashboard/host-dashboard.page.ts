@@ -10,6 +10,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
+import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { MiniGameDashboardSectionComponent } from '../../mini-game/mini-game-dashboard-section.component';
 import {
   defaultPokerTableName,
@@ -25,7 +26,8 @@ import {
   shouldShowActiveSessionsEmptyState,
   shouldShowActiveSessionsLoadingState,
 } from './host-dashboard.logic';
-import { gameTimelineTransactions } from '../data/session-timeline.logic';
+import { GameTimelineEntry, gameTimelineEntries } from '../data/session-timeline.logic';
+import { SessionAccountingComponent } from '../sessions/session-accounting.component';
 import {
   AddPlayerDialogComponent,
   AddPlayerDialogData,
@@ -34,6 +36,7 @@ import {
 import {
   CashOutDialogComponent,
   CashOutDialogData,
+  CashOutDialogResult,
 } from '../transactions/cash-out-dialog.component';
 import { messageFromUnknownError } from '../shared/action-feedback.logic';
 import { ActionFeedbackToastComponent } from '../shared/action-feedback-toast.component';
@@ -125,6 +128,7 @@ class TableNameDialogComponent {
     MiniGameDashboardSectionComponent,
     NgTemplateOutlet,
     RouterLink,
+    SessionAccountingComponent,
   ],
   template: `
     <h1 class="sr-only">Dashboard</h1>
@@ -180,29 +184,36 @@ class TableNameDialogComponent {
             <div class="mx-auto mt-6 max-w-xl">
               <p class="empty-session-title text-2xl font-semibold text-white sm:text-3xl">No active session</p>
               <p class="empty-session-copy mt-3 text-sm leading-6 text-neutral-300 sm:text-base">
-                Start a session first, then create tables and seat players.
+                {{
+                  authState.isHostAdmin()
+                    ? 'Start a session first, then create tables and seat players.'
+                    : 'An active session will appear here as soon as the admin opens one.'
+                }}
               </p>
             </div>
 
-            <a
-              routerLink="/host/sessions/new"
-              class="empty-session-action mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-lg border px-5 text-base font-semibold transition sm:max-w-sm"
-            >
-              <span class="empty-session-action-cross" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 5v14M5 12h14"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                  />
-                </svg>
-              </span>
-              <span class="empty-session-action-label">Create New Session</span>
-            </a>
+            @if (authState.isHostAdmin()) {
+              <a
+                routerLink="/host/sessions/new"
+                class="empty-session-action mt-6 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-lg border px-5 text-base font-semibold transition sm:max-w-sm"
+              >
+                <span class="empty-session-action-cross" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M12 5v14M5 12h14"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </span>
+                <span class="empty-session-action-label">Create New Session</span>
+              </a>
+            }
           </article>
 
-          <section class="whats-next-panel rounded-lg border border-white/10 bg-neutral-950/60 p-4 shadow-[0_18px_44px_rgba(0,0,0,0.26)] sm:p-5">
+          @if (authState.isHostAdmin()) {
+            <section class="whats-next-panel rounded-lg border border-white/10 bg-neutral-950/60 p-4 shadow-[0_18px_44px_rgba(0,0,0,0.26)] sm:p-5">
             <div class="flex items-center gap-3">
               <span class="whats-next-line h-px flex-1"></span>
               <h2 class="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-300">What's next</h2>
@@ -246,7 +257,8 @@ class TableNameDialogComponent {
                 <p class="whats-next-copy mt-2 text-sm leading-5 text-neutral-400">Seat players and track buy-ins.</p>
               </article>
             </div>
-          </section>
+            </section>
+          }
 
           <app-mini-game-dashboard-section [showCreate]="true" />
         </section>
@@ -321,19 +333,33 @@ class TableNameDialogComponent {
                 </button>
 
                 <div class="border-t border-white/10 px-4 pb-4 sm:px-5 sm:pb-5">
-                  <button
-                    type="button"
-                    [disabled]="isBusy()"
-                    class="mt-4 w-full rounded-lg border border-emerald-300/30 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50 sm:mx-auto sm:block sm:max-w-xs"
-                    (click)="createTable(session.id); $event.stopPropagation()"
+                  <div
+                    class="mt-4 grid gap-2"
+                    [class.sm:grid-cols-2]="authState.isHostAdmin()"
                   >
-                    <span aria-hidden="true" class="mr-2">+</span>
-                    @if (isPending(tableAction('add-table', session.id))) {
-                      Creating...
-                    } @else {
-                      <span class="dashboard-add-table-label">Add Table</span>
+                    <a
+                      [routerLink]="['/host/sessions', session.id]"
+                      class="flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-3 text-sm font-semibold text-neutral-100 transition hover:bg-white/[0.06]"
+                    >
+                      Manage session
+                    </a>
+
+                    @if (authState.isHostAdmin()) {
+                    <button
+                      type="button"
+                      [disabled]="isBusy()"
+                      class="min-h-11 w-full rounded-lg border border-emerald-300/30 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      (click)="createTable(session.id); $event.stopPropagation()"
+                    >
+                      <span aria-hidden="true" class="mr-2">+</span>
+                      @if (isPending(tableAction('add-table', session.id))) {
+                        Creating...
+                      } @else {
+                        <span class="dashboard-add-table-label">Add Table</span>
+                      }
+                    </button>
                     }
-                  </button>
+                  </div>
                 </div>
 
                 <div
@@ -493,6 +519,8 @@ class TableNameDialogComponent {
                           }
                         </div>
                       }
+
+                      <app-session-accounting class="mt-4 block" [session]="session" />
                     </div>
                   </div>
                 </div>
@@ -637,15 +665,38 @@ class TableNameDialogComponent {
                   @for (transaction of dashboardPlayerTimelineTransactions(session, player.id); track transaction.id) {
                     <div
                       class="dashboard-timeline-item"
-                      [class.dashboard-timeline-item-buyin]="transaction.type === 'BUYIN'"
-                      [class.dashboard-timeline-item-rebuy]="transaction.type === 'REBUY'"
-                      [class.dashboard-timeline-item-cashout]="transaction.type === 'CASHOUT'"
+                      [class.dashboard-timeline-item-buyin]="transaction.type === 'BUYIN' && transaction.state === 'ACTIVE'"
+                      [class.dashboard-timeline-item-rebuy]="transaction.type === 'REBUY' && transaction.state === 'ACTIVE'"
+                      [class.dashboard-timeline-item-cashout]="transaction.type === 'CASHOUT' && transaction.state === 'ACTIVE'"
+                      [class.opacity-60]="transaction.state !== 'ACTIVE'"
                     >
-                      <span class="text-xs font-semibold uppercase">{{ transactionLabel(transaction.type) }}</span>
-                      <span class="text-sm text-neutral-400">{{ transaction.createdAt | date: 'shortTime' }}</span>
-                      <span class="text-right text-base font-semibold text-white">
+                      <span
+                        class="text-xs font-semibold uppercase"
+                        [class.line-through]="transaction.state !== 'ACTIVE'"
+                      >
+                        {{ transactionLabel(transaction.type) }}
+                      </span>
+                      <span
+                        class="text-sm text-neutral-400"
+                        [class.line-through]="transaction.state !== 'ACTIVE'"
+                      >
+                        {{ transaction.createdAt | date: 'shortTime' }}
+                      </span>
+                      <span
+                        class="text-right text-base font-semibold text-white"
+                        [class.line-through]="transaction.state !== 'ACTIVE'"
+                      >
                         {{ transaction.amount | currency: 'USD' : 'symbol' : '1.0-0' }}
                       </span>
+                      @if (transaction.state !== 'ACTIVE') {
+                        <span class="col-span-3 text-xs text-neutral-500">
+                          {{ transaction.state === 'DELETED' ? 'Deleted' : 'Edited' }}
+                          by {{ transaction.actionByName ?? 'Unknown' }}
+                          @if (transaction.actionAt) {
+                            · {{ transaction.actionAt | date: 'short' }}
+                          }
+                        </span>
+                      }
                     </div>
                   }
                 </div>
@@ -1359,6 +1410,7 @@ class TableNameDialogComponent {
 })
 export class HostDashboardPage implements OnInit, OnDestroy {
   protected readonly store = inject(PokerStoreService);
+  protected readonly authState = inject(AuthStateService);
   protected readonly shouldShowActiveSessionsEmptyState = shouldShowActiveSessionsEmptyState;
   protected readonly shouldShowActiveSessionsLoadingState = shouldShowActiveSessionsLoadingState;
   private readonly dialog = inject(MatDialog);
@@ -1498,8 +1550,8 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   protected dashboardPlayerTimelineTransactions(
     session: PokerSession,
     playerId: string,
-  ): PokerTransaction[] {
-    return gameTimelineTransactions(
+  ): GameTimelineEntry[] {
+    return gameTimelineEntries(
       session.transactions.filter((transaction) => transaction.playerId === playerId),
     );
   }
@@ -1519,7 +1571,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   }
 
   protected activePlayerCount(session: PokerSession): number {
-    return session.players.filter((player) => player.status === 'ACTIVE').length;
+    return this.store.totalsFor(session).activePlayers;
   }
 
   protected signedMoney(amount: number): string {
@@ -1550,7 +1602,7 @@ export class HostDashboardPage implements OnInit, OnDestroy {
   }
 
   protected async createTable(sessionId: string): Promise<void> {
-    if (this.isBusy() || !sessionId) {
+    if (this.isBusy() || !sessionId || !this.authState.isHostAdmin()) {
       return;
     }
 
@@ -1601,6 +1653,9 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       return;
     }
 
+    const activeSessionPlayers = (this.store.getSession(sessionId)?.players ?? []).filter(
+      (player) => !player.removedAt
+    );
     const dialogRef = this.dialog.open<
       AddPlayerDialogComponent,
       AddPlayerDialogData,
@@ -1609,10 +1664,10 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       autoFocus: 'first-tabbable',
       data: {
         registeredPlayers,
-        sessionMemberUserIds: (this.store.getSession(sessionId)?.players ?? [])
+        sessionMemberUserIds: activeSessionPlayers
           .map((player) => player.userId)
           .filter((userId): userId is string => Boolean(userId)),
-        sessionMemberNames: (this.store.getSession(sessionId)?.players ?? []).map((player) => player.name),
+        sessionMemberNames: activeSessionPlayers.map((player) => player.name),
       },
       panelClass: 'pokertrack-dialog-panel',
     });
@@ -1668,19 +1723,20 @@ export class HostDashboardPage implements OnInit, OnDestroy {
       return;
     }
 
-    const dialogRef = this.dialog.open<CashOutDialogComponent, CashOutDialogData, number>(
+    const dialogRef = this.dialog.open<
       CashOutDialogComponent,
-      {
-        autoFocus: 'first-tabbable',
-        data: { player, mode: player.status === 'COMPLETED' ? 'edit' : 'record' },
-        panelClass: 'pokertrack-dialog-panel',
-      },
-    );
+      CashOutDialogData,
+      CashOutDialogResult
+    >(CashOutDialogComponent, {
+      autoFocus: 'first-tabbable',
+      data: { player, mode: player.status === 'COMPLETED' ? 'edit' : 'record' },
+      panelClass: 'pokertrack-dialog-panel',
+    });
 
-    dialogRef.afterClosed().subscribe(async (amount?: number) => {
-      if (amount !== undefined && amount >= 0) {
+    dialogRef.afterClosed().subscribe(async (result?: CashOutDialogResult) => {
+      if (result?.action === 'save' && result.amount >= 0) {
         await this.runAction(this.playerAction('cash-out', player.id), () =>
-          this.store.recordCashOut(sessionId, player.id, amount),
+          this.store.recordCashOut(sessionId, player.id, result.amount),
         );
       }
     });
